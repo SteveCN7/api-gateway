@@ -16,13 +16,13 @@
 
 package it.uk.gov.hmrc.apigateway.feature
 
-import it.uk.gov.hmrc.apigateway.BaseIntegrationTest
+import it.uk.gov.hmrc.apigateway.BaseIntegrationSpec
 import play.api.http.Status.{BAD_REQUEST, NOT_FOUND}
 import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
 
 import scalaj.http.Http
 
-class RequestProxyingIntegrationTest extends BaseIntegrationTest {
+class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
 
   feature("The API gateway proxies requests to downstream services") {
 

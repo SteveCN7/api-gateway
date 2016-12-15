@@ -26,7 +26,7 @@ import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
 
 import scalaj.http.{HttpRequest, HttpResponse}
 
-abstract class BaseIntegrationTest extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll with Matchers {
+abstract class BaseIntegrationSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll with Matchers {
 
   protected lazy val testServer = TestServer(9999, application)
   protected val apiGatewayUrl = "http://localhost:9999/api-gateway"

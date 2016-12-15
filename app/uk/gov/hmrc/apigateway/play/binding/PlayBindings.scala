@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.play.binding
+package uk.gov.hmrc.apigateway.play.binding
 
 import play.api.libs.json._
 import uk.gov.hmrc.apigateway.exception.GatewayError

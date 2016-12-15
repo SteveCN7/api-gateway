@@ -26,7 +26,7 @@ import play.api.mvc._
 import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidAcceptHeader, MatchingResourceNotFound, ServerError}
 import uk.gov.hmrc.apigateway.model.ProxyRequest
-import uk.gov.hmrc.play.binding.PlayBindings._
+import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.util.HttpHeaders.{ACCEPT, X_API_GATEWAY_ENDPOINT}
 
 import scala.concurrent.ExecutionContext.Implicits.global

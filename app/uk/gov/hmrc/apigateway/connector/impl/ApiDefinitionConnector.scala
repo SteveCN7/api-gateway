@@ -22,7 +22,7 @@ import play.api.libs.ws.WSClient
 import uk.gov.hmrc.apigateway.connector.ServiceConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.ContextNotFound
 import uk.gov.hmrc.apigateway.model.ApiDefinition
-import uk.gov.hmrc.play.binding.PlayBindings.apiDefinitionFormat
+import uk.gov.hmrc.apigateway.play.binding.PlayBindings.apiDefinitionFormat
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

@@ -23,7 +23,7 @@ import play.api.libs.json.Json.toJson
 import play.api.mvc.Results._
 import play.api.mvc.{Action, BodyParsers}
 import uk.gov.hmrc.apigateway.exception.GatewayError._
-import uk.gov.hmrc.play.binding.PlayBindings._
+import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.service.ProxyService
 
 import scala.concurrent.ExecutionContext.Implicits.global

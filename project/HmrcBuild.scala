@@ -37,7 +37,8 @@ object HmrcBuild extends Build {
     .settings(
       testOptions in Test := Seq(Filter(_ startsWith "uk.gov.hmrc")),
       testOptions in IntegrationTest := Seq(Filter(_ startsWith "it.uk.gov.hmrc")),
-      unmanagedSourceDirectories in IntegrationTest <<= (baseDirectory in IntegrationTest) (base => Seq(base / "test"))
+      unmanagedSourceDirectories in IntegrationTest <<= (baseDirectory in IntegrationTest) (base => Seq(base / "test")),
+      unmanagedResourceDirectories in IntegrationTest <<= (baseDirectory in IntegrationTest) (base => Seq(base / "test/resources"))
     )
     .settings(
       resolvers += Resolver.bintrayRepo("hmrc", "releases"),

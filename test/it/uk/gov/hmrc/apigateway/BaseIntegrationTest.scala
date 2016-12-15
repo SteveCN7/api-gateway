@@ -17,16 +17,22 @@
 package it.uk.gov.hmrc.apigateway
 
 import org.scalatest.{BeforeAndAfterAll, FeatureSpec, GivenWhenThen, Matchers}
+import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json._
 import play.api.test.TestServer
+import uk.gov.hmrc.apigateway.connector.StubbedApiDefinitionConnector
+import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
 
 import scalaj.http.{HttpRequest, HttpResponse}
 
 abstract class BaseIntegrationTest extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll with Matchers {
 
-  protected lazy val testServer = TestServer(9999, GuiceApplicationBuilder().build())
+  protected lazy val testServer = TestServer(9999, application)
   protected val apiGatewayUrl = "http://localhost:9999/api-gateway"
+  private val application = new GuiceApplicationBuilder()
+    .overrides(bind[ApiDefinitionConnector].to[StubbedApiDefinitionConnector])
+    .build()
 
   override protected def beforeAll() = testServer.start()
 

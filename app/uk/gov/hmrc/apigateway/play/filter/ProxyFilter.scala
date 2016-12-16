@@ -24,7 +24,7 @@ import play.api.libs.json.Json._
 import play.api.mvc.Results._
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.exception.GatewayError
-import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidAcceptHeader, MatchingResourceNotFound, ServerError}
+import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound => _, _}
 import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.util.HttpHeaders.{ACCEPT, X_API_GATEWAY_ENDPOINT}
@@ -34,7 +34,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class ProxyFilter @Inject()
-(endpointMatchFilter: EndpointMatchFilter)
+(endpointMatchFilter: EndpointMatchFilter,
+ delegatedAuthorityFilter: DelegatedAuthorityFilter)
 (implicit override val mat: Materializer,
  executionContext: ExecutionContext) extends Filter {
 
@@ -44,7 +45,7 @@ class ProxyFilter @Inject()
     val eventualProxiedRequestHeader: Future[RequestHeader] = for {
       apiDefinitionMatch <- endpointMatchFilter.filter(proxyRequest)
       xApiGatewayEndpoint = s"${apiDefinitionMatch.serviceBaseUrl}/${proxyRequest.path}"
-      // TODO implement delegated authority filter
+      delegatedAuthority <- delegatedAuthorityFilter.filter(proxyRequest)
       // TODO implement rate limit filter
       // TODO implement subscription filter
       // TODO implement scope filter
@@ -55,6 +56,8 @@ class ProxyFilter @Inject()
     } yield proxiedRequestHeader
 
     eventualProxiedRequestHeader.flatMap(nextFilter) recover {
+      case error: MissingCredentials => Unauthorized(toJson(error))
+      case error: InvalidCredentials => Unauthorized(toJson(error))
       case error: InvalidAcceptHeader => BadRequest(toJson(error))
       case error: MatchingResourceNotFound => NotFound(toJson(error))
       case error: GatewayError => NotFound(toJson(error))

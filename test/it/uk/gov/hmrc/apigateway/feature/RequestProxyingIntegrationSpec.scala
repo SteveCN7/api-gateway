@@ -17,8 +17,8 @@
 package it.uk.gov.hmrc.apigateway.feature
 
 import it.uk.gov.hmrc.apigateway.BaseIntegrationSpec
-import play.api.http.Status.{BAD_REQUEST, NOT_FOUND}
-import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
+import play.api.http.Status.{BAD_REQUEST, NOT_FOUND, UNAUTHORIZED}
+import uk.gov.hmrc.apigateway.util.HttpHeaders.{ACCEPT, AUTHORIZATION}
 
 import scalaj.http.Http
 
@@ -74,7 +74,7 @@ class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
 
     scenario("a request whose resource cannot be matched is not proxied") {
       Given("a request without a '/non-existent' resource")
-      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/non-existent-resource").header(ACCEPT, "application/vnd.hmrc.1.0+json") // TODO may have to mock this service!
+      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/non-existent-resource").header(ACCEPT, "application/vnd.hmrc.1.0+json")
 
       When("the request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -88,6 +88,34 @@ class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
           "code":"MATCHING_RESOURCE_NOT_FOUND",
           "message":"A resource with the name in the request cannot be found in the API"
           } """)
+    }
+
+    scenario("a request without an 'authorization' http header is not proxied") {
+      Given("a request without an 'authorization' http header")
+      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user/latency/1").header(ACCEPT, "application/vnd.hmrc.1.0+json")
+
+      When("the request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("the http response is '401' unauthorized")
+      assertCodeIs(httpResponse, UNAUTHORIZED)
+
+      And("the response message code is 'MISSING_CREDENTIALS'")
+      assertBodyIs(httpResponse, """ {"code":"MISSING_CREDENTIALS","message":"Authentication information is not provided"} """)
+    }
+
+    scenario("a request with an invalid 'authorization' http header is not proxied") {
+      Given("a request with an invalid 'authorization' http header")
+      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user/latency/1").header(ACCEPT, "application/vnd.hmrc.1.0+json").header(AUTHORIZATION, "invalid-authorization-header")
+
+      When("the request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("the http response is '401' unauthorized")
+      assertCodeIs(httpResponse, UNAUTHORIZED)
+
+      And("the response message code is 'INVALID_CREDENTIALS'")
+      assertBodyIs(httpResponse, """ {"code":"INVALID_CREDENTIALS","message":"Invalid Authentication information provided"} """)
     }
 
   }

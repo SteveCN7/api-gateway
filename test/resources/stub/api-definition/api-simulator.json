@@ -129,6 +129,22 @@
           "authType":"USER",
           "throttlingTier":"UNLIMITED",
           "scope":"read:performance-tests"
+        },
+        {
+          "uriPattern":"/open-version-2-0-endpoint",
+          "endpointName":"A test endpoint",
+          "method":"GET",
+          "authType":"NONE",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests"
+        },
+        {
+          "uriPattern":"/user-restricted-version-2-0-endpoint",
+          "endpointName":"Another test endpoint",
+          "method":"GET",
+          "authType":"NONE",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests"
         }
       ]
     }

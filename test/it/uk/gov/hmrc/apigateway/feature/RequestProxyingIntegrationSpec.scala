@@ -17,7 +17,7 @@
 package it.uk.gov.hmrc.apigateway.feature
 
 import it.uk.gov.hmrc.apigateway.BaseIntegrationSpec
-import play.api.http.Status.{BAD_REQUEST, NOT_FOUND, UNAUTHORIZED}
+import play.api.http.Status.{BAD_REQUEST, NOT_FOUND, UNAUTHORIZED, OK}
 import uk.gov.hmrc.apigateway.util.HttpHeaders.{ACCEPT, AUTHORIZATION}
 
 import scalaj.http.Http
@@ -59,7 +59,7 @@ class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
     }
 
     scenario("a request whose context cannot be matched is not proxied") {
-      Given("a request without a non existent context")
+      Given("a request for a non existent context")
       val httpRequest = Http(s"$apiGatewayUrl/foo").header(ACCEPT, "application/vnd.hmrc.1.0+json")
 
       When("the request is sent to the gateway")
@@ -73,8 +73,26 @@ class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
     }
 
     scenario("a request whose resource cannot be matched is not proxied") {
-      Given("a request without a '/non-existent' resource")
+      Given("a request for a non existent resource")
       val httpRequest = Http(s"$apiGatewayUrl/api-simulator/non-existent-resource").header(ACCEPT, "application/vnd.hmrc.1.0+json")
+
+      When("the request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("the http response is '404' not found")
+      assertCodeIs(httpResponse, NOT_FOUND)
+
+      And("the response message code is 'MATCHING_RESOURCE_NOT_FOUND'")
+      assertBodyIs(httpResponse,
+        """{
+          "code":"MATCHING_RESOURCE_NOT_FOUND",
+          "message":"A resource with the name in the request cannot be found in the API"
+          } """)
+    }
+
+    scenario("a request whose version cannot be matched is not proxied") {
+      Given("a request without a non existent version")
+      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/version-2-0-endpoint").header(ACCEPT, "application/vnd.hmrc.1.0+json")
 
       When("the request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -106,7 +124,7 @@ class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
 
     scenario("a request with an invalid 'authorization' http header is not proxied") {
       Given("a request with an invalid 'authorization' http header")
-      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user/latency/1").header(ACCEPT, "application/vnd.hmrc.1.0+json").header(AUTHORIZATION, "invalid-authorization-header")
+      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user/latency/1").header(ACCEPT, "application/vnd.hmrc.1.0+json").header(AUTHORIZATION, "80d964331707baf8872179c805351")
 
       When("the request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -116,6 +134,38 @@ class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
 
       And("the response message code is 'INVALID_CREDENTIALS'")
       assertBodyIs(httpResponse, """ {"code":"INVALID_CREDENTIALS","message":"Invalid Authentication information provided"} """)
+    }
+
+    scenario("a request passing checks for an open endpoint is proxied") {
+      pending
+      Given("a request which passes checks for an open endpoint")
+      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/open-version-2-0-endpoint")
+        .header(ACCEPT, "application/vnd.hmrc.2.0+json")
+
+      When("the request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("the http response is '200' ok")
+      assertCodeIs(httpResponse, OK)
+
+      And("""the response message is '{"message":"Hello World"}'""")
+      assertBodyIs(httpResponse, """ {"message":"Hello World"} """)
+    }
+
+    scenario("a request passing checks for a user restricted endpoint is proxied") {
+      Given("a request which passes checks for a user restricted endpoint")
+      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user-restricted-version-2-0-endpoint")
+        .header(ACCEPT, "application/vnd.hmrc.2.0+json")
+        .header(AUTHORIZATION, "Bearer 80d964331707baf8872179c805352")
+
+      When("the request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("the http response is '200' ok")
+      assertCodeIs(httpResponse, OK)
+
+      And("""the response message is '{"message":"response from /user-restricted-version-2-0-endpoint"}'""")
+      assertBodyIs(httpResponse, """ {"message":"response from /user-restricted-version-2-0-endpoint"} """)
     }
 
   }

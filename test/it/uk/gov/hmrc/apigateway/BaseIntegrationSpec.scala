@@ -21,8 +21,8 @@ import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json._
 import play.api.test.TestServer
-import uk.gov.hmrc.apigateway.connector.StubbedApiDefinitionConnector
-import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
+import uk.gov.hmrc.apigateway.connector.impl.{ApiDefinitionConnector, DelegatedAuthorityConnector, ProxyConnector}
+import uk.gov.hmrc.apigateway.connector.{StubbedApiDefinitionConnector, StubbedDelegatedAuthorityConnector, StubbedProxyConnector}
 
 import scalaj.http.{HttpRequest, HttpResponse}
 
@@ -31,7 +31,10 @@ abstract class BaseIntegrationSpec extends FeatureSpec with GivenWhenThen with B
   protected lazy val testServer = TestServer(9999, application)
   protected val apiGatewayUrl = "http://localhost:9999/api-gateway"
   private val application = new GuiceApplicationBuilder()
+    //    .overrides(bind[WSClient].toInstance(mock[WSClient])) TODO inject a mock client and get rid of Stubbed*Connector classes
     .overrides(bind[ApiDefinitionConnector].to[StubbedApiDefinitionConnector])
+    .overrides(bind[DelegatedAuthorityConnector].to[StubbedDelegatedAuthorityConnector])
+    .overrides(bind[ProxyConnector].to[StubbedProxyConnector])
     .build()
 
   override protected def beforeAll() = testServer.start()

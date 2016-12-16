@@ -30,4 +30,6 @@ object GatewayError {
 
   case class InvalidCredentials() extends GatewayError("INVALID_CREDENTIALS", "Invalid Authentication information provided")
 
+  case class MissingCredentials() extends GatewayError("MISSING_CREDENTIALS", "Authentication information is not provided")
+
 }

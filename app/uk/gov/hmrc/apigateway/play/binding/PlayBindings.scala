@@ -18,7 +18,7 @@ package uk.gov.hmrc.apigateway.play.binding
 
 import play.api.libs.json._
 import uk.gov.hmrc.apigateway.exception.GatewayError
-import uk.gov.hmrc.apigateway.model.{ApiDefinition, ApiEndpoint, ApiVersion}
+import uk.gov.hmrc.apigateway.model._
 
 object PlayBindings {
 
@@ -32,5 +32,9 @@ object PlayBindings {
   implicit val apiEndpointFormat = Json.format[ApiEndpoint]
   implicit val apiVersionFormat = Json.format[ApiVersion]
   implicit val apiDefinitionFormat = Json.format[ApiDefinition]
+
+  implicit val tokenFormat = Json.format[Token]
+  implicit val thirdPartyDelegatedAuthorityFormat = Json.format[ThirdPartyDelegatedAuthority]
+  implicit val authorityFormat = Json.format[Authority]
 
 }

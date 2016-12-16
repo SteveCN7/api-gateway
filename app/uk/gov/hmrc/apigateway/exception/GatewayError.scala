@@ -28,4 +28,6 @@ object GatewayError {
 
   case class InvalidAcceptHeader() extends GatewayError("ACCEPT_HEADER_INVALID", "The accept header is missing or invalid")
 
+  case class InvalidCredentials() extends GatewayError("INVALID_CREDENTIALS", "Invalid Authentication information provided")
+
 }

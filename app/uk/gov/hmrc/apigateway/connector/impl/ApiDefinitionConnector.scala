@@ -20,7 +20,7 @@ import javax.inject.{Inject, Singleton}
 
 import play.api.libs.ws.WSClient
 import uk.gov.hmrc.apigateway.connector.ServiceConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError.ContextNotFound
+import uk.gov.hmrc.apigateway.exception.GatewayError.{ContextNotFound, NotFound}
 import uk.gov.hmrc.apigateway.model.ApiDefinition
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings.apiDefinitionFormat
 
@@ -33,7 +33,7 @@ class ApiDefinitionConnector @Inject()(wsClient: WSClient)
 
   def getByContext(context: String): Future[ApiDefinition] =
     get[ApiDefinition](s"$serviceName?context=$context") recover {
-      case error: RuntimeException => throw ContextNotFound()
+      case error: NotFound => throw ContextNotFound()
     }
 
 }

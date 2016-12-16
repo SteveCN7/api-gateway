@@ -20,6 +20,7 @@ import play.api.Logger
 import play.api.http.Status.{NOT_FOUND, OK}
 import play.api.libs.json.Format
 import play.api.libs.ws.WSClient
+import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -34,7 +35,7 @@ abstract class AbstractConnector(wsClient: WSClient) {
 
       case wsResponse if wsResponse.status == NOT_FOUND =>
         Logger.debug(s"GET $url ${wsResponse.status}")
-        throw new RuntimeException("Resource cannot be found")
+        throw NotFound()
     }
   }
 

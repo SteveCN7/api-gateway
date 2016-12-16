@@ -7,6 +7,7 @@ import play.api.http.Status.{NOT_FOUND, OK}
 import play.api.libs.json.Json
 import play.api.libs.json.Json.parse
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
+import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future.successful
@@ -24,7 +25,7 @@ class AbstractConnectorSpec extends UnitSpec with MockitoSugar {
 
     "throw a runtime exception when the response is '404' not found" in {
       mockWsClientToReturn(NOT_FOUND)
-      intercept[RuntimeException] {
+      intercept[NotFound] {
         await(abstractConnectorImpl.get[String]("http://host.example/foo/bar"))
       }
     }

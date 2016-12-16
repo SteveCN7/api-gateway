@@ -22,6 +22,8 @@ object GatewayError {
 
   case class ServerError() extends GatewayError("SERVER_ERROR", "Service unavailable")
 
+  case class NotFound() extends GatewayError("NOT_FOUND", "Requested resource could not be found")
+
   case class ContextNotFound() extends GatewayError("NOT_FOUND", "Requested resource could not be found")
 
   case class MatchingResourceNotFound() extends GatewayError("MATCHING_RESOURCE_NOT_FOUND", "A resource with the name in the request cannot be found in the API")

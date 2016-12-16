@@ -18,7 +18,7 @@ package uk.gov.hmrc.apigateway.connector
 
 import play.api.libs.json.Json.parse
 import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError.ContextNotFound
+import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
 import uk.gov.hmrc.apigateway.model.ApiDefinition
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings.apiDefinitionFormat
 
@@ -43,7 +43,7 @@ class StubbedApiDefinitionConnector extends ApiDefinitionConnector(null) {
     val inputStream = getClass.getResourceAsStream(s"/stub/api-definition/$context.json")
     Option(inputStream).map(fromInputStream).map(_.mkString).map(parse(_).as[ApiDefinition]) match {
       case Some(apiDefinition) => apiDefinition
-      case _ => throw ContextNotFound()
+      case _ => throw NotFound()
     }
   }
 

@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.apigateway.util
 
-import uk.gov.hmrc.apigateway.exception.GatewayError.{ContextNotFound, InvalidAcceptHeader}
+import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidAcceptHeader, NotFound}
 import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
 
@@ -30,7 +30,7 @@ object ProxyRequestUtils {
   private val parseVersion = firstGroup("""application\/vnd\.hmrc\.(.*)\+.*""".r)
 
   def validateContext[T](proxyRequest: ProxyRequest): Future[String] =
-    validateOrElse(parseContext(proxyRequest.path), ContextNotFound())
+    validateOrElse(parseContext(proxyRequest.path), NotFound())
 
   def validateVersion[T](proxyRequest: ProxyRequest): Future[String] = {
     val acceptHeader: String = proxyRequest.getHeader(ACCEPT).getOrElse("")

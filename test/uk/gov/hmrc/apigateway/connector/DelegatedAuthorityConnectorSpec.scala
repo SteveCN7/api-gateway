@@ -17,21 +17,16 @@
 package uk.gov.hmrc.apigateway.connector
 
 import org.joda.time.DateTime
-import org.mockito.ArgumentMatchers.anyString
-import org.mockito.Mockito.when
-import org.scalatest.mockito.MockitoSugar
 import play.api.http.Status.{NOT_FOUND, OK}
 import play.api.libs.json.Json._
-import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
+import play.api.libs.ws.WSClient
 import uk.gov.hmrc.apigateway.connector.impl.DelegatedAuthorityConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.InvalidCredentials
 import uk.gov.hmrc.apigateway.model.{Authority, ThirdPartyDelegatedAuthority, Token}
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings.authorityFormat
 import uk.gov.hmrc.play.test.UnitSpec
 
-import scala.concurrent.Future.successful
-
-class DelegatedAuthorityConnectorSpec extends UnitSpec with MockitoSugar {
+class DelegatedAuthorityConnectorSpec extends UnitSpec with WsClientMocking {
 
   private val wsClient = mock[WSClient]
   private val delegatedAuthorityConnector = new DelegatedAuthorityConnector(wsClient) {
@@ -41,7 +36,7 @@ class DelegatedAuthorityConnectorSpec extends UnitSpec with MockitoSugar {
   "Delegated authority connector" should {
 
     "throw an exception when access token is invalid" in {
-      mockWsClientToReturn(NOT_FOUND)
+      mockWsClient(wsClient, "http://tpda.example/authority?access_token=31c99f9482de49544c6cc3374c378028", NOT_FOUND)
       intercept[InvalidCredentials] {
         await(delegatedAuthorityConnector.getByAccessToken("31c99f9482de49544c6cc3374c378028"))
       }
@@ -49,20 +44,10 @@ class DelegatedAuthorityConnectorSpec extends UnitSpec with MockitoSugar {
 
     "return the delegated authority when access token is valid" in {
       val authority = Authority(ThirdPartyDelegatedAuthority("sandbox_token", "uKQXtOfZEmW8z5UOwHsg3ANF_fwa", Token(Set.empty, DateTime.now)))
-      mockWsClientToReturn(OK, stringify(toJson(authority)))
+      mockWsClient(wsClient, "http://tpda.example/authority?access_token=31c99f9482de49544c6cc3374c378028", OK, stringify(toJson(authority)))
       await(delegatedAuthorityConnector.getByAccessToken("31c99f9482de49544c6cc3374c378028")) shouldBe authority
     }
 
-  }
-
-  // TODO this will need to be reused between tests, extract to class?
-  private def mockWsClientToReturn(httpResponseCode: Int, responseJson: String = "{}") = {
-    val wsRequest = mock[WSRequest]
-    when(wsClient.url(anyString)).thenReturn(wsRequest)
-    val wsResponse = mock[WSResponse]
-    when(wsResponse.json).thenReturn(parse(responseJson))
-    when(wsRequest.get()).thenReturn(successful(wsResponse))
-    when(wsResponse.status).thenReturn(httpResponseCode)
   }
 
 }

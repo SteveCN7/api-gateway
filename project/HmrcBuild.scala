@@ -18,8 +18,8 @@ import play.core.PlayVersion
 import play.sbt.PlayImport._
 import play.sbt.PlayScala
 import sbt.Keys._
-import sbt._
 import sbt.Tests.Filter
+import sbt._
 
 object HmrcBuild extends Build {
 
@@ -44,9 +44,7 @@ object HmrcBuild extends Build {
       scalaVersion := "2.11.8",
       name := "api-gateway",
       version := "0.1.0-SNAPSHOT",
-      libraryDependencies ++=
-        compileDependencies ++
-          testDependencies
+      libraryDependencies ++= compileDependencies ++ testDependencies
     )
     .configs(IntegrationTest)
     .settings(Defaults.itSettings: _*)

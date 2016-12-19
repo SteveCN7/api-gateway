@@ -35,7 +35,7 @@ class ProxyFilterSpec extends UnitSpec with MockitoSugar {
   trait Setup {
     implicit val materializer = mock[Materializer]
     val endpointMatchFilter = mock[EndpointMatchFilter]
-    val proxyFilter = new ProxyFilter(endpointMatchFilter, mock[DelegatedAuthorityFilter])(materializer, ExecutionContext.Implicits.global)
+    val proxyFilter = new ProxyFilter(endpointMatchFilter, mock[DelegatedAuthorityFilter], mock[ScopeValidationFilter])(materializer, ExecutionContext.Implicits.global)
   }
 
   "Proxy filter" should {

@@ -144,7 +144,7 @@
           "method":"GET",
           "authType":"USER",
           "throttlingTier":"UNLIMITED",
-          "scope":"read:performance-tests"
+          "scope":"scope1 scope2"
         }
       ]
     }

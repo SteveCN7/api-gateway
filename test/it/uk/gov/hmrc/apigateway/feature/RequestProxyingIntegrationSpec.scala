@@ -18,7 +18,7 @@ package it.uk.gov.hmrc.apigateway.feature
 
 import it.uk.gov.hmrc.apigateway.BaseIntegrationSpec
 import org.joda.time.DateTime
-import play.api.http.Status.{BAD_REQUEST, NOT_FOUND, OK, UNAUTHORIZED}
+import play.api.http.Status._
 import play.api.libs.json.Json.{parse, stringify, toJson}
 import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
 import uk.gov.hmrc.apigateway.model.{Authority, ThirdPartyDelegatedAuthority, Token}
@@ -147,6 +147,43 @@ class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
       assertBodyIs(httpResponse, """ {"code":"INVALID_CREDENTIALS","message":"Invalid Authentication information provided"} """)
     }
 
+    scenario("a request with invalid scopes is not proxied") {
+      Given("a request with invalid scopes")
+      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user-restricted-version-2-0-endpoint")
+        .header(ACCEPT, "application/vnd.hmrc.2.0+json")
+        .header(AUTHORIZATION, "Bearer 80d964331707baf8872179c805352")
+      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
+      mockWsClient(wsClient, "http://tpda.example:9002/authority?access_token=80d964331707baf8872179c805352", OK, loadStubbedDelegatedAuthority("80d964331707baf8872179c805352"))
+
+      When("the request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("the http response is '403' forbidden")
+      assertCodeIs(httpResponse, FORBIDDEN)
+
+      And("the response message code is 'INVALID_SCOPE'")
+      assertBodyIs(httpResponse, """ {"code":"INVALID_SCOPE","message":"Cannot access the required resource. Ensure this token has all the required scopes."} """)
+    }
+
+    scenario("a request passing checks for a user restricted endpoint is proxied") {
+      Given("a request which passes checks for a user restricted endpoint")
+      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user-restricted-version-2-0-endpoint")
+        .header(ACCEPT, "application/vnd.hmrc.2.0+json")
+        .header(AUTHORIZATION, "Bearer 80d964331707baf8872179c805353")
+      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
+      mockWsClient(wsClient, "http://tpda.example:9002/authority?access_token=80d964331707baf8872179c805353", OK, loadStubbedDelegatedAuthority("80d964331707baf8872179c805353"))
+
+      When("the request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("the http response is '200' ok")
+      assertCodeIs(httpResponse, OK)
+
+      And("""the response message is '{"message":"response from /user-restricted-version-2-0-endpoint"}'""")
+      assertBodyIs(httpResponse, """ {"message":"response from /user-restricted-version-2-0-endpoint"} """)
+    }
+
+    // TODO
     scenario("a request passing checks for an open endpoint is proxied") {
       pending
       Given("a request which passes checks for an open endpoint")
@@ -162,25 +199,6 @@ class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
       And("""the response message is '{"message":"Hello World"}'""")
       assertBodyIs(httpResponse, """ {"message":"Hello World"} """)
     }
-
-    scenario("a request passing checks for a user restricted endpoint is proxied") {
-      Given("a request which passes checks for a user restricted endpoint")
-      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user-restricted-version-2-0-endpoint")
-        .header(ACCEPT, "application/vnd.hmrc.2.0+json")
-        .header(AUTHORIZATION, "Bearer 80d964331707baf8872179c805352")
-      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
-      mockWsClient(wsClient, "http://tpda.example:9002/authority?access_token=80d964331707baf8872179c805352", OK, loadStubbedDelegatedAuthority("80d964331707baf8872179c805352"))
-
-      When("the request is sent to the gateway")
-      val httpResponse = invoke(httpRequest)
-
-      Then("the http response is '200' ok")
-      assertCodeIs(httpResponse, OK)
-
-      And("""the response message is '{"message":"response from /user-restricted-version-2-0-endpoint"}'""")
-      assertBodyIs(httpResponse, """ {"message":"response from /user-restricted-version-2-0-endpoint"} """)
-    }
-
   }
 
   private def loadStubbedDelegatedAuthority(accessToken: String): String = {

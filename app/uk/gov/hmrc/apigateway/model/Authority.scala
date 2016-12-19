@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.util
+package uk.gov.hmrc.apigateway.model
 
-object HttpHeaders {
+import org.joda.time.DateTime
 
-  val X_API_GATEWAY_ENDPOINT = "x-api-gateway-proxy-endpoint"
-  val AUTHORIZATION = "Authorization"
-  val ACCEPT = "Accept"
+case class Authority(delegatedAuthority: ThirdPartyDelegatedAuthority, authExpired: Boolean = false)
 
-}
+case class ThirdPartyDelegatedAuthority(authBearerToken: String, clientId: String, token: Token)
+
+case class Token(scopes: Set[String], expiresAt: DateTime)

@@ -20,18 +20,22 @@ import org.scalatest.{BeforeAndAfterAll, FeatureSpec, GivenWhenThen, Matchers}
 import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json._
+import play.api.libs.ws.WSClient
 import play.api.test.TestServer
-import uk.gov.hmrc.apigateway.connector.StubbedApiDefinitionConnector
-import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
+import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
+import uk.gov.hmrc.apigateway.connector.{ClasspathStubs, StubbedProxyConnector, WsClientMocking}
 
 import scalaj.http.{HttpRequest, HttpResponse}
 
-abstract class BaseIntegrationSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll with Matchers {
+abstract class BaseIntegrationSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll with WsClientMocking with ClasspathStubs with Matchers {
 
   protected lazy val testServer = TestServer(9999, application)
   protected val apiGatewayUrl = "http://localhost:9999/api-gateway"
+  protected val wsClient = mock[WSClient]
   private val application = new GuiceApplicationBuilder()
-    .overrides(bind[ApiDefinitionConnector].to[StubbedApiDefinitionConnector])
+    .configure("run.mode" -> "Test")
+    .overrides(bind[WSClient].toInstance(wsClient))
+    .overrides(bind[ProxyConnector].to[StubbedProxyConnector])
     .build()
 
   override protected def beforeAll() = testServer.start()

@@ -14,12 +14,17 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.util
+package uk.gov.hmrc.apigateway.connector
 
-object HttpHeaders {
+import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
 
-  val X_API_GATEWAY_ENDPOINT = "x-api-gateway-proxy-endpoint"
-  val AUTHORIZATION = "Authorization"
-  val ACCEPT = "Accept"
+import scala.io.Source._
+
+trait ClasspathStubs {
+
+  protected def loadStubbedJson(path: String): String = {
+    val inputStream = getClass.getResourceAsStream(s"/stub/$path.json")
+    Option(inputStream).map(fromInputStream).map(_.mkString).getOrElse(throw NotFound())
+  }
 
 }

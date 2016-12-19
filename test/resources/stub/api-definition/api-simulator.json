@@ -142,7 +142,7 @@
           "uriPattern":"/user-restricted-version-2-0-endpoint",
           "endpointName":"Another test endpoint",
           "method":"GET",
-          "authType":"NONE",
+          "authType":"USER",
           "throttlingTier":"UNLIMITED",
           "scope":"read:performance-tests"
         }

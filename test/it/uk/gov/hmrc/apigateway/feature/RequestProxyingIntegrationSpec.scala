@@ -19,7 +19,7 @@ package it.uk.gov.hmrc.apigateway.feature
 import it.uk.gov.hmrc.apigateway.BaseIntegrationSpec
 import org.joda.time.DateTime
 import play.api.http.Status.{BAD_REQUEST, NOT_FOUND, OK, UNAUTHORIZED}
-import play.api.libs.json.Json.{stringify, toJson, _}
+import play.api.libs.json.Json.{parse, stringify, toJson}
 import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
 import uk.gov.hmrc.apigateway.model.{Authority, ThirdPartyDelegatedAuthority, Token}
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings.authorityFormat

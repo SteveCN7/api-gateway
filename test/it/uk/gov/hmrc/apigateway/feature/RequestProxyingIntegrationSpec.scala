@@ -66,7 +66,7 @@ class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
     scenario("a request whose context cannot be matched is not proxied") {
       Given("a request for a non existent context")
       val httpRequest = Http(s"$apiGatewayUrl/foo").header(ACCEPT, "application/vnd.hmrc.1.0+json")
-      mockWsClient(wsClient, "http://localhost:9604/api-definition?context=foo", NOT_FOUND)
+      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=foo", NOT_FOUND)
 
       When("the request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -81,7 +81,7 @@ class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
     scenario("a request whose resource cannot be matched is not proxied") {
       Given("a request for a non existent resource")
       val httpRequest = Http(s"$apiGatewayUrl/api-simulator/non-existent-resource").header(ACCEPT, "application/vnd.hmrc.1.0+json")
-      mockWsClient(wsClient, "http://localhost:9604/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
+      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
 
       When("the request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -100,7 +100,7 @@ class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
     scenario("a request whose version cannot be matched is not proxied") {
       Given("a request without a non existent version")
       val httpRequest = Http(s"$apiGatewayUrl/api-simulator/version-2-0-endpoint").header(ACCEPT, "application/vnd.hmrc.1.0+json")
-      mockWsClient(wsClient, "http://localhost:9604/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
+      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
 
       When("the request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -119,7 +119,7 @@ class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
     scenario("a request without an 'authorization' http header is not proxied") {
       Given("a request without an 'authorization' http header")
       val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user/latency/1").header(ACCEPT, "application/vnd.hmrc.1.0+json")
-      mockWsClient(wsClient, "http://localhost:9604/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
+      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
 
       When("the request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -134,8 +134,8 @@ class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
     scenario("a request with an invalid 'authorization' http header is not proxied") {
       Given("a request with an invalid 'authorization' http header")
       val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user/latency/1").header(ACCEPT, "application/vnd.hmrc.1.0+json").header(AUTHORIZATION, "80d964331707baf8872179c805351")
-      mockWsClient(wsClient, "http://localhost:9604/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
-      mockWsClient(wsClient, "http://localhost:9606/authority?access_token=80d964331707baf8872179c805351", OK, loadStubbedJson("authority/80d964331707baf8872179c805351"))
+      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
+      mockWsClient(wsClient, "http://tpda.example:9002/authority?access_token=80d964331707baf8872179c805351", OK, loadStubbedJson("authority/80d964331707baf8872179c805351"))
 
       When("the request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -168,8 +168,8 @@ class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
       val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user-restricted-version-2-0-endpoint")
         .header(ACCEPT, "application/vnd.hmrc.2.0+json")
         .header(AUTHORIZATION, "Bearer 80d964331707baf8872179c805352")
-      mockWsClient(wsClient, "http://localhost:9604/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
-      mockWsClient(wsClient, "http://localhost:9606/authority?access_token=80d964331707baf8872179c805352", OK, loadStubbedDelegatedAuthority("80d964331707baf8872179c805352"))
+      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
+      mockWsClient(wsClient, "http://tpda.example:9002/authority?access_token=80d964331707baf8872179c805352", OK, loadStubbedDelegatedAuthority("80d964331707baf8872179c805352"))
 
       When("the request is sent to the gateway")
       val httpResponse = invoke(httpRequest)

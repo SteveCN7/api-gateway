@@ -33,6 +33,7 @@ abstract class BaseIntegrationSpec extends FeatureSpec with GivenWhenThen with B
   protected val apiGatewayUrl = "http://localhost:9999/api-gateway"
   protected val wsClient = mock[WSClient]
   private val application = new GuiceApplicationBuilder()
+    .configure("run.mode" -> "Test")
     .overrides(bind[WSClient].toInstance(wsClient))
     .overrides(bind[ProxyConnector].to[StubbedProxyConnector])
     .build()

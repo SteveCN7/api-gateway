@@ -32,4 +32,6 @@ object GatewayError {
 
   case class MissingCredentials() extends GatewayError("MISSING_CREDENTIALS", "Authentication information is not provided")
 
+  case class InvalidScope() extends GatewayError("INVALID_SCOPE", "Cannot access the required resource. Ensure this token has all the required scopes.")
+
 }

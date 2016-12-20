@@ -41,11 +41,27 @@ class ScopeValidationFilterSpec extends UnitSpec with MockitoSugar {
       }
     }
 
-    "throw an exception when the request does not have all the required scopes" in {
+    "throw an exception when the request scope is empty" in {
+      when(apiDefinitionMatch.scope).thenReturn(Some(""))
+
+      intercept[InvalidScope] {
+        await(scopeValidationFilter.filter(authority, apiDefinitionMatch))
+      }
+    }
+
+    "throw an exception when the request contains multiple scopes" in {
+      when(apiDefinitionMatch.scope).thenReturn(Some("scope1 scope2"))
+
+      intercept[InvalidScope] {
+        await(scopeValidationFilter.filter(authority, apiDefinitionMatch))
+      }
+    }
+
+    "throw an exception when the request does not have any of the required scopes" in {
       when(authority.delegatedAuthority).thenReturn(delegatedAuthority)
-      when(apiDefinitionMatch.scope).thenReturn(Some("hallo hola"))
+      when(apiDefinitionMatch.scope).thenReturn(Some("hola"))
       when(delegatedAuthority.token).thenReturn(token)
-      when(delegatedAuthority.token.scopes).thenReturn(Set("hola", "hallo", "nihao"))
+      when(delegatedAuthority.token.scopes).thenReturn(Set("hallo", "nihao"))
 
       intercept[InvalidScope] {
         await(scopeValidationFilter.filter(authority, apiDefinitionMatch))
@@ -54,9 +70,9 @@ class ScopeValidationFilterSpec extends UnitSpec with MockitoSugar {
 
     "return true when the request has all the required scopes" in {
       when(authority.delegatedAuthority).thenReturn(delegatedAuthority)
-      when(apiDefinitionMatch.scope).thenReturn(Some("ciao salut hello konnichiwa"))
+      when(apiDefinitionMatch.scope).thenReturn(Some("salut"))
       when(delegatedAuthority.token).thenReturn(token)
-      when(delegatedAuthority.token.scopes).thenReturn(Set("ciao", "hello", "salut"))
+      when(delegatedAuthority.token.scopes).thenReturn(Set("salut", "hello", "konnichiwa"))
 
       await(scopeValidationFilter.filter(authority, apiDefinitionMatch)) shouldBe true
     }

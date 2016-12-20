@@ -14,29 +14,26 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.connector
+package uk.gov.hmrc.apigateway.connector.impl
 
-import play.api.Logger
-import play.api.http.Status.{NOT_FOUND, OK}
-import play.api.libs.json.Format
+import javax.inject.{Inject, Singleton}
+
 import play.api.libs.ws.WSClient
-import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
+import uk.gov.hmrc.apigateway.connector.ServiceConnector
+import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, NotFound}
+import uk.gov.hmrc.apigateway.model.Authority
+import uk.gov.hmrc.apigateway.play.binding.PlayBindings.authorityFormat
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-abstract class AbstractConnector(wsClient: WSClient) {
+@Singleton
+class DelegatedAuthorityConnector @Inject()(wsClient: WSClient)
+  extends ServiceConnector(wsClient, "authority") {
 
-  def get[T](url: String)(implicit format: Format[T]): Future[T] = {
-    wsClient.url(url).get() map {
-      case wsResponse if wsResponse.status >= OK && wsResponse.status < 300 =>
-        Logger.debug(s"GET $url ${wsResponse.status}")
-        wsResponse.json.as[T]
-
-      case wsResponse if wsResponse.status == NOT_FOUND =>
-        Logger.debug(s"GET $url ${wsResponse.status}")
-        throw NotFound()
+  def getByAccessToken(accessToken: String): Future[Authority] =
+    get[Authority](s"$serviceName?access_token=$accessToken") recover {
+      case error: NotFound => throw InvalidCredentials()
     }
-  }
 
 }

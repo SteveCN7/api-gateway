@@ -1,9 +1,30 @@
+/*
+ * Copyright 2016 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import play.core.PlayVersion
 import play.sbt.PlayImport._
 import play.sbt.PlayScala
 import sbt.Keys._
-import sbt._
 import sbt.Tests.Filter
+import sbt._
+import uk.gov.hmrc.DefaultBuildSettings._
+import uk.gov.hmrc.SbtAutoBuildPlugin
+import uk.gov.hmrc.sbtdistributables.SbtDistributablesPlugin
+import uk.gov.hmrc.sbtdistributables.SbtDistributablesPlugin.publishingSettings
+import uk.gov.hmrc.versioning.SbtGitVersioning
 
 object HmrcBuild extends Build {
 
@@ -23,21 +44,23 @@ object HmrcBuild extends Build {
   )
 
   val apiGateway = (project in file("."))
+    .enablePlugins(PlayScala, SbtAutoBuildPlugin, SbtGitVersioning, SbtDistributablesPlugin)
+    .settings(scalaSettings: _*)
+    .settings(publishingSettings: _*)
+    .settings(defaultSettings(): _*)
     .enablePlugins(PlayScala)
     .settings(
       scalaVersion := "2.11.8",
       name := "api-gateway",
-      version := "0.1.0-SNAPSHOT",
-      libraryDependencies ++=
-        compileDependencies ++
-          testDependencies
+      libraryDependencies ++= compileDependencies ++ testDependencies
     )
     .configs(IntegrationTest)
     .settings(Defaults.itSettings: _*)
     .settings(
       testOptions in Test := Seq(Filter(_ startsWith "uk.gov.hmrc")),
       testOptions in IntegrationTest := Seq(Filter(_ startsWith "it.uk.gov.hmrc")),
-      unmanagedSourceDirectories in IntegrationTest <<= (baseDirectory in IntegrationTest) (base => Seq(base / "test"))
+      unmanagedSourceDirectories in IntegrationTest <<= (baseDirectory in IntegrationTest) (base => Seq(base / "test")),
+      unmanagedResourceDirectories in IntegrationTest <<= (baseDirectory in IntegrationTest) (base => Seq(base / "test/resources"))
     )
     .settings(
       resolvers += Resolver.bintrayRepo("hmrc", "releases"),

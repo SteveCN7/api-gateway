@@ -16,27 +16,22 @@
 
 package uk.gov.hmrc.apigateway.connector
 
-import play.api.Logger
-import play.api.http.Status.{NOT_FOUND, OK}
-import play.api.libs.json.Format
+import java.net.URL
+import javax.inject.{Inject, Singleton}
+
 import play.api.libs.ws.WSClient
-import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
+import play.api.mvc.{AnyContent, Request, Result, Results}
+import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-abstract class AbstractConnector(wsClient: WSClient) {
+@Singleton
+class StubbedProxyConnector @Inject()(wsClient: WSClient) extends ProxyConnector(wsClient) with ClasspathStubs {
 
-  def get[T](url: String)(implicit format: Format[T]): Future[T] = {
-    wsClient.url(url).get() map {
-      case wsResponse if wsResponse.status >= OK && wsResponse.status < 300 =>
-        Logger.debug(s"GET $url ${wsResponse.status}")
-        wsResponse.json.as[T]
-
-      case wsResponse if wsResponse.status == NOT_FOUND =>
-        Logger.debug(s"GET $url ${wsResponse.status}")
-        throw NotFound()
-    }
+  override def proxy(request: Request[AnyContent], destinationUrl: String): Future[Result] = Future {
+    val path = new URL(destinationUrl).getPath.substring(2)
+    Results.Ok(loadStubbedJson(path))
   }
 
 }

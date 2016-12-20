@@ -16,11 +16,11 @@
 
 package uk.gov.hmrc.apigateway.util
 
-import uk.gov.hmrc.apigateway.exception.GatewayError.{ContextNotFound, InvalidAcceptHeader}
+import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidAcceptHeader, NotFound}
 import uk.gov.hmrc.apigateway.model.ProxyRequest
-import uk.gov.hmrc.play.test.UnitSpec
 import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
 import uk.gov.hmrc.apigateway.util.ProxyRequestUtils.{validateContext, validateVersion}
+import uk.gov.hmrc.play.test.UnitSpec
 
 class ProxyRequestUtilsSpec extends UnitSpec {
 
@@ -29,7 +29,7 @@ class ProxyRequestUtilsSpec extends UnitSpec {
   "Request context validation" should {
 
     "fail for request without context" in {
-      intercept[ContextNotFound] {
+      intercept[NotFound] {
         await(validateContext(proxyRequest.copy(path = "")))
       }
     }

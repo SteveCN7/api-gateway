@@ -14,22 +14,24 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.connector.impl
+package uk.gov.hmrc.apigateway.play.filter
 
-import javax.inject.{Inject, Singleton}
+import javax.inject.Singleton
 
-import play.api.libs.ws.WSClient
-import uk.gov.hmrc.apigateway.connector.ServiceConnector
-import uk.gov.hmrc.apigateway.model.ApiDefinition
-import uk.gov.hmrc.apigateway.play.binding.PlayBindings.apiDefinitionFormat
+import uk.gov.hmrc.apigateway.exception.GatewayError.InvalidScope
+import uk.gov.hmrc.apigateway.model.{ApiDefinitionMatch, Authority}
 
 import scala.concurrent.Future
+import scala.concurrent.Future.{failed, successful}
 
 @Singleton
-class ApiDefinitionConnector @Inject()(wsClient: WSClient)
-  extends ServiceConnector(wsClient, "api-definition") {
+class ScopeValidationFilter {
 
-  def getByContext(context: String): Future[ApiDefinition] =
-    get[ApiDefinition](s"$serviceName?context=$context")
+  def filter(authority: Authority, apiDefinitionMatch: ApiDefinitionMatch): Future[Boolean] = apiDefinitionMatch.scope match {
+    case None => failed(InvalidScope())
+    case Some(scopes) =>
+      if (authority.delegatedAuthority.token.scopes subsetOf scopes.split(" ").toSet) successful(true)
+      else failed(InvalidScope())
+  }
 
 }

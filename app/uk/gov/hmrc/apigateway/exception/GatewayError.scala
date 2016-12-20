@@ -22,10 +22,16 @@ object GatewayError {
 
   case class ServerError() extends GatewayError("SERVER_ERROR", "Service unavailable")
 
-  case class ContextNotFound() extends GatewayError("NOT_FOUND", "Requested resource could not be found")
+  case class NotFound() extends GatewayError("NOT_FOUND", "Requested resource could not be found")
 
   case class MatchingResourceNotFound() extends GatewayError("MATCHING_RESOURCE_NOT_FOUND", "A resource with the name in the request cannot be found in the API")
 
   case class InvalidAcceptHeader() extends GatewayError("ACCEPT_HEADER_INVALID", "The accept header is missing or invalid")
+
+  case class InvalidCredentials() extends GatewayError("INVALID_CREDENTIALS", "Invalid Authentication information provided")
+
+  case class MissingCredentials() extends GatewayError("MISSING_CREDENTIALS", "Authentication information is not provided")
+
+  case class InvalidScope() extends GatewayError("INVALID_SCOPE", "Cannot access the required resource. Ensure this token has all the required scopes.")
 
 }

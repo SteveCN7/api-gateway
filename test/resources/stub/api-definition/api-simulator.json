@@ -1,0 +1,152 @@
+{
+  "serviceName":"api-simulator",
+  "serviceBaseUrl":"http://vagrant-host:9608",
+  "name":"API Simulator",
+  "description":"An 'api simulator' to do performance tests on the API Platform.",
+  "context":"api-simulator",
+  "versions":[
+    {
+      "version":"1.0",
+      "status":"PUBLISHED",
+      "endpoints":[
+        {
+          "uriPattern":"/user/latency/{latency}",
+          "endpointName":"User API with Latency",
+          "method":"GET",
+          "authType":"USER",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests"
+        },
+        {
+          "uriPattern":"/user/data/{data}",
+          "endpointName":"User API with Data",
+          "method":"GET",
+          "authType":"USER",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests"
+        },
+        {
+          "uriPattern":"/user/processBytes",
+          "endpointName":"User API with Upload Bytes",
+          "method":"POST",
+          "authType":"USER",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests"
+        },
+        {
+          "uriPattern":"/user",
+          "endpointName":"User API with Post",
+          "method":"POST",
+          "authType":"USER",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests"
+        },
+        {
+          "uriPattern":"/user",
+          "endpointName":"User API with Put",
+          "method":"PUT",
+          "authType":"USER",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests"
+        },
+        {
+          "uriPattern":"/sa/{utr}/login",
+          "endpointName":"SA API with Auth Filter CL50",
+          "method":"GET",
+          "authType":"USER",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests"
+        },
+        {
+          "uriPattern":"/sa/{utr}/iv",
+          "endpointName":"SA API with Auth Filter CL200",
+          "method":"GET",
+          "authType":"USER",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests-200"
+        },
+        {
+          "uriPattern":"/paye/{nino}/login",
+          "endpointName":"PAYE API with Auth Filter CL50",
+          "method":"GET",
+          "authType":"USER",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests"
+        },
+        {
+          "uriPattern":"/paye/{nino}/iv",
+          "endpointName":"PAYE API with Auth Filter CL200",
+          "method":"GET",
+          "authType":"USER",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests-200"
+        }
+      ]
+    },
+    {
+      "version":"2.0",
+      "status":"PUBLISHED",
+      "access":{
+        "type":"PRIVATE",
+        "whitelistedApplicationIds":[
+          "76327c12-17fa-4a51-8a8b-23f7251fae1b",
+          "76327c12-17fa-4a51-8a8b-23f7251fae1a",
+          "2297508c-855c-44a1-98b7-1c51ea324915",
+          "8d1921fb-d401-4f1d-9d5c-cb2ecb11e727",
+          "649def0f-3ed3-4df5-8ae1-3e687a9143ea",
+          "c0203d2a-7a60-427a-8297-c56539546a84"
+        ]
+      },
+      "endpoints":[
+        {
+          "uriPattern":"/user/latency/{latency}",
+          "endpointName":"User API with Latency",
+          "method":"GET",
+          "authType":"USER",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests"
+        },
+        {
+          "uriPattern":"/user/data/{data}",
+          "endpointName":"User API with Data",
+          "method":"GET",
+          "authType":"USER",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests"
+        },
+        {
+          "uriPattern":"/user",
+          "endpointName":"User API with Post",
+          "method":"POST",
+          "authType":"USER",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests"
+        },
+        {
+          "uriPattern":"/user",
+          "endpointName":"User API with Put",
+          "method":"PUT",
+          "authType":"USER",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests"
+        },
+        {
+          "uriPattern":"/open-version-2-0-endpoint",
+          "endpointName":"A test endpoint",
+          "method":"GET",
+          "authType":"NONE",
+          "throttlingTier":"UNLIMITED",
+          "scope":"read:performance-tests"
+        },
+        {
+          "uriPattern":"/user-restricted-version-2-0-endpoint",
+          "endpointName":"Another test endpoint",
+          "method":"GET",
+          "authType":"USER",
+          "throttlingTier":"UNLIMITED",
+          "scope":"scope1 scope2"
+        }
+      ]
+    }
+  ]
+}

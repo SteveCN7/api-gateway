@@ -1,0 +1,27 @@
+{
+  "delegatedAuthority":{
+    "clientId":"uKQXtOfZEmW8z5UOwHsg3ANF_fwa",
+    "user":{
+      "authBearerToken":"sandbox_token",
+      "userId":"user1",
+      "userIdType":"sandbox_login"
+    },
+    "authType":"SANDBOX",
+    "authBearerToken":"sandbox_token",
+    "token":{
+      "accessToken":"80d964331707baf8872179c805352",
+      "refreshToken":"9f7b4c241ba630b818f7e8694caa0ca",
+      "expiresAt":1481938307751,
+      "scopes":[
+        "scope2"
+      ]
+    },
+    "createdAt":1481902307751,
+    "expiresAt":1481938307751,
+    "_id":{
+      "$oid":"583c4de35900005900c19d5c"
+    },
+    "tokenType":"USER"
+  },
+  "authExpired":false
+}

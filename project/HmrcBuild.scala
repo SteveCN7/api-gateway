@@ -52,7 +52,6 @@ object HmrcBuild extends Build {
     .settings(
       scalaVersion := "2.11.8",
       name := "api-gateway",
-      version := "0.1.0-SNAPSHOT",
       libraryDependencies ++= compileDependencies ++ testDependencies
     )
     .configs(IntegrationTest)

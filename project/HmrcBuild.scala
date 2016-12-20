@@ -20,6 +20,11 @@ import play.sbt.PlayScala
 import sbt.Keys._
 import sbt.Tests.Filter
 import sbt._
+import uk.gov.hmrc.DefaultBuildSettings._
+import uk.gov.hmrc.SbtAutoBuildPlugin
+import uk.gov.hmrc.sbtdistributables.SbtDistributablesPlugin
+import uk.gov.hmrc.sbtdistributables.SbtDistributablesPlugin.publishingSettings
+import uk.gov.hmrc.versioning.SbtGitVersioning
 
 object HmrcBuild extends Build {
 
@@ -39,6 +44,10 @@ object HmrcBuild extends Build {
   )
 
   val apiGateway = (project in file("."))
+    .enablePlugins(PlayScala, SbtAutoBuildPlugin, SbtGitVersioning, SbtDistributablesPlugin)
+    .settings(scalaSettings: _*)
+    .settings(publishingSettings: _*)
+    .settings(defaultSettings(): _*)
     .enablePlugins(PlayScala)
     .settings(
       scalaVersion := "2.11.8",

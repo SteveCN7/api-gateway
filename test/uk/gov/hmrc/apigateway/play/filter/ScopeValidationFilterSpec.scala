@@ -17,13 +17,12 @@
 package uk.gov.hmrc.apigateway.play.filter
 
 import org.mockito.Mockito._
-import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mockito.MockitoSugar
 import uk.gov.hmrc.apigateway.exception.GatewayError.InvalidScope
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.play.test.UnitSpec
 
-class ScopeValidationFilterSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach {
+class ScopeValidationFilterSpec extends UnitSpec with MockitoSugar {
 
   private val delegatedAuthority = mock[ThirdPartyDelegatedAuthority]
   private val token = mock[Token]
@@ -31,11 +30,6 @@ class ScopeValidationFilterSpec extends UnitSpec with MockitoSugar with BeforeAn
   private val apiDefinitionMatch = mock[ApiDefinitionMatch]
 
   private val scopeValidationFilter = new ScopeValidationFilter
-
-  override def afterEach(): Unit = {
-    super.afterEach()
-    reset(delegatedAuthority, authority, token, apiDefinitionMatch)
-  }
 
   "Scope Validation filter" should {
 

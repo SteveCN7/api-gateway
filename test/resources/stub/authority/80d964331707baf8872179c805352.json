@@ -13,7 +13,9 @@
       "refreshToken":"9f7b4c241ba630b818f7e8694caa0ca",
       "expiresAt":1481938307751,
       "scopes":[
-        "hello"
+        "write:scope-1",
+        "read:scope-2",
+        "read:performance-tests"
       ]
     },
     "createdAt":1481902307751,

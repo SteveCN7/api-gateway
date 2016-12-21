@@ -151,9 +151,9 @@ class RequestProxyingIntegrationSpec extends WsClientIntegrationSpec {
       Given("a request with invalid scopes")
       val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user-restricted-version-2-0-endpoint")
         .header(ACCEPT, "application/vnd.hmrc.2.0+json")
-        .header(AUTHORIZATION, "Bearer 80d964331707baf8872179c805352")
+        .header(AUTHORIZATION, "Bearer 80d964331707baf8872179c805353")
       mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
-      mockWsClient(wsClient, "http://tpda.example:9002/authority?access_token=80d964331707baf8872179c805352", OK, loadStubbedDelegatedAuthority("80d964331707baf8872179c805352"))
+      mockWsClient(wsClient, "http://tpda.example:9002/authority?access_token=80d964331707baf8872179c805353", OK, loadStubbedDelegatedAuthority("80d964331707baf8872179c805353"))
 
       When("the request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -169,9 +169,9 @@ class RequestProxyingIntegrationSpec extends WsClientIntegrationSpec {
       Given("a request which passes checks for a user restricted endpoint")
       val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user-restricted-version-2-0-endpoint")
         .header(ACCEPT, "application/vnd.hmrc.2.0+json")
-        .header(AUTHORIZATION, "Bearer 80d964331707baf8872179c805353")
+        .header(AUTHORIZATION, "Bearer 80d964331707baf8872179c805352")
       mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
-      mockWsClient(wsClient, "http://tpda.example:9002/authority?access_token=80d964331707baf8872179c805353", OK, loadStubbedDelegatedAuthority("80d964331707baf8872179c805353"))
+      mockWsClient(wsClient, "http://tpda.example:9002/authority?access_token=80d964331707baf8872179c805352", OK, loadStubbedDelegatedAuthority("80d964331707baf8872179c805352"))
 
       When("the request is sent to the gateway")
       val httpResponse = invoke(httpRequest)

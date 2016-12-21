@@ -18,6 +18,7 @@ package uk.gov.hmrc.apigateway.play.filter
 
 import javax.inject.Singleton
 
+import org.apache.commons.lang3.StringUtils
 import uk.gov.hmrc.apigateway.exception.GatewayError.InvalidScope
 import uk.gov.hmrc.apigateway.model.{ApiDefinitionMatch, Authority}
 
@@ -28,10 +29,7 @@ import scala.concurrent.Future.{failed, successful}
 class ScopeValidationFilter {
 
   def filter(authority: Authority, apiDefinitionMatch: ApiDefinitionMatch): Future[Boolean] = apiDefinitionMatch.scope match {
-    case None => failed(InvalidScope())
-    case Some(scopes) =>
-      if (authority.delegatedAuthority.token.scopes subsetOf scopes.split(" ").toSet) successful(true)
-      else failed(InvalidScope())
+    case Some(scope) if authority.delegatedAuthority.token.scopes.contains(scope) => successful(true)
+    case _ => failed(InvalidScope())
   }
-
 }

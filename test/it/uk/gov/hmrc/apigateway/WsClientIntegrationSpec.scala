@@ -27,7 +27,7 @@ import uk.gov.hmrc.apigateway.connector.{ClasspathStubs, StubbedProxyConnector, 
 
 import scalaj.http.{HttpRequest, HttpResponse}
 
-abstract class BaseIntegrationSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll with WsClientMocking with ClasspathStubs with Matchers {
+abstract class WsClientIntegrationSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll with WsClientMocking with ClasspathStubs with Matchers {
 
   protected lazy val testServer = TestServer(9999, application)
   protected val apiGatewayUrl = "http://localhost:9999/api-gateway"

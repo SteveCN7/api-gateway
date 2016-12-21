@@ -24,10 +24,11 @@ import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.reflect.ClassTag
 
 abstract class AbstractConnector(wsClient: WSClient) {
 
-  def get[T](url: String)(implicit format: Format[T]): Future[T] = {
+  def get[T: ClassTag](url: String)(implicit format: Format[T]): Future[T] = {
     wsClient.url(url).get() map {
       case wsResponse if wsResponse.status >= OK && wsResponse.status < 300 =>
         Logger.debug(s"GET $url ${wsResponse.status}")

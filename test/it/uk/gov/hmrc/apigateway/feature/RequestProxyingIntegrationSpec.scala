@@ -16,7 +16,7 @@
 
 package it.uk.gov.hmrc.apigateway.feature
 
-import it.uk.gov.hmrc.apigateway.BaseIntegrationSpec
+import it.uk.gov.hmrc.apigateway.WsClientIntegrationSpec
 import org.joda.time.DateTime
 import play.api.http.Status._
 import play.api.libs.json.Json.{parse, stringify, toJson}
@@ -27,7 +27,7 @@ import uk.gov.hmrc.apigateway.util.HttpHeaders.{ACCEPT, AUTHORIZATION}
 
 import scalaj.http.Http
 
-class RequestProxyingIntegrationSpec extends BaseIntegrationSpec {
+class RequestProxyingIntegrationSpec extends WsClientIntegrationSpec {
 
   feature("The API gateway proxies requests to downstream services") {
 

@@ -19,6 +19,7 @@ package uk.gov.hmrc.apigateway.connector.impl
 import javax.inject.{Inject, Singleton}
 
 import play.api.libs.ws.WSClient
+import uk.gov.hmrc.apigateway.cache.CacheManager
 import uk.gov.hmrc.apigateway.connector.ServiceConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, NotFound}
 import uk.gov.hmrc.apigateway.model.Authority
@@ -28,8 +29,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class DelegatedAuthorityConnector @Inject()(wsClient: WSClient)
-  extends ServiceConnector(wsClient, "authority") {
+class DelegatedAuthorityConnector @Inject()(wsClient: WSClient, cache: CacheManager)
+  extends ServiceConnector(wsClient, cache, "authority") {
 
   def getByAccessToken(accessToken: String): Future[Authority] =
     get[Authority](s"$serviceName?access_token=$accessToken") recover {

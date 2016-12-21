@@ -24,16 +24,21 @@ import uk.gov.hmrc.play.test.UnitSpec
 
 class ScopeValidationFilterSpec extends UnitSpec with MockitoSugar {
 
-  private val delegatedAuthority = mock[ThirdPartyDelegatedAuthority]
-  private val token = mock[Token]
-  private val authority = mock[Authority]
-  private val apiDefinitionMatch = mock[ApiDefinitionMatch]
+  trait Setup {
+    val delegatedAuthority = mock[ThirdPartyDelegatedAuthority]
+    val token = mock[Token]
+    val authority = mock[Authority]
+    val apiDefinitionMatch = mock[ApiDefinitionMatch]
+    val scopeValidationFilter = new ScopeValidationFilter
 
-  private val scopeValidationFilter = new ScopeValidationFilter
+    when(authority.delegatedAuthority).thenReturn(delegatedAuthority)
+    when(delegatedAuthority.token).thenReturn(token)
+    when(delegatedAuthority.token.scopes).thenReturn(Set("read:scope", "write:scope", "read:another-scope"))
+  }
 
   "Scope Validation filter" should {
 
-    "throw an exception when the request has no scopes" in {
+    "throw an exception when the request has no scopes" in new Setup {
       when(apiDefinitionMatch.scope).thenReturn(None)
 
       intercept[InvalidScope] {
@@ -41,7 +46,7 @@ class ScopeValidationFilterSpec extends UnitSpec with MockitoSugar {
       }
     }
 
-    "throw an exception when the request scope is empty" in {
+    "throw an exception when the request scope is empty" in new Setup {
       when(apiDefinitionMatch.scope).thenReturn(Some(""))
 
       intercept[InvalidScope] {
@@ -49,30 +54,24 @@ class ScopeValidationFilterSpec extends UnitSpec with MockitoSugar {
       }
     }
 
-    "throw an exception when the request contains multiple scopes" in {
-      when(apiDefinitionMatch.scope).thenReturn(Some("scope1 scope2"))
+    "throw an exception when the request contains multiple scopes" in new Setup {
+      when(apiDefinitionMatch.scope).thenReturn(Some("read:scope write:scope"))
 
       intercept[InvalidScope] {
         await(scopeValidationFilter.filter(authority, apiDefinitionMatch))
       }
     }
 
-    "throw an exception when the request does not have any of the required scopes" in {
-      when(authority.delegatedAuthority).thenReturn(delegatedAuthority)
-      when(apiDefinitionMatch.scope).thenReturn(Some("hola"))
-      when(delegatedAuthority.token).thenReturn(token)
-      when(delegatedAuthority.token.scopes).thenReturn(Set("hallo", "nihao"))
+    "throw an exception when the request does not have any of the required scopes" in new Setup {
+      when(apiDefinitionMatch.scope).thenReturn(Some("read:scope-1"))
 
       intercept[InvalidScope] {
         await(scopeValidationFilter.filter(authority, apiDefinitionMatch))
       }
     }
 
-    "return true when the request has all the required scopes" in {
-      when(authority.delegatedAuthority).thenReturn(delegatedAuthority)
-      when(apiDefinitionMatch.scope).thenReturn(Some("salut"))
-      when(delegatedAuthority.token).thenReturn(token)
-      when(delegatedAuthority.token.scopes).thenReturn(Set("salut", "hello", "konnichiwa"))
+    "return true when the request has all the required scopes" in new Setup {
+      when(apiDefinitionMatch.scope).thenReturn(Some("read:scope"))
 
       await(scopeValidationFilter.filter(authority, apiDefinitionMatch)) shouldBe true
     }

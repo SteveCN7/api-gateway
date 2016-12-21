@@ -30,7 +30,6 @@ object HmrcBuild extends Build {
 
   private val compileDependencies = Seq(
     ws,
-    "org.apache.commons" % "commons-lang3" % "3.5",
     "uk.gov.hmrc" %% "play-config" % "3.0.0",
     "uk.gov.hmrc" %% "play-filters" % "5.6.0",
     "uk.gov.hmrc" %% "play-json-logger" % "3.0.0"

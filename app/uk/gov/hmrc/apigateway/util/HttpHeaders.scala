@@ -19,6 +19,7 @@ package uk.gov.hmrc.apigateway.util
 object HttpHeaders {
 
   val X_API_GATEWAY_ENDPOINT = "x-api-gateway-proxy-endpoint"
+  val X_API_GATEWAY_SCOPE = "x-api-gateway-scope"
   val AUTHORIZATION = "Authorization"
   val ACCEPT = "Accept"
 

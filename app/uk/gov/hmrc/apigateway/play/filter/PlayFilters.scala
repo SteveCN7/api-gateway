@@ -22,8 +22,11 @@ import play.api.Environment
 import play.api.http.HttpFilters
 
 @Singleton
-class PlayFilters @Inject()(environment: Environment, proxyFilter: ProxyFilter) extends HttpFilters {
+class PlayFilters @Inject()
+(environment: Environment,
+ genericEndpointFilter: GenericEndpointFilter,
+ restrictedEndpointFilter: RestrictedEndpointFilter) extends HttpFilters {
 
-  override val filters = Seq(proxyFilter)
+  override val filters = Seq(genericEndpointFilter, restrictedEndpointFilter)
 
 }

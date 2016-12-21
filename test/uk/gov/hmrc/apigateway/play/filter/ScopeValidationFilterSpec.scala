@@ -39,41 +39,31 @@ class ScopeValidationFilterSpec extends UnitSpec with MockitoSugar {
   "Scope Validation filter" should {
 
     "throw an exception when the request has no scopes" in new Setup {
-      when(apiDefinitionMatch.scope).thenReturn(None)
-
       intercept[InvalidScope] {
-        await(scopeValidationFilter.filter(authority, apiDefinitionMatch))
+        await(scopeValidationFilter.filter(authority, None))
       }
     }
 
     "throw an exception when the request scope is empty" in new Setup {
-      when(apiDefinitionMatch.scope).thenReturn(Some(""))
-
       intercept[InvalidScope] {
-        await(scopeValidationFilter.filter(authority, apiDefinitionMatch))
+        await(scopeValidationFilter.filter(authority, Some("")))
       }
     }
 
     "throw an exception when the request contains multiple scopes" in new Setup {
-      when(apiDefinitionMatch.scope).thenReturn(Some("read:scope write:scope"))
-
       intercept[InvalidScope] {
-        await(scopeValidationFilter.filter(authority, apiDefinitionMatch))
+        await(scopeValidationFilter.filter(authority, Some("read:scope write:scope")))
       }
     }
 
     "throw an exception when the request does not have any of the required scopes" in new Setup {
-      when(apiDefinitionMatch.scope).thenReturn(Some("read:scope-1"))
-
       intercept[InvalidScope] {
-        await(scopeValidationFilter.filter(authority, apiDefinitionMatch))
+        await(scopeValidationFilter.filter(authority, Some("read:scope-1")))
       }
     }
 
     "return true when the request has all the required scopes" in new Setup {
-      when(apiDefinitionMatch.scope).thenReturn(Some("read:scope"))
-
-      await(scopeValidationFilter.filter(authority, apiDefinitionMatch)) shouldBe true
+      await(scopeValidationFilter.filter(authority, Some("read:scope"))) shouldBe true
     }
 
   }

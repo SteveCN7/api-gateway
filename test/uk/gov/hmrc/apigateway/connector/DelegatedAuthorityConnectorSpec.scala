@@ -28,9 +28,11 @@ import uk.gov.hmrc.play.test.UnitSpec
 
 class DelegatedAuthorityConnectorSpec extends UnitSpec with WsClientMocking {
 
-  private val wsClient = mock[WSClient]
-  private val delegatedAuthorityConnector = new DelegatedAuthorityConnector(wsClient) {
-    override def baseUrl(serviceName: String): String = "http://tpda.example"
+    private val wsClient = mock[WSClient]
+    private val delegatedAuthorityConnector = new DelegatedAuthorityConnector(wsClient, cache) {
+    override lazy val serviceBaseUrl: String = "http://tpda.example"
+    override lazy val expiration = 30
+    override lazy val caching = false
   }
 
   "Delegated authority connector" should {

@@ -18,16 +18,19 @@ package uk.gov.hmrc.apigateway.connector
 
 import play.api.libs.json.Format
 import play.api.libs.ws.WSClient
+import uk.gov.hmrc.apigateway.cache.CacheManager
 import uk.gov.hmrc.play.config.ServicesConfig
 
 import scala.concurrent.Future
+import scala.reflect.ClassTag
 
-abstract class ServiceConnector(wsClient: WSClient, val serviceName: String)
+abstract class ServiceConnector(wsClient: WSClient, cache: CacheManager, val serviceName: String)
   extends AbstractConnector(wsClient) with ServicesConfig {
 
-  private lazy val serviceBaseUrl = baseUrl(serviceName)
+  lazy val serviceBaseUrl = baseUrl(serviceName)
+  lazy val caching = getConfBool(s"$serviceName.caching.enabled", false)
+  lazy val expiration = getConfInt(s"$serviceName.caching.expirationInSeconds", 120)
 
-  override def get[T](urlPath: String)(implicit format: Format[T]): Future[T] =
-    super.get(s"$serviceBaseUrl/$urlPath")
-
+  override def get[T: ClassTag](urlPath: String)(implicit format: Format[T]): Future[T] =
+    cache.get[T](urlPath, serviceName, super.get(s"$serviceBaseUrl/$urlPath"), caching, expiration)
 }

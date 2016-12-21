@@ -18,17 +18,24 @@ package uk.gov.hmrc.apigateway.connector
 
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
+import play.api.cache.CacheApi
 import play.api.libs.json.Json._
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
+import uk.gov.hmrc.apigateway.cache.{CacheMetrics, CacheManager}
 
 import scala.concurrent.Future._
 
 trait WsClientMocking extends MockitoSugar {
 
+  private val cacheApi = mock[CacheApi]
+  private val metrics = mock[CacheMetrics]
+  protected val cache = new CacheManager(cacheApi, metrics)
+
   protected def mockWsClient(wsClient: WSClient, url: String, httpResponseCode: Int, responseJson: String = "{}") = {
     val wsRequest = mock[WSRequest]
     val wsResponse = mock[WSResponse]
 
+    when(cacheApi.get(url)).thenReturn(None)
     when(wsClient.url(url)).thenReturn(wsRequest)
     when(wsRequest.get()).thenReturn(successful(wsResponse))
 

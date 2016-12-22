@@ -20,13 +20,14 @@ import akka.stream.Materializer
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
-import play.api.http.Status.{FORBIDDEN, UNAUTHORIZED, OK}
+import play.api.http.Status.{FORBIDDEN, OK, UNAUTHORIZED}
 import play.api.mvc.Results.Ok
 import play.api.mvc.{Headers, RequestHeader, Result}
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, InvalidScope}
 import uk.gov.hmrc.apigateway.model.{Authority, ProxyRequest, ThirdPartyDelegatedAuthority, Token}
+import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future.successful
@@ -57,7 +58,7 @@ class RestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
     "decline a request not matching scopes" in new Setup {
       mock(delegatedAuthorityFilter, Set("valid:scope"))
       mock(scopeValidationFilter, InvalidScope())
-      status(restrictedEndpointFilter.apply(nextFilter)(fakeRequest)) shouldBe FORBIDDEN
+      status(restrictedEndpointFilter.apply(nextFilter)(fakeRequest.withTag(X_API_GATEWAY_AUTH_TYPE, "USER"))) shouldBe FORBIDDEN
     }
 
     "process a request which meets all requirements" in new Setup {

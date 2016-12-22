@@ -46,7 +46,7 @@ class EndpointMatchFilter @Inject()(apiDefinitionConnector: ApiDefinitionConnect
 object EndpointMatchFilter {
 
   private def createAndLogApiDefinitionMatch(proxyRequest: ProxyRequest, requestContext: String, apiDefinition: ApiDefinition, requestVersion: String, apiEndpoint: ApiEndpoint): ApiDefinitionMatch = {
-    val apiDefinitionMatch = ApiDefinitionMatch(requestContext, apiDefinition.serviceBaseUrl, requestVersion, apiEndpoint.scope)
+    val apiDefinitionMatch = ApiDefinitionMatch(requestContext, apiDefinition.serviceBaseUrl, requestVersion, apiEndpoint.authType, apiEndpoint.scope)
     Logger.debug(s"successfull endpoint match for [${stringify(proxyRequest)}] to [$apiDefinitionMatch]")
     apiDefinitionMatch
   }

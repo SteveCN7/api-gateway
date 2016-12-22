@@ -42,11 +42,12 @@ class GenericEndpointFilter @Inject()
 
     val eventualRequestHeader = for {
       apiDefinitionMatch <- endpointMatchFilter.filter(proxyRequest)
-    // TODO implement rate limit filter
+    // TODO implement global rate limit filter???
     } yield requestHeader
       .withTag(ACCEPT, proxyRequest.getHeader(ACCEPT).orNull)
       .withTag(X_API_GATEWAY_ENDPOINT, s"${apiDefinitionMatch.serviceBaseUrl}/${proxyRequest.path}")
       .withTag(X_API_GATEWAY_SCOPE, apiDefinitionMatch.scope.orNull)
+      .withTag(X_API_GATEWAY_AUTH_TYPE, apiDefinitionMatch.authType)
 
     eventualRequestHeader.flatMap(nextFilter) recover GatewayError.recovery
   }

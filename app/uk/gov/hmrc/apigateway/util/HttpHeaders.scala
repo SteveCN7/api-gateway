@@ -20,6 +20,7 @@ object HttpHeaders {
 
   val X_API_GATEWAY_ENDPOINT = "x-api-gateway-proxy-endpoint"
   val X_API_GATEWAY_SCOPE = "x-api-gateway-scope"
+  val X_API_GATEWAY_AUTH_TYPE = "x-api-gateway-auth-type"
   val AUTHORIZATION = "Authorization"
   val ACCEPT = "Accept"
 

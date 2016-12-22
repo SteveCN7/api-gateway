@@ -26,6 +26,7 @@ import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future.successful
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -40,13 +41,16 @@ class RestrictedEndpointFilter @Inject()
   override def apply(nextFilter: (RequestHeader) => Future[Result])(requestHeader: RequestHeader) = {
     val proxyRequest = ProxyRequest(requestHeader)
 
-    val eventualRequestHeader = for {
-      delegatedAuthority <- delegatedAuthorityFilter.filter(proxyRequest)
-      isValidScope <- scopeValidationFilter.filter(delegatedAuthority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
-    // TODO implement rate limit filter
-    // TODO implement subscription filter
-    // TODO implement token swap
-    } yield requestHeader
+    val eventualRequestHeader = requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) match {
+      case Some(authType) if authType != "NONE" => for {
+        delegatedAuthority <- delegatedAuthorityFilter.filter(proxyRequest)
+        isValidScope <- scopeValidationFilter.filter(delegatedAuthority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
+      // TODO implement rate limit filter based on api definition
+      // TODO implement subscription filter
+      // TODO implement token swap
+      } yield requestHeader
+      case _ => successful(requestHeader)
+    }
 
     eventualRequestHeader.flatMap(nextFilter) recover GatewayError.recovery
   }

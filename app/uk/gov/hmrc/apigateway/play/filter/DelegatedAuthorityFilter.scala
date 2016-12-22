@@ -30,7 +30,6 @@ import scala.concurrent.Future
 @Singleton
 class DelegatedAuthorityFilter @Inject()(delegatedAuthorityConnector: DelegatedAuthorityConnector) {
 
-  // TODO only check this for user restricted endpoints
   def filter(proxyRequest: ProxyRequest): Future[Authority] =
     getDelegatedAuthority(proxyRequest) map { authority =>
       if (hasExpired(authority))

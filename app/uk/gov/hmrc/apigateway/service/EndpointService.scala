@@ -52,12 +52,15 @@ object EndpointService {
   }
 
   private def findEndpoint(proxyRequest: ProxyRequest, requestContext: String, requestVersion: String, apiDefinition: ApiDefinition) = {
-    (for {
+    def filterEndpoint(apiEndpoint: ApiEndpoint): Boolean =
+      apiEndpoint.method == proxyRequest.httpMethod && pathMatchesPattern(apiEndpoint.uriPattern, proxyRequest.path)
+
+    val maybeEndpoint = for {
       apiVersion <- apiDefinition.versions.find(_.version == requestVersion)
-      apiEndpoint <- apiVersion.endpoints.find { endpoint =>
-        endpoint.method == proxyRequest.httpMethod && pathMatchesPattern(endpoint.uriPattern, proxyRequest.path)
-      }
-    } yield apiEndpoint).map(successful).getOrElse(failed(MatchingResourceNotFound()))
+      apiEndpoint <- apiVersion.endpoints.find(filterEndpoint)
+    } yield apiEndpoint
+
+    maybeEndpoint.map(successful).getOrElse(failed(MatchingResourceNotFound()))
   }
 
   private def pathMatchesPattern(uriPattern: String, path: String): Boolean = {

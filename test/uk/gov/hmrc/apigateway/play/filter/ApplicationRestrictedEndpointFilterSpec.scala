@@ -24,7 +24,8 @@ import org.scalatest.mockito.MockitoSugar
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, MissingCredentials}
-import uk.gov.hmrc.apigateway.model.{Authority, ProxyRequest, ThirdPartyDelegatedAuthority, Token}
+import uk.gov.hmrc.apigateway.model.AuthType.APPLICATION
+import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.UnitSpec
 
@@ -42,7 +43,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
 
   "Application restricted endpoint filter" should {
 
-    val fakeRequest = FakeRequest("GET", "http://host.example/foo").withTag(X_API_GATEWAY_AUTH_TYPE, "APPLICATION")
+    val fakeRequest = FakeRequest("GET", "http://host.example/foo").withTag(X_API_GATEWAY_AUTH_TYPE, APPLICATION.toString)
 
     "process a request with a valid access token" in new Setup {
       mock(delegatedAuthorityFilter, validAuthority())
@@ -59,7 +60,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
 
     "process a request with a valid server token" in new Setup {
       mock(delegatedAuthorityFilter, InvalidCredentials())
-      val fakeRequest = FakeRequest("GET", "http://host.example/foo").withTag(X_API_GATEWAY_AUTH_TYPE, "APPLICATION").withTag(AUTHORIZATION, "Bearer serverToken")
+      val fakeRequest = FakeRequest("GET", "http://host.example/foo").withTag(X_API_GATEWAY_AUTH_TYPE, APPLICATION.toString).withTag(AUTHORIZATION, "Bearer serverToken")
       val result = await(applicationRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
       result.tags.get(X_APPLICATION_CLIENT_ID) shouldBe Some("serverToken")
     }

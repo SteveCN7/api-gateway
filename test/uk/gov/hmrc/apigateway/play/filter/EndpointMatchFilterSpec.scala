@@ -19,9 +19,10 @@ package uk.gov.hmrc.apigateway.play.filter
 import org.mockito.Mockito.{verify, when}
 import org.scalatest.mockito.MockitoSugar
 import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
+import uk.gov.hmrc.apigateway.model.AuthType.NONE
 import uk.gov.hmrc.apigateway.model._
-import uk.gov.hmrc.play.test.UnitSpec
 import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
+import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
 import scala.concurrent.Future._
@@ -31,13 +32,13 @@ class EndpointMatchFilterSpec extends UnitSpec with MockitoSugar {
   private val apiDefinitionConnector = mock[ApiDefinitionConnector]
   private val endpointMatchFilter = new EndpointMatchFilter(apiDefinitionConnector)
   private val apiDefinition = ApiDefinition(
-    "api-context", "http://host.example", Seq(ApiVersion("1.0", Seq(ApiEndpoint("/api-endpoint", "GET", "NONE"))))
+    "api-context", "http://host.example", Seq(ApiVersion("1.0", Seq(ApiEndpoint("/api-endpoint", "GET", NONE))))
   )
 
   "Endpoint match filter" should {
 
     val proxyRequest = ProxyRequest("GET", "/api-context/api-endpoint", Map(ACCEPT -> "application/vnd.hmrc.1.0+json"))
-    val apiDefinitionMatch = ApiDefinitionMatch("api-context", "http://host.example", "1.0", "NONE", None)
+    val apiDefinitionMatch = ApiDefinitionMatch("api-context", "http://host.example", "1.0", NONE, None)
 
     "invoke api definition connector with correct service name" in {
       mockApiServiceConnectorToReturnSuccess

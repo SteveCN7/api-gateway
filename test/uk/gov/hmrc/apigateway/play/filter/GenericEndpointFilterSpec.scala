@@ -25,6 +25,7 @@ import play.api.mvc.Results.Ok
 import play.api.mvc.{Headers, RequestHeader, Result}
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.exception.GatewayError.MatchingResourceNotFound
+import uk.gov.hmrc.apigateway.model.AuthType._
 import uk.gov.hmrc.apigateway.model.{ApiDefinitionMatch, ProxyRequest}
 import uk.gov.hmrc.play.test.UnitSpec
 
@@ -54,7 +55,7 @@ class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar {
     }
 
     "process a request which meets all requirements" in new Setup {
-      val apiDefinitionMatch = ApiDefinitionMatch("foo", "http://host.example", "1,0", "NONE", None)
+      val apiDefinitionMatch = ApiDefinitionMatch("foo", "http://host.example", "1,0", NONE, None)
       when(endpointMatchFilter.filter(any[ProxyRequest])).thenReturn(apiDefinitionMatch)
 
       val result = await(genericEndpointFilter(nextFilter)(fakeRequest))

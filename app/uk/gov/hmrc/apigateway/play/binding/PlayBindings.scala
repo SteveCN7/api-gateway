@@ -29,6 +29,7 @@ object PlayBindings {
     ))
   }
 
+  implicit val authTypeFormat = EnumJson.enumFormat(AuthType)
   implicit val apiEndpointFormat = Json.format[ApiEndpoint]
   implicit val apiVersionFormat = Json.format[ApiVersion]
   implicit val apiDefinitionFormat = Json.format[ApiDefinition]
@@ -38,3 +39,32 @@ object PlayBindings {
   implicit val authorityFormat = Json.format[Authority]
 
 }
+
+// TODO copied from https://github.tools.tax.service.gov.uk/HMRC/third-party-application/blob/master/app/uk/gov/hmrc/models/JsonFormatters.scala#L100-L126 could be in a library
+object EnumJson {
+
+  def enumReads[E <: Enumeration](enum: E): Reads[E#Value] = new Reads[E#Value] {
+    def reads(json: JsValue): JsResult[E#Value] = json match {
+      case JsString(s) => {
+        try {
+          JsSuccess(enum.withName(s))
+        } catch {
+          case _: NoSuchElementException =>
+            throw new InvalidEnumException(enum.getClass.getSimpleName, s)
+        }
+      }
+      case _ => JsError("String value expected")
+    }
+  }
+
+  implicit def enumWrites[E <: Enumeration]: Writes[E#Value] = new Writes[E#Value] {
+    def writes(v: E#Value): JsValue = JsString(v.toString)
+  }
+
+  implicit def enumFormat[E <: Enumeration](enum: E): Format[E#Value] = {
+    Format(enumReads(enum), enumWrites)
+  }
+
+}
+
+class InvalidEnumException(className: String, input:String) extends RuntimeException(s"Enumeration expected of type: '$className', but it does not contain '$input'")

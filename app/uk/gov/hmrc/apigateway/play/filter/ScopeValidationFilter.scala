@@ -18,7 +18,6 @@ package uk.gov.hmrc.apigateway.play.filter
 
 import javax.inject.Singleton
 
-import org.apache.commons.lang3.StringUtils
 import uk.gov.hmrc.apigateway.exception.GatewayError.InvalidScope
 import uk.gov.hmrc.apigateway.model.{ApiDefinitionMatch, Authority}
 

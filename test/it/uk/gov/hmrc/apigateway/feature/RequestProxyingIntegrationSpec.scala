@@ -116,7 +116,7 @@ class RequestProxyingIntegrationSpec extends WsClientIntegrationSpec {
           } """)
     }
 
-    scenario("a request without an 'authorization' http header is not proxied") {
+    scenario("a restricted request without an 'authorization' http header is not proxied") {
       Given("a request without an 'authorization' http header")
       val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user/latency/1").header(ACCEPT, "application/vnd.hmrc.1.0+json")
       mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
@@ -131,11 +131,11 @@ class RequestProxyingIntegrationSpec extends WsClientIntegrationSpec {
       assertBodyIs(httpResponse, """ {"code":"MISSING_CREDENTIALS","message":"Authentication information is not provided"} """)
     }
 
-    scenario("a request with an invalid 'authorization' http header is not proxied") {
+    scenario("a restricted request with an invalid 'authorization' http header is not proxied") {
       Given("a request with an invalid 'authorization' http header")
-      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user/latency/1").header(ACCEPT, "application/vnd.hmrc.1.0+json").header(AUTHORIZATION, "80d964331707baf8872179c805351")
+      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user/latency/1").header(ACCEPT, "application/vnd.hmrc.1.0+json").header(AUTHORIZATION, "1234567890abcdefghi1234567890")
       mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
-      mockWsClient(wsClient, "http://tpda.example:9002/authority?access_token=80d964331707baf8872179c805351", OK, loadStubbedJson("authority/80d964331707baf8872179c805351"))
+      mockWsClient(wsClient, "http://tpda.example:9002/authority?access_token=1234567890abcdefghi1234567890", NOT_FOUND)
 
       When("the request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -147,7 +147,7 @@ class RequestProxyingIntegrationSpec extends WsClientIntegrationSpec {
       assertBodyIs(httpResponse, """ {"code":"INVALID_CREDENTIALS","message":"Invalid Authentication information provided"} """)
     }
 
-    scenario("a request with invalid scopes is not proxied") {
+    scenario("a restricted request with invalid scopes is not proxied") {
       Given("a request with invalid scopes")
       val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user-restricted-version-2-0-endpoint")
         .header(ACCEPT, "application/vnd.hmrc.2.0+json")

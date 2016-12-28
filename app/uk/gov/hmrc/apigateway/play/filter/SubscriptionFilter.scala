@@ -21,36 +21,39 @@ import javax.inject.{Inject, Singleton}
 import akka.stream.Materializer
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.exception.GatewayError
-import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound => _}
-import uk.gov.hmrc.apigateway.model.ProxyRequest
+import uk.gov.hmrc.apigateway.exception.GatewayError.{MissingCredentials, NotFound => _}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future.successful
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
-  * Filter for inspecting requests for generic (open and/or restricted) endpoints
+  * Filter for verifying subscriptions for requests for restricted endpoints
   * and evaluating their eligibility to be proxied to a downstream services.
   */
 @Singleton
-class GenericEndpointFilter @Inject()
-(endpointMatchFilter: EndpointMatchFilter)
+class SubscriptionFilter @Inject()
+(delegatedAuthorityFilter: DelegatedAuthorityFilter, scopeValidationFilter: ScopeValidationFilter)
 (implicit override val mat: Materializer, executionContext: ExecutionContext) extends Filter {
 
-  // TODO extract to class as template method (to be reused in user and app restricted filters)???
   override def apply(nextFilter: (RequestHeader) => Future[Result])(requestHeader: RequestHeader) = {
-    val proxyRequest = ProxyRequest(requestHeader)
 
-    val eventualRequestHeader = for {
-      apiDefinitionMatch <- endpointMatchFilter.filter(proxyRequest)
-    // TODO implement global rate limit filter???
-    } yield requestHeader
-      .withTag(ACCEPT, proxyRequest.getHeader(ACCEPT).orNull)
-      .withTag(X_API_GATEWAY_ENDPOINT, s"${apiDefinitionMatch.serviceBaseUrl}/${proxyRequest.path}")
-      .withTag(X_API_GATEWAY_SCOPE, apiDefinitionMatch.scope.orNull)
-      .withTag(X_API_GATEWAY_AUTH_TYPE, apiDefinitionMatch.authType)
+    val eventualRequestHeader = requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) match {
+      case Some("USER" | "APPLICATION") => accessOrServerToken(requestHeader) match {
+        // TODO get subscriptions by access token
+        case (Some(accessToken), _) => successful(requestHeader)
+        // TODO get subscriptions by server token
+        case (_, Some(serverToken)) => successful(requestHeader)
+        case _ => throw MissingCredentials()
+      }
+      case _ => successful(requestHeader)
+    }
 
     eventualRequestHeader.flatMap(nextFilter) recover GatewayError.recovery
   }
+
+  private def accessOrServerToken(requestHeader: RequestHeader): (Option[String], Option[String]) =
+    (requestHeader.tags.get(X_API_GATEWAY_USER_ACCESS_TOKEN),
+      requestHeader.tags.get(X_API_GATEWAY_APPLICATION_SERVER_TOKEN))
 
 }

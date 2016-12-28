@@ -31,7 +31,7 @@ import scala.concurrent.Future
   */
 abstract class ApiGatewayFilter(implicit m: Materializer) extends Filter {
 
-  override def apply(nextFilter: (RequestHeader) => Future[Result])(requestHeader: RequestHeader) =
+  override def apply(nextFilter: RequestHeader => Future[Result])(requestHeader: RequestHeader) =
     filter(requestHeader, ProxyRequest(requestHeader)) flatMap nextFilter recover GatewayError.recovery
 
   def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader]

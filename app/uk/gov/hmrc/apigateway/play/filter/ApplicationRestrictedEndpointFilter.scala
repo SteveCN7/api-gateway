@@ -25,7 +25,7 @@ import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future.successful
+import scala.concurrent.Future.{failed, successful}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Success, Try}
 
@@ -43,13 +43,13 @@ class ApplicationRestrictedEndpointFilter @Inject()
       case Some("APPLICATION") =>
         Try(delegatedAuthorityFilter.filter(proxyRequest)) match {
           case Success(eventualAuthority) => eventualAuthority map { authority =>
-            requestHeader.withTag(X_API_GATEWAY_USER_ACCESS_TOKEN, authority.delegatedAuthority.token.accessToken)
+            requestHeader.withTag(X_APPLICATION_CLIENT_ID, authority.delegatedAuthority.token.accessToken)
           }
           case _ => requestHeader.tags.get(AUTHORIZATION) match {
             case Some(bearerToken) =>
               val serverToken = bearerToken.stripPrefix("Bearer ")
-              successful(requestHeader.withTag(X_API_GATEWAY_APPLICATION_SERVER_TOKEN, serverToken))
-            case _ => throw MissingCredentials()
+              successful(requestHeader.withTag(X_APPLICATION_CLIENT_ID, serverToken))
+            case _ => failed(MissingCredentials())
           }
         }
       case _ => successful(requestHeader)

@@ -27,6 +27,7 @@ import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.exception.GatewayError.MatchingResourceNotFound
 import uk.gov.hmrc.apigateway.model.AuthType._
 import uk.gov.hmrc.apigateway.model.{ApiDefinitionMatch, ProxyRequest}
+import uk.gov.hmrc.apigateway.service.EndpointService
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future.successful
@@ -38,8 +39,8 @@ class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar {
   implicit val materializer = mock[Materializer]
 
   trait Setup {
-    val endpointMatchFilter = mock[EndpointMatchFilter]
-    val genericEndpointFilter = new GenericEndpointFilter(endpointMatchFilter)
+    val endpointService = mock[EndpointService]
+    val genericEndpointFilter = new GenericEndpointFilter(endpointService)
   }
 
   "Generic endpoint filter" should {
@@ -48,7 +49,7 @@ class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar {
     val nextFilter: (RequestHeader) => Future[Result] = { requestHeader => successful(Ok("""{"response":"json"}""")) }
 
     "decline a request which fails endpoint match filter" in new Setup {
-      when(endpointMatchFilter.filter(any[ProxyRequest])).thenThrow(MatchingResourceNotFound())
+      when(endpointService.findApiDefinition(any[ProxyRequest])).thenThrow(MatchingResourceNotFound())
       intercept[MatchingResourceNotFound] {
         genericEndpointFilter(nextFilter)(fakeRequest)
       }
@@ -56,7 +57,7 @@ class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar {
 
     "process a request which meets all requirements" in new Setup {
       val apiDefinitionMatch = ApiDefinitionMatch("foo", "http://host.example", "1,0", NONE, None)
-      when(endpointMatchFilter.filter(any[ProxyRequest])).thenReturn(apiDefinitionMatch)
+      when(endpointService.findApiDefinition(any[ProxyRequest])).thenReturn(apiDefinitionMatch)
 
       val result = await(genericEndpointFilter(nextFilter)(fakeRequest))
       status(result) shouldBe OK

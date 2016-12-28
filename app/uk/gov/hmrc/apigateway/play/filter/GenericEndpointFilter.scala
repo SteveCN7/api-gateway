@@ -22,6 +22,7 @@ import akka.stream.Materializer
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound => _}
 import uk.gov.hmrc.apigateway.model.ProxyRequest
+import uk.gov.hmrc.apigateway.service.EndpointService
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -33,12 +34,12 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 @Singleton
 class GenericEndpointFilter @Inject()
-(endpointMatchFilter: EndpointMatchFilter)
+(endpointService: EndpointService)
 (implicit override val mat: Materializer, executionContext: ExecutionContext) extends ApiGatewayFilter {
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
     for {
-      apiDefinitionMatch <- endpointMatchFilter.filter(proxyRequest)
+      apiDefinitionMatch <- endpointService.findApiDefinition(proxyRequest)
     // TODO implement global rate limit filter???
     } yield requestHeader
       .withTag(ACCEPT, proxyRequest.getHeader(ACCEPT).orNull)

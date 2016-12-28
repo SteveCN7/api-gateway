@@ -38,8 +38,8 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
 
   trait Setup {
     val delegatedAuthorityFilter = mock[DelegatedAuthorityFilter]
-    val scopeValidationFilter = mock[ScopeValidationFilter]
-    val userRestrictedEndpointFilter = new UserRestrictedEndpointFilter(delegatedAuthorityFilter, scopeValidationFilter)
+    val scopeValidator = mock[ScopeValidator]
+    val userRestrictedEndpointFilter = new UserRestrictedEndpointFilter(delegatedAuthorityFilter, scopeValidator)
   }
 
   "User restricted endpoint filter" should {
@@ -55,7 +55,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
 
     "decline a request not matching scopes" in new Setup {
       mock(delegatedAuthorityFilter, validAuthority())
-      mock(scopeValidationFilter, InvalidScope())
+      mock(scopeValidator, InvalidScope())
       intercept[InvalidScope] {
         await(userRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
       }
@@ -63,7 +63,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
 
     "process a request which meets all requirements" in new Setup {
       mock(delegatedAuthorityFilter, validAuthority())
-      mock(scopeValidationFilter, boolean = true)
+      mock(scopeValidator, flag = true)
 
       val fakeRequest = FakeRequest("GET", "http://host.example/foo").withTag(X_API_GATEWAY_AUTH_TYPE, "USER").withTag(X_API_GATEWAY_SCOPE, "scopeMoo")
 
@@ -79,11 +79,11 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
   private def mock(delegatedAuthorityFilter: DelegatedAuthorityFilter, authority: Authority) =
     when(delegatedAuthorityFilter.filter(any[ProxyRequest])).thenReturn(authority)
 
-  private def mock(scopeValidationFilter: ScopeValidationFilter, gatewayError: GatewayError) =
-    when(scopeValidationFilter.filter(any(classOf[Authority]), any(classOf[Option[String]]))).thenThrow(gatewayError)
+  private def mock(scopeValidationFilter: ScopeValidator, gatewayError: GatewayError) =
+    when(scopeValidationFilter.validate(any(classOf[Authority]), any(classOf[Option[String]]))).thenThrow(gatewayError)
 
-  private def mock(scopeValidationFilter: ScopeValidationFilter, boolean: Boolean) =
-    when(scopeValidationFilter.filter(any(classOf[Authority]), any(classOf[Option[String]]))).thenReturn(successful(boolean))
+  private def mock(scopeValidationFilter: ScopeValidator, flag: Boolean) =
+    when(scopeValidationFilter.validate(any(classOf[Authority]), any(classOf[Option[String]]))).thenReturn(successful(flag))
 
   private def validAuthority() = {
     val token = Token("accessToken", Set.empty, DateTime.now.plusMinutes(5))

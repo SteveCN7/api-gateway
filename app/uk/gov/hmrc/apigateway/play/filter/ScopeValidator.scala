@@ -25,9 +25,9 @@ import scala.concurrent.Future
 import scala.concurrent.Future.{failed, successful}
 
 @Singleton
-class ScopeValidationFilter {
+class ScopeValidator {
 
-  def filter(authority: Authority, maybeScope: Option[String]): Future[Boolean] = maybeScope match {
+  def validate(authority: Authority, maybeScope: Option[String]): Future[Boolean] = maybeScope match {
     case Some(scope) if authority.delegatedAuthority.token.scopes.contains(scope) => successful(true)
     case _ => failed(InvalidScope())
   }

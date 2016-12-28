@@ -22,48 +22,48 @@ import uk.gov.hmrc.apigateway.exception.GatewayError.InvalidScope
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.play.test.UnitSpec
 
-class ScopeValidationFilterSpec extends UnitSpec with MockitoSugar {
+class ScopeValidatorSpec extends UnitSpec with MockitoSugar {
 
   trait Setup {
     val delegatedAuthority = mock[ThirdPartyDelegatedAuthority]
     val token = mock[Token]
     val authority = mock[Authority]
     val apiDefinitionMatch = mock[ApiDefinitionMatch]
-    val scopeValidationFilter = new ScopeValidationFilter
+    val scopeValidator = new ScopeValidator
 
     when(authority.delegatedAuthority).thenReturn(delegatedAuthority)
     when(delegatedAuthority.token).thenReturn(token)
     when(delegatedAuthority.token.scopes).thenReturn(Set("read:scope", "write:scope", "read:another-scope"))
   }
 
-  "Scope Validation filter" should {
+  "Scope validator" should {
 
     "throw an exception when the request has no scopes" in new Setup {
       intercept[InvalidScope] {
-        await(scopeValidationFilter.filter(authority, None))
+        await(scopeValidator.validate(authority, None))
       }
     }
 
     "throw an exception when the request scope is empty" in new Setup {
       intercept[InvalidScope] {
-        await(scopeValidationFilter.filter(authority, Some("")))
+        await(scopeValidator.validate(authority, Some("")))
       }
     }
 
     "throw an exception when the request contains multiple scopes" in new Setup {
       intercept[InvalidScope] {
-        await(scopeValidationFilter.filter(authority, Some("read:scope write:scope")))
+        await(scopeValidator.validate(authority, Some("read:scope write:scope")))
       }
     }
 
     "throw an exception when the request does not have any of the required scopes" in new Setup {
       intercept[InvalidScope] {
-        await(scopeValidationFilter.filter(authority, Some("read:scope-1")))
+        await(scopeValidator.validate(authority, Some("read:scope-1")))
       }
     }
 
     "return true when the request has all the required scopes" in new Setup {
-      await(scopeValidationFilter.filter(authority, Some("read:scope"))) shouldBe true
+      await(scopeValidator.validate(authority, Some("read:scope"))) shouldBe true
     }
 
   }

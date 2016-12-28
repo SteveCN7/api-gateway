@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.play.filter
+package uk.gov.hmrc.apigateway.service
 
 import javax.inject.{Inject, Singleton}
 
@@ -22,7 +22,7 @@ import play.api.Logger
 import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.MatchingResourceNotFound
 import uk.gov.hmrc.apigateway.model.{ApiDefinition, ApiDefinitionMatch, ApiEndpoint, ProxyRequest}
-import uk.gov.hmrc.apigateway.play.filter.EndpointMatchFilter.{createAndLogApiDefinitionMatch, findEndpoint}
+import uk.gov.hmrc.apigateway.service.EndpointService._
 import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
 import uk.gov.hmrc.apigateway.util.ProxyRequestUtils.{validateContext, validateVersion}
 
@@ -31,9 +31,9 @@ import scala.concurrent.Future
 import scala.concurrent.Future.{failed, successful}
 
 @Singleton
-class EndpointMatchFilter @Inject()(apiDefinitionConnector: ApiDefinitionConnector) {
+class EndpointService @Inject()(apiDefinitionConnector: ApiDefinitionConnector) {
 
-  def filter(proxyRequest: ProxyRequest): Future[ApiDefinitionMatch] =
+  def findApiDefinition(proxyRequest: ProxyRequest): Future[ApiDefinitionMatch] =
     for {
       requestContext <- validateContext(proxyRequest)
       requestVersion <- validateVersion(proxyRequest)
@@ -43,7 +43,7 @@ class EndpointMatchFilter @Inject()(apiDefinitionConnector: ApiDefinitionConnect
 
 }
 
-object EndpointMatchFilter {
+object EndpointService {
 
   private def createAndLogApiDefinitionMatch(proxyRequest: ProxyRequest, requestContext: String, apiDefinition: ApiDefinition, requestVersion: String, apiEndpoint: ApiEndpoint): ApiDefinitionMatch = {
     val apiDefinitionMatch = ApiDefinitionMatch(requestContext, apiDefinition.serviceBaseUrl, requestVersion, apiEndpoint.authType, apiEndpoint.scope)

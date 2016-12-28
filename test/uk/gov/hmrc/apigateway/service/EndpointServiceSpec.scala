@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.play.filter
+package uk.gov.hmrc.apigateway.service
 
 import org.mockito.Mockito.{verify, when}
 import org.scalatest.mockito.MockitoSugar
@@ -27,34 +27,34 @@ import uk.gov.hmrc.play.test.UnitSpec
 import scala.concurrent.Future
 import scala.concurrent.Future._
 
-class EndpointMatchFilterSpec extends UnitSpec with MockitoSugar {
+class EndpointServiceSpec extends UnitSpec with MockitoSugar {
 
   private val apiDefinitionConnector = mock[ApiDefinitionConnector]
-  private val endpointMatchFilter = new EndpointMatchFilter(apiDefinitionConnector)
+  private val endpointService = new EndpointService(apiDefinitionConnector)
   private val apiDefinition = ApiDefinition(
     "api-context", "http://host.example", Seq(ApiVersion("1.0", Seq(ApiEndpoint("/api-endpoint", "GET", NONE))))
   )
 
-  "Endpoint match filter" should {
+  "Endpoint service" should {
 
     val proxyRequest = ProxyRequest("GET", "/api-context/api-endpoint", Map(ACCEPT -> "application/vnd.hmrc.1.0+json"))
     val apiDefinitionMatch = ApiDefinitionMatch("api-context", "http://host.example", "1.0", NONE, None)
 
     "invoke api definition connector with correct service name" in {
       mockApiServiceConnectorToReturnSuccess
-      await(endpointMatchFilter.filter(proxyRequest))
+      await(endpointService.findApiDefinition(proxyRequest))
       verify(apiDefinitionConnector).getByContext("api-context")
     }
 
     "return api definition when proxy request matches api definition endpoint" in {
       mockApiServiceConnectorToReturnSuccess
-      await(endpointMatchFilter.filter(proxyRequest)) shouldBe apiDefinitionMatch
+      await(endpointService.findApiDefinition(proxyRequest)) shouldBe apiDefinitionMatch
     }
 
     "throw an exception when proxy request does not match api definition endpoint" in {
       mockApiServiceConnectorToReturnFailure
       intercept[RuntimeException] {
-        await(endpointMatchFilter.filter(proxyRequest))
+        await(endpointService.findApiDefinition(proxyRequest))
       }
     }
 

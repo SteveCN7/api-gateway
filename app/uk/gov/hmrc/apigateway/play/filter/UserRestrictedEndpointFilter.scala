@@ -34,14 +34,14 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 @Singleton
 class UserRestrictedEndpointFilter @Inject()
-(delegatedAuthorityFilter: DelegatedAuthorityFilter, scopeValidationFilter: ScopeValidationFilter)
+(delegatedAuthorityFilter: DelegatedAuthorityFilter, scopeValidator: ScopeValidator)
 (implicit override val mat: Materializer, executionContext: ExecutionContext) extends ApiGatewayFilter {
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
     requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) match {
       case Some("USER") => for {
         authority <- delegatedAuthorityFilter.filter(proxyRequest)
-        isValidScope <- scopeValidationFilter.filter(authority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
+        isValidScope <- scopeValidator.validate(authority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
       // TODO implement token swap
       } yield requestHeader.withTag(X_API_GATEWAY_USER_ACCESS_TOKEN, authority.delegatedAuthority.token.accessToken)
       case _ => successful(requestHeader)

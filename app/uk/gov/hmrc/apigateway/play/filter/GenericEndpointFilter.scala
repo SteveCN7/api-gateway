@@ -44,6 +44,6 @@ class GenericEndpointFilter @Inject()
       .withTag(ACCEPT, proxyRequest.getHeader(ACCEPT).orNull)
       .withTag(X_API_GATEWAY_ENDPOINT, s"${apiDefinitionMatch.serviceBaseUrl}/${proxyRequest.path}")
       .withTag(X_API_GATEWAY_SCOPE, apiDefinitionMatch.scope.orNull)
-      .withTag(X_API_GATEWAY_AUTH_TYPE, apiDefinitionMatch.authType)
+      .withTag(X_API_GATEWAY_AUTH_TYPE, apiDefinitionMatch.authType.toString)
 
 }

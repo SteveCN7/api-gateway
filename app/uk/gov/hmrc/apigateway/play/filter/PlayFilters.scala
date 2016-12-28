@@ -26,13 +26,11 @@ class PlayFilters @Inject()
 (environment: Environment,
  genericEndpointFilter: GenericEndpointFilter,
  userRestrictedEndpointFilter: UserRestrictedEndpointFilter,
- applicationRestrictedEndpointFilter: ApplicationRestrictedEndpointFilter,
- subscriptionFilter: SubscriptionFilter) extends HttpFilters {
+ applicationRestrictedEndpointFilter: ApplicationRestrictedEndpointFilter) extends HttpFilters {
 
   override val filters = Seq(
     genericEndpointFilter,
     userRestrictedEndpointFilter,
-    applicationRestrictedEndpointFilter,
-    subscriptionFilter)
+    applicationRestrictedEndpointFilter)
 
 }

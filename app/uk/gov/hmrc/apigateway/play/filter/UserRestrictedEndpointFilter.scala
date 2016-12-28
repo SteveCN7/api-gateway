@@ -20,7 +20,6 @@ import javax.inject.{Inject, Singleton}
 
 import akka.stream.Materializer
 import play.api.mvc._
-import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound => _}
 import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
@@ -36,12 +35,9 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class UserRestrictedEndpointFilter @Inject()
 (delegatedAuthorityFilter: DelegatedAuthorityFilter, scopeValidationFilter: ScopeValidationFilter)
-(implicit override val mat: Materializer, executionContext: ExecutionContext) extends Filter {
+(implicit override val mat: Materializer, executionContext: ExecutionContext) extends ApiGatewayFilter {
 
-  override def apply(nextFilter: (RequestHeader) => Future[Result])(requestHeader: RequestHeader) =
-    template(requestHeader, ProxyRequest(requestHeader)) flatMap nextFilter recover GatewayError.recovery
-
-  def template(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
+  override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
     requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) match {
       case Some("USER") => for {
         authority <- delegatedAuthorityFilter.filter(proxyRequest)
@@ -50,6 +46,5 @@ class UserRestrictedEndpointFilter @Inject()
       } yield requestHeader.withTag(X_API_GATEWAY_USER_ACCESS_TOKEN, authority.delegatedAuthority.token.accessToken)
       case _ => successful(requestHeader)
     }
-  }
 
 }

@@ -20,7 +20,6 @@ import javax.inject.{Inject, Singleton}
 
 import akka.stream.Materializer
 import play.api.mvc._
-import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.exception.GatewayError.{MissingCredentials, NotFound => _}
 import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
@@ -37,12 +36,9 @@ import scala.util.{Success, Try}
 @Singleton
 class ApplicationRestrictedEndpointFilter @Inject()
 (delegatedAuthorityFilter: DelegatedAuthorityFilter)
-(implicit override val mat: Materializer, executionContext: ExecutionContext) extends Filter {
+(implicit override val mat: Materializer, executionContext: ExecutionContext) extends ApiGatewayFilter {
 
-  override def apply(nextFilter: (RequestHeader) => Future[Result])(requestHeader: RequestHeader) =
-    template(requestHeader, ProxyRequest(requestHeader)) flatMap nextFilter recover GatewayError.recovery
-
-  def template(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
+  override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
     requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) match {
       case Some("APPLICATION") =>
         Try(delegatedAuthorityFilter.filter(proxyRequest)) match {

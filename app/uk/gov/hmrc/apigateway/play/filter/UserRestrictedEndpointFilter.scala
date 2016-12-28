@@ -30,29 +30,26 @@ import scala.concurrent.Future.successful
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
-  * Filter for inspecting requests for restricted endpoints and
+  * Filter for inspecting requests for user restricted endpoints and
   * evaluating their eligibility to be proxied to a downstream services.
   */
 @Singleton
-class RestrictedEndpointFilter @Inject()
+class UserRestrictedEndpointFilter @Inject()
 (delegatedAuthorityFilter: DelegatedAuthorityFilter, scopeValidationFilter: ScopeValidationFilter)
 (implicit override val mat: Materializer, executionContext: ExecutionContext) extends Filter {
 
-  override def apply(nextFilter: (RequestHeader) => Future[Result])(requestHeader: RequestHeader) = {
-    val proxyRequest = ProxyRequest(requestHeader)
+  override def apply(nextFilter: (RequestHeader) => Future[Result])(requestHeader: RequestHeader) =
+    template(requestHeader, ProxyRequest(requestHeader)) flatMap nextFilter recover GatewayError.recovery
 
-    val eventualRequestHeader = requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) match {
-      case Some(authType) if authType != "NONE" => for {
-        delegatedAuthority <- delegatedAuthorityFilter.filter(proxyRequest)
-        isValidScope <- scopeValidationFilter.filter(delegatedAuthority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
-      // TODO implement rate limit filter based on api definition
-      // TODO implement subscription filter
+  def template(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
+    requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) match {
+      case Some("USER") => for {
+        authority <- delegatedAuthorityFilter.filter(proxyRequest)
+        isValidScope <- scopeValidationFilter.filter(authority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
       // TODO implement token swap
-      } yield requestHeader
+      } yield requestHeader.withTag(X_API_GATEWAY_USER_ACCESS_TOKEN, authority.delegatedAuthority.token.accessToken)
       case _ => successful(requestHeader)
     }
-
-    eventualRequestHeader.flatMap(nextFilter) recover GatewayError.recovery
   }
 
 }

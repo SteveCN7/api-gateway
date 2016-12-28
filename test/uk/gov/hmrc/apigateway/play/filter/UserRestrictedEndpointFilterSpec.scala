@@ -49,7 +49,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
     "decline a request not matching a delegated authority" in new Setup {
       mock(delegatedAuthorityFilter, InvalidCredentials())
       intercept[InvalidCredentials] {
-        await(userRestrictedEndpointFilter.template(fakeRequest, ProxyRequest(fakeRequest)))
+        await(userRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
       }
     }
 
@@ -57,7 +57,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
       mock(delegatedAuthorityFilter, validAuthority())
       mock(scopeValidationFilter, InvalidScope())
       intercept[InvalidScope] {
-        await(userRestrictedEndpointFilter.template(fakeRequest, ProxyRequest(fakeRequest)))
+        await(userRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
       }
     }
 
@@ -67,7 +67,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
 
       val fakeRequest = FakeRequest("GET", "http://host.example/foo").withTag(X_API_GATEWAY_AUTH_TYPE, "USER").withTag(X_API_GATEWAY_SCOPE, "scopeMoo")
 
-      val result = await(userRestrictedEndpointFilter.template(fakeRequest, ProxyRequest(fakeRequest)))
+      val result = await(userRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
       result.tags.get(X_API_GATEWAY_USER_ACCESS_TOKEN) shouldBe Some("accessToken")
     }
 

@@ -20,7 +20,6 @@ import javax.inject.{Inject, Singleton}
 
 import akka.stream.Materializer
 import play.api.mvc._
-import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound => _}
 import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
@@ -35,13 +34,10 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class GenericEndpointFilter @Inject()
 (endpointMatchFilter: EndpointMatchFilter)
-(implicit override val mat: Materializer, executionContext: ExecutionContext) extends Filter {
+(implicit override val mat: Materializer, executionContext: ExecutionContext) extends ApiGatewayFilter {
 
-  // TODO extract to class as template method (to be reused in user and app restricted filters)???
-  override def apply(nextFilter: (RequestHeader) => Future[Result])(requestHeader: RequestHeader) = {
-    val proxyRequest = ProxyRequest(requestHeader)
-
-    val eventualRequestHeader = for {
+  override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
+    for {
       apiDefinitionMatch <- endpointMatchFilter.filter(proxyRequest)
     // TODO implement global rate limit filter???
     } yield requestHeader
@@ -49,8 +45,5 @@ class GenericEndpointFilter @Inject()
       .withTag(X_API_GATEWAY_ENDPOINT, s"${apiDefinitionMatch.serviceBaseUrl}/${proxyRequest.path}")
       .withTag(X_API_GATEWAY_SCOPE, apiDefinitionMatch.scope.orNull)
       .withTag(X_API_GATEWAY_AUTH_TYPE, apiDefinitionMatch.authType)
-
-    eventualRequestHeader.flatMap(nextFilter) recover GatewayError.recovery
-  }
 
 }

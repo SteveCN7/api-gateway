@@ -48,8 +48,9 @@ object HmrcBuild extends Build {
     "com.github.tomakehurst" % "wiremock" % "2.1.12" % "test,it",
     "org.scalaj" %% "scalaj-http" % "2.3.0" % "test,it"
   )
+  val appName = "api-gateway"
 
-  val apiGateway = (project in file("."))
+  val main = Project(appName, file("."))
     .enablePlugins(PlayScala, SbtAutoBuildPlugin, SbtGitVersioning, SbtDistributablesPlugin)
     .settings(scalaSettings: _*)
     .settings(publishingSettings: _*)
@@ -57,7 +58,6 @@ object HmrcBuild extends Build {
     .enablePlugins(PlayScala)
     .settings(
       scalaVersion := "2.11.8",
-      name := "api-gateway",
       libraryDependencies ++= compileDependencies ++ testDependencies
     )
     .configs(IntegrationTest)

@@ -38,9 +38,9 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
   implicit val materializer = mock[Materializer]
 
   trait Setup {
-    val delegatedAuthorityFilter = mock[DelegatedAuthorityFilter]
+    val authorityService = mock[AuthorityService]
     val scopeValidator = mock[ScopeValidator]
-    val userRestrictedEndpointFilter = new UserRestrictedEndpointFilter(delegatedAuthorityFilter, scopeValidator)
+    val userRestrictedEndpointFilter = new UserRestrictedEndpointFilter(authorityService, scopeValidator)
   }
 
   "User restricted endpoint filter" should {
@@ -48,14 +48,14 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
     val fakeRequest = FakeRequest("GET", "http://host.example/foo").withTag(X_API_GATEWAY_AUTH_TYPE, USER.toString)
 
     "decline a request not matching a delegated authority" in new Setup {
-      mock(delegatedAuthorityFilter, InvalidCredentials())
+      mock(authorityService, InvalidCredentials())
       intercept[InvalidCredentials] {
         await(userRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
       }
     }
 
     "decline a request not matching scopes" in new Setup {
-      mock(delegatedAuthorityFilter, validAuthority())
+      mock(authorityService, validAuthority())
       mock(scopeValidator, InvalidScope())
       intercept[InvalidScope] {
         await(userRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
@@ -63,7 +63,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
     }
 
     "process a request which meets all requirements" in new Setup {
-      mock(delegatedAuthorityFilter, validAuthority())
+      mock(authorityService, validAuthority())
       mock(scopeValidator, flag = true)
 
       val fakeRequest = FakeRequest("GET", "http://host.example/foo").withTag(X_API_GATEWAY_AUTH_TYPE, USER.toString).withTag(X_API_GATEWAY_SCOPE, "scopeMoo")
@@ -74,11 +74,11 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
 
   }
 
-  private def mock(delegatedAuthorityFilter: DelegatedAuthorityFilter, gatewayError: GatewayError) =
-    when(delegatedAuthorityFilter.filter(any[ProxyRequest])).thenThrow(gatewayError)
+  private def mock(authorityService: AuthorityService, gatewayError: GatewayError) =
+    when(authorityService.findAuthority(any[ProxyRequest])).thenThrow(gatewayError)
 
-  private def mock(delegatedAuthorityFilter: DelegatedAuthorityFilter, authority: Authority) =
-    when(delegatedAuthorityFilter.filter(any[ProxyRequest])).thenReturn(authority)
+  private def mock(authorityService: AuthorityService, authority: Authority) =
+    when(authorityService.findAuthority(any[ProxyRequest])).thenReturn(authority)
 
   private def mock(scopeValidationFilter: ScopeValidator, gatewayError: GatewayError) =
     when(scopeValidationFilter.validate(any(classOf[Authority]), any(classOf[Option[String]]))).thenThrow(gatewayError)

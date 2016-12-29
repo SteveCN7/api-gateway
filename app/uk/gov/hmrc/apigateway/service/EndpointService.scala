@@ -47,15 +47,16 @@ object EndpointService {
 
   private def createAndLogApiDefinitionMatch(proxyRequest: ProxyRequest, requestContext: String, apiDefinition: ApiDefinition, requestVersion: String, apiEndpoint: ApiEndpoint): ApiDefinitionMatch = {
     val apiDefinitionMatch = ApiDefinitionMatch(requestContext, apiDefinition.serviceBaseUrl, requestVersion, apiEndpoint.authType, apiEndpoint.scope)
-    Logger.debug(s"successfull endpoint match for [${stringify(proxyRequest)}] to [$apiDefinitionMatch]")
+    Logger.debug(s"successful endpoint match for [${stringify(proxyRequest)}] to [$apiDefinitionMatch]")
     apiDefinitionMatch
   }
 
   private def findEndpoint(proxyRequest: ProxyRequest, requestContext: String, requestVersion: String, apiDefinition: ApiDefinition) = {
+
     def filterEndpoint(apiEndpoint: ApiEndpoint): Boolean =
       apiEndpoint.method == proxyRequest.httpMethod && pathMatchesPattern(apiEndpoint.uriPattern, proxyRequest.path)
 
-    val maybeEndpoint = for {
+    val maybeEndpoint: Option[ApiEndpoint] = for {
       apiVersion <- apiDefinition.versions.find(_.version == requestVersion)
       apiEndpoint <- apiVersion.endpoints.find(filterEndpoint)
     } yield apiEndpoint

@@ -28,7 +28,7 @@ abstract class ServiceConnector(wsClient: WSClient, cache: CacheManager, val ser
   extends AbstractConnector(wsClient) with ServicesConfig {
 
   lazy val serviceBaseUrl = baseUrl(serviceName)
-  lazy val caching = getConfBool(s"$serviceName.caching.enabled", false)
+  lazy val caching = getConfBool(s"$serviceName.caching.enabled", defBool = false)
   lazy val expiration = getConfInt(s"$serviceName.caching.expirationInSeconds", 120)
 
   override def get[T: ClassTag](urlPath: String)(implicit format: Format[T]): Future[T] =

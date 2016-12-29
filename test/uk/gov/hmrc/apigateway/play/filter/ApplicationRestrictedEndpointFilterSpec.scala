@@ -48,7 +48,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
     "process a request with a valid access token" in new Setup {
       mock(delegatedAuthorityFilter, validAuthority())
       val result = await(applicationRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
-      result.tags.get(X_APPLICATION_CLIENT_ID) shouldBe Some("accessToken")
+      result.tags.get(X_APPLICATION_CLIENT_ID) shouldBe Some("clientId")
     }
 
     "attempt to recover from a request without a valid access token" in new Setup {

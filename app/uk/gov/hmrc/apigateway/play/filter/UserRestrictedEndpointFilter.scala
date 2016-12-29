@@ -22,7 +22,7 @@ import akka.stream.Materializer
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound => _}
 import uk.gov.hmrc.apigateway.model.AuthType._
-import uk.gov.hmrc.apigateway.model.{AuthType, ProxyRequest}
+import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.service.{AuthorityService, ScopeValidator}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
@@ -43,9 +43,11 @@ class UserRestrictedEndpointFilter @Inject()
     requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) flatMap authType match {
       case Some(USER) => for {
         authority <- authorityService.findAuthority(proxyRequest)
-        isValidScope <- scopeValidator.validate(authority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
-      // TODO implement token swap
-      } yield requestHeader.withTag(X_APPLICATION_CLIENT_ID, authority.delegatedAuthority.clientId)
+        delegatedAuthority = authority.delegatedAuthority
+        isValidScope <- scopeValidator.validate(delegatedAuthority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
+      } yield requestHeader
+        .withTag(X_APPLICATION_CLIENT_ID, delegatedAuthority.clientId)
+        .withTag(AUTHORIZATION, delegatedAuthority.authBearerToken)
       case _ => successful(requestHeader)
     }
 

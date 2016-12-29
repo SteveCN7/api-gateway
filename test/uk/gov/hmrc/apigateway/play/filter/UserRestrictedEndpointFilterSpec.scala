@@ -26,6 +26,7 @@ import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, InvalidScope}
 import uk.gov.hmrc.apigateway.model.AuthType.USER
 import uk.gov.hmrc.apigateway.model._
+import uk.gov.hmrc.apigateway.service.ScopeValidator
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.UnitSpec
 

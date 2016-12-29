@@ -23,6 +23,7 @@ import play.api.mvc._
 import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound => _}
 import uk.gov.hmrc.apigateway.model.AuthType._
 import uk.gov.hmrc.apigateway.model.ProxyRequest
+import uk.gov.hmrc.apigateway.service.ScopeValidator
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
 import scala.concurrent.ExecutionContext.Implicits.global

@@ -41,10 +41,10 @@ class ApplicationRestrictedEndpointFilter @Inject()
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
     requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) match {
-      case Some(APPLICATION.toString) =>
+      case Some(string) if string.equals(APPLICATION.toString) =>
         Try(delegatedAuthorityFilter.filter(proxyRequest)) match {
           case Success(eventualAuthority) => eventualAuthority map { authority =>
-            requestHeader.withTag(X_APPLICATION_CLIENT_ID, authority.delegatedAuthority.token.accessToken)
+            requestHeader.withTag(X_APPLICATION_CLIENT_ID, authority.delegatedAuthority.clientId)
           }
           case _ => requestHeader.tags.get(AUTHORIZATION) match {
             case Some(bearerToken) =>

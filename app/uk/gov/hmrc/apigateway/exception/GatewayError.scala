@@ -46,7 +46,7 @@ object GatewayError {
     case e: InvalidAcceptHeader => BadRequest(toJson(e))
     case e: MatchingResourceNotFound => PlayNotFound(toJson(e))
     case e: InvalidScope => Forbidden(toJson(e))
-    case e: GatewayError => PlayNotFound(toJson(e))
+    case e: NotFound => PlayNotFound(toJson(e))
     case e =>
       Logger.error("unexpected error", e)
       InternalServerError(toJson(ServerError()))

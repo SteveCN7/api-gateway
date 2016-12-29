@@ -23,7 +23,7 @@ import org.mockito.Mockito.when
 import org.scalatest.mockito.MockitoSugar
 import uk.gov.hmrc.apigateway.connector.impl.DelegatedAuthorityConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, MissingCredentials}
-import uk.gov.hmrc.apigateway.model.{Authority, ProxyRequest, ThirdPartyDelegatedAuthority, Token}
+import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.UnitSpec
 
@@ -31,39 +31,35 @@ import scala.concurrent.Future.successful
 
 class AuthorityServiceSpec extends UnitSpec with MockitoSugar {
 
-  private val proxyRequest = mock[ProxyRequest]
+  private val request = ProxyRequest("GET", "/hello/world", headers = Map(AUTHORIZATION -> "Bearer 31c99f9482de49544c6cc3374c378028"))
   private val delegatedAuthorityConnector = mock[DelegatedAuthorityConnector]
   private val authorityService = new AuthorityService(delegatedAuthorityConnector)
 
   "findAuthority" should {
 
     "throw an exception when credentials are missing" in {
-      mockProxyRequestAuthorizationHeader(None)
+      val requestWithoutHeader = request.copy(headers = Map())
       intercept[MissingCredentials] {
-        await(authorityService.findAuthority(proxyRequest))
+        await(authorityService.findAuthority(requestWithoutHeader))
       }
     }
 
     "throw an exception when credentials have expired" in {
-      val expiredAuthority = authorityWithExpiration(now.minusMinutes(5))
-      mockProxyRequestAuthorizationHeader(Some("Bearer 31c99f9482de49544c6cc3374c378028"))
-      mockDelegatedAuthorityConnector(expiredAuthority)
+      mockDelegatedAuthorityConnector(authorityWithExpiration(now.minusMinutes(5)))
+
       intercept[InvalidCredentials] {
-        await(authorityService.findAuthority(proxyRequest))
+        await(authorityService.findAuthority(request))
       }
     }
 
     "return the delegated authority when credentials are valid" in {
       val unexpiredAuthority = authorityWithExpiration(now.plusMinutes(5))
-      mockProxyRequestAuthorizationHeader(Some("Bearer 31c99f9482de49544c6cc3374c378028"))
-      mockDelegatedAuthorityConnector(unexpiredAuthority)
-      await(authorityService.findAuthority(proxyRequest)) shouldBe unexpiredAuthority
+
+      mockDelegatedAuthorityConnector(authorityWithExpiration(now.plusMinutes(5)))
+
+      await(authorityService.findAuthority(request)) shouldBe unexpiredAuthority
     }
-
   }
-
-  private def mockProxyRequestAuthorizationHeader(maybeString: Option[String]) =
-    when(proxyRequest.getHeader(AUTHORIZATION)).thenReturn(maybeString)
 
   private def mockDelegatedAuthorityConnector(authority: Authority) =
     when(delegatedAuthorityConnector.getByAccessToken(anyString)).thenReturn(successful(authority))

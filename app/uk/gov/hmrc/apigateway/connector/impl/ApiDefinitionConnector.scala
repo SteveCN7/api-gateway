@@ -33,7 +33,5 @@ class ApiDefinitionConnector @Inject()(wsClient: WSClient, cache: CacheManager)
   extends ServiceConnector(wsClient, cache, "api-definition") {
 
   def getByContext(context: String): Future[ApiDefinition] =
-    get[ApiDefinition](s"$serviceName?context=$context") recover {
-      case error: RuntimeException => throw NotFound()
-    }
+    get[ApiDefinition](s"$serviceName?context=$context")
 }

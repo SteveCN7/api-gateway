@@ -17,6 +17,7 @@
 package uk.gov.hmrc.apigateway.model
 
 import play.api.mvc.RequestHeader
+import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
 case class ProxyRequest
 (httpMethod: String,
@@ -26,6 +27,7 @@ case class ProxyRequest
 
   def getHeader(name: String): Option[String] = headers.get(name)
 
+  def accessToken = getHeader(AUTHORIZATION) map(_.stripPrefix("Bearer "))
 }
 
 object ProxyRequest {

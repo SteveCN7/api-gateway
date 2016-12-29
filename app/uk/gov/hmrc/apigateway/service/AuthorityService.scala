@@ -39,9 +39,8 @@ class AuthorityService @Inject()(delegatedAuthorityConnector: DelegatedAuthority
     }
 
   private def getDelegatedAuthority(proxyRequest: ProxyRequest): Future[Authority] =
-    proxyRequest.getHeader(AUTHORIZATION) match {
-      case Some(bearerToken) =>
-        val accessToken = bearerToken.stripPrefix("Bearer ")
+    proxyRequest.accessToken match {
+      case Some(accessToken) =>
         delegatedAuthorityConnector.getByAccessToken(accessToken)
       case _ => failed(MissingCredentials())
     }

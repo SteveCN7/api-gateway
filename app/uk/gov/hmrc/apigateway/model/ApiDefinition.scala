@@ -21,6 +21,8 @@ import uk.gov.hmrc.apigateway.model.AuthType.AuthType
 object AuthType extends Enumeration {
   type AuthType = Value
   val NONE, USER, APPLICATION = Value
+
+  def authType(string: String) = AuthType.values.find(_.toString == string)
 }
 
 case class ApiDefinition(context: String, serviceBaseUrl: String, versions: Seq[ApiVersion])

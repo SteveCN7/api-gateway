@@ -21,8 +21,9 @@ import javax.inject.{Inject, Singleton}
 import akka.stream.Materializer
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.exception.GatewayError.{MissingCredentials, NotFound => _}
-import uk.gov.hmrc.apigateway.model.AuthType.APPLICATION
-import uk.gov.hmrc.apigateway.model.ProxyRequest
+import uk.gov.hmrc.apigateway.model.AuthType.{authType, APPLICATION}
+import uk.gov.hmrc.apigateway.model.{AuthType, ProxyRequest}
+import uk.gov.hmrc.apigateway.service.AuthorityService
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -40,8 +41,8 @@ class ApplicationRestrictedEndpointFilter @Inject()
 (implicit override val mat: Materializer, executionContext: ExecutionContext) extends ApiGatewayFilter {
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
-    requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) match {
-      case Some(string) if string.equals(APPLICATION.toString) =>
+    requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) flatMap authType match {
+      case Some(APPLICATION) =>
         authorityService.findAuthority(proxyRequest) map { authority =>
           requestHeader.withTag(X_APPLICATION_CLIENT_ID, authority.delegatedAuthority.clientId)
         } recover {

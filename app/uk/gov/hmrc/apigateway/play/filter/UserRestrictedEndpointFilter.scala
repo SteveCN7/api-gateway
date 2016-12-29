@@ -21,6 +21,7 @@ import javax.inject.{Inject, Singleton}
 import akka.stream.Materializer
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound => _}
+import uk.gov.hmrc.apigateway.model.AuthType.USER
 import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
@@ -39,7 +40,7 @@ class UserRestrictedEndpointFilter @Inject()
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
     requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) match {
-      case Some("USER") => for {
+      case Some(USER.toString) => for {
         authority <- delegatedAuthorityFilter.filter(proxyRequest)
         isValidScope <- scopeValidator.validate(authority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
       // TODO implement token swap

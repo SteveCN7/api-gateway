@@ -24,7 +24,8 @@ import org.scalatest.mockito.MockitoSugar
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, InvalidScope}
-import uk.gov.hmrc.apigateway.model.{Authority, ProxyRequest, ThirdPartyDelegatedAuthority, Token}
+import uk.gov.hmrc.apigateway.model.AuthType.USER
+import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.UnitSpec
 
@@ -44,7 +45,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
 
   "User restricted endpoint filter" should {
 
-    val fakeRequest = FakeRequest("GET", "http://host.example/foo").withTag(X_API_GATEWAY_AUTH_TYPE, "USER")
+    val fakeRequest = FakeRequest("GET", "http://host.example/foo").withTag(X_API_GATEWAY_AUTH_TYPE, USER.toString)
 
     "decline a request not matching a delegated authority" in new Setup {
       mock(delegatedAuthorityFilter, InvalidCredentials())
@@ -65,7 +66,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
       mock(delegatedAuthorityFilter, validAuthority())
       mock(scopeValidator, flag = true)
 
-      val fakeRequest = FakeRequest("GET", "http://host.example/foo").withTag(X_API_GATEWAY_AUTH_TYPE, "USER").withTag(X_API_GATEWAY_SCOPE, "scopeMoo")
+      val fakeRequest = FakeRequest("GET", "http://host.example/foo").withTag(X_API_GATEWAY_AUTH_TYPE, USER.toString).withTag(X_API_GATEWAY_SCOPE, "scopeMoo")
 
       val result = await(userRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
       result.tags.get(X_APPLICATION_CLIENT_ID) shouldBe Some("accessToken")

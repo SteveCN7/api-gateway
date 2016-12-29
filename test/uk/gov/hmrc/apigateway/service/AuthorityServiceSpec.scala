@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.play.filter
+package uk.gov.hmrc.apigateway.service
 
 import org.joda.time.DateTime
 import org.joda.time.DateTime.now
@@ -29,13 +29,13 @@ import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future.successful
 
-class DelegatedAuthorityFilterSpec extends UnitSpec with MockitoSugar {
+class AuthorityServiceSpec extends UnitSpec with MockitoSugar {
 
   private val proxyRequest = mock[ProxyRequest]
   private val delegatedAuthorityConnector = mock[DelegatedAuthorityConnector]
   private val authorityService = new AuthorityService(delegatedAuthorityConnector)
 
-  "Delegated authority filter" should {
+  "findAuthority" should {
 
     "throw an exception when credentials are missing" in {
       mockProxyRequestAuthorizationHeader(None)

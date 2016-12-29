@@ -36,24 +36,22 @@ import scala.util.{Success, Try}
   */
 @Singleton
 class ApplicationRestrictedEndpointFilter @Inject()
-(delegatedAuthorityFilter: DelegatedAuthorityFilter)
+(authorityService: AuthorityService)
 (implicit override val mat: Materializer, executionContext: ExecutionContext) extends ApiGatewayFilter {
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
     requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) match {
       case Some(string) if string.equals(APPLICATION.toString) =>
-        Try(delegatedAuthorityFilter.filter(proxyRequest)) match {
-          case Success(eventualAuthority) => eventualAuthority map { authority =>
-            requestHeader.withTag(X_APPLICATION_CLIENT_ID, authority.delegatedAuthority.clientId)
-          }
-          case _ => requestHeader.tags.get(AUTHORIZATION) match {
+        authorityService.findAuthority(proxyRequest) map { authority =>
+          requestHeader.withTag(X_APPLICATION_CLIENT_ID, authority.delegatedAuthority.clientId)
+        } recover {
+          case _ => requestHeader.headers.get(AUTHORIZATION) match {
             case Some(bearerToken) =>
-              val serverToken = bearerToken.stripPrefix("Bearer ")
-              successful(requestHeader.withTag(X_APPLICATION_CLIENT_ID, serverToken))
-            case _ => failed(MissingCredentials())
+              //TODO Fetch Client ID from third-party-application
+              requestHeader
+            case _ => throw MissingCredentials()
           }
         }
       case _ => successful(requestHeader)
     }
-
 }

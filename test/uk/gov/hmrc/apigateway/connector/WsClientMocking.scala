@@ -25,6 +25,7 @@ import uk.gov.hmrc.apigateway.cache.{CacheMetrics, CacheManager}
 
 import scala.concurrent.Future._
 
+// TODO use wiremock and get rid of this
 trait WsClientMocking extends MockitoSugar {
 
   private val cacheApi = mock[CacheApi]

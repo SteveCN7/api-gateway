@@ -45,7 +45,7 @@ class DelegatedAuthorityConnectorSpec extends UnitSpec with WsClientMocking {
     }
 
     "return the delegated authority when access token is valid" in {
-      val authority = Authority(ThirdPartyDelegatedAuthority("sandbox_token", "uKQXtOfZEmW8z5UOwHsg3ANF_fwa", Token(Set.empty, DateTime.now)))
+      val authority = Authority(ThirdPartyDelegatedAuthority("sandbox_token", "uKQXtOfZEmW8z5UOwHsg3ANF_fwa", Token("accessToken", Set.empty, DateTime.now)))
       mockWsClient(wsClient, "http://tpda.example/authority?access_token=31c99f9482de49544c6cc3374c378028", OK, stringify(toJson(authority)))
       await(delegatedAuthorityConnector.getByAccessToken("31c99f9482de49544c6cc3374c378028")) shouldBe authority
     }

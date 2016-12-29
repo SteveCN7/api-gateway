@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.play.filter
+package uk.gov.hmrc.apigateway.service
 
 import org.joda.time.DateTime
 import org.joda.time.DateTime.now
@@ -23,52 +23,48 @@ import org.mockito.Mockito.when
 import org.scalatest.mockito.MockitoSugar
 import uk.gov.hmrc.apigateway.connector.impl.DelegatedAuthorityConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, MissingCredentials}
-import uk.gov.hmrc.apigateway.model.{Authority, ProxyRequest, ThirdPartyDelegatedAuthority, Token}
+import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future.successful
 
-class DelegatedAuthorityFilterSpec extends UnitSpec with MockitoSugar {
+class AuthorityServiceSpec extends UnitSpec with MockitoSugar {
 
-  private val proxyRequest = mock[ProxyRequest]
+  private val request = ProxyRequest("GET", "/hello/world", headers = Map(AUTHORIZATION -> "Bearer 31c99f9482de49544c6cc3374c378028"))
   private val delegatedAuthorityConnector = mock[DelegatedAuthorityConnector]
-  private val delegatedAuthorityFilter = new DelegatedAuthorityFilter(delegatedAuthorityConnector)
+  private val authorityService = new AuthorityService(delegatedAuthorityConnector)
 
-  "Delegated authority filter" should {
+  "findAuthority" should {
 
     "throw an exception when credentials are missing" in {
-      mockProxyRequestAuthorizationHeader(None)
+      val requestWithoutHeader = request.copy(headers = Map())
       intercept[MissingCredentials] {
-        await(delegatedAuthorityFilter.filter(proxyRequest))
+        await(authorityService.findAuthority(requestWithoutHeader))
       }
     }
 
     "throw an exception when credentials have expired" in {
-      val expiredAuthority = authorityWithExpiration(now.minusMinutes(5))
-      mockProxyRequestAuthorizationHeader(Some("Bearer 31c99f9482de49544c6cc3374c378028"))
-      mockDelegatedAuthorityConnector(expiredAuthority)
+      mockDelegatedAuthorityConnector(authorityWithExpiration(now.minusMinutes(5)))
+
       intercept[InvalidCredentials] {
-        await(delegatedAuthorityFilter.filter(proxyRequest))
+        await(authorityService.findAuthority(request))
       }
     }
 
     "return the delegated authority when credentials are valid" in {
       val unexpiredAuthority = authorityWithExpiration(now.plusMinutes(5))
-      mockProxyRequestAuthorizationHeader(Some("Bearer 31c99f9482de49544c6cc3374c378028"))
-      mockDelegatedAuthorityConnector(unexpiredAuthority)
-      await(delegatedAuthorityFilter.filter(proxyRequest)) shouldBe unexpiredAuthority
+
+      mockDelegatedAuthorityConnector(authorityWithExpiration(now.plusMinutes(5)))
+
+      await(authorityService.findAuthority(request)) shouldBe unexpiredAuthority
     }
-
   }
-
-  private def mockProxyRequestAuthorizationHeader(maybeString: Option[String]) =
-    when(proxyRequest.getHeader(AUTHORIZATION)).thenReturn(maybeString)
 
   private def mockDelegatedAuthorityConnector(authority: Authority) =
     when(delegatedAuthorityConnector.getByAccessToken(anyString)).thenReturn(successful(authority))
 
   private def authorityWithExpiration(expirationDateTime: DateTime) =
-    Authority(ThirdPartyDelegatedAuthority("authBearerToken", "clientId", Token(Set.empty, expirationDateTime)))
+    Authority(ThirdPartyDelegatedAuthority("authBearerToken", "clientId", Token("accessToken", Set.empty, expirationDateTime)))
 
 }

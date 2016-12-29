@@ -16,10 +16,19 @@
 
 package uk.gov.hmrc.apigateway.model
 
+import uk.gov.hmrc.apigateway.model.AuthType.AuthType
+
+object AuthType extends Enumeration {
+  type AuthType = Value
+  val NONE, USER, APPLICATION = Value
+
+  def authType(string: String) = AuthType.values.find(_.toString == string)
+}
+
 case class ApiDefinition(context: String, serviceBaseUrl: String, versions: Seq[ApiVersion])
 
 case class ApiVersion(version: String, endpoints: Seq[ApiEndpoint])
 
-case class ApiEndpoint(uriPattern: String, method: String, scope: Option[String] = None)
+case class ApiEndpoint(uriPattern: String, method: String, authType: AuthType, scope: Option[String] = None)
 
-case class ApiDefinitionMatch(context: String, serviceBaseUrl: String, apiVersion: String, scope: Option[String])
+case class ApiDefinitionMatch(context: String, serviceBaseUrl: String, apiVersion: String, authType: AuthType, scope: Option[String])

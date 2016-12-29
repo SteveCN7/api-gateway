@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.play.filter
+package uk.gov.hmrc.apigateway.service
 
 import javax.inject.{Inject, Singleton}
 
@@ -26,12 +26,12 @@ import uk.gov.hmrc.apigateway.util.HttpHeaders.AUTHORIZATION
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.Future.failed
 
 @Singleton
-class DelegatedAuthorityFilter @Inject()(delegatedAuthorityConnector: DelegatedAuthorityConnector) {
+class AuthorityService @Inject()(delegatedAuthorityConnector: DelegatedAuthorityConnector) {
 
-  // TODO only check this for user restricted endpoints
-  def filter(proxyRequest: ProxyRequest): Future[Authority] =
+  def findAuthority(proxyRequest: ProxyRequest): Future[Authority] =
     getDelegatedAuthority(proxyRequest) map { authority =>
       if (hasExpired(authority))
         throw InvalidCredentials()
@@ -39,11 +39,10 @@ class DelegatedAuthorityFilter @Inject()(delegatedAuthorityConnector: DelegatedA
     }
 
   private def getDelegatedAuthority(proxyRequest: ProxyRequest): Future[Authority] =
-    proxyRequest.getHeader(AUTHORIZATION) match {
-      case Some(bearerToken) =>
-        val accessToken = bearerToken.stripPrefix("Bearer ")
+    proxyRequest.accessToken match {
+      case Some(accessToken) =>
         delegatedAuthorityConnector.getByAccessToken(accessToken)
-      case _ => throw MissingCredentials()
+      case _ => failed(MissingCredentials())
     }
 
   private def hasExpired(authority: Authority) =

@@ -22,4 +22,4 @@ case class Authority(delegatedAuthority: ThirdPartyDelegatedAuthority, authExpir
 
 case class ThirdPartyDelegatedAuthority(authBearerToken: String, clientId: String, token: Token)
 
-case class Token(scopes: Set[String], expiresAt: DateTime)
+case class Token(accessToken:String, scopes: Set[String], expiresAt: DateTime)

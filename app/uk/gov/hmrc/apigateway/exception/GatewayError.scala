@@ -16,7 +16,13 @@
 
 package uk.gov.hmrc.apigateway.exception
 
-class GatewayError(val code: String, val message: String) extends Throwable(message)
+import play.api.Logger
+import play.api.libs.json.Json._
+import play.api.mvc.Result
+import play.api.mvc.Results.{NotFound => PlayNotFound, _}
+import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
+
+class GatewayError(val code: String, val message: String) extends RuntimeException(message)
 
 object GatewayError {
 
@@ -33,5 +39,17 @@ object GatewayError {
   case class MissingCredentials() extends GatewayError("MISSING_CREDENTIALS", "Authentication information is not provided")
 
   case class InvalidScope() extends GatewayError("INVALID_SCOPE", "Cannot access the required resource. Ensure this token has all the required scopes.")
+
+  def recovery: PartialFunction[Throwable, Result] = {
+    case e: MissingCredentials => Unauthorized(toJson(e))
+    case e: InvalidCredentials => Unauthorized(toJson(e))
+    case e: InvalidAcceptHeader => BadRequest(toJson(e))
+    case e: MatchingResourceNotFound => PlayNotFound(toJson(e))
+    case e: InvalidScope => Forbidden(toJson(e))
+    case e: NotFound => PlayNotFound(toJson(e))
+    case e =>
+      Logger.error("unexpected error", e)
+      InternalServerError(toJson(ServerError()))
+  }
 
 }

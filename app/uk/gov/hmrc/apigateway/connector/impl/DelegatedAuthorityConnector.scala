@@ -30,10 +30,10 @@ import scala.concurrent.Future
 
 @Singleton
 class DelegatedAuthorityConnector @Inject()(wsClient: WSClient, cache: CacheManager)
-  extends ServiceConnector(wsClient, cache, "authority") {
+  extends ServiceConnector(wsClient, cache, "third-party-delegated-authority") {
 
   def getByAccessToken(accessToken: String): Future[Authority] =
-    get[Authority](s"$serviceName?access_token=$accessToken") recover {
+    get[Authority](s"authority?access_token=$accessToken") recover {
       case error: NotFound => throw InvalidCredentials()
     }
 

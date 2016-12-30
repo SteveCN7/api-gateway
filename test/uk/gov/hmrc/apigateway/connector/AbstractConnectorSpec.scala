@@ -16,43 +16,68 @@
 
 package uk.gov.hmrc.apigateway.connector
 
-import org.mockito.ArgumentMatchers.anyString
-import org.mockito.Mockito.when
-import play.api.http.Status.{NOT_FOUND, OK}
+import com.github.tomakehurst.wiremock.WireMockServer
+import com.github.tomakehurst.wiremock.client.WireMock
+import com.github.tomakehurst.wiremock.client.WireMock._
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration._
+import org.scalatest.BeforeAndAfterEach
 import play.api.libs.json.Json
-import play.api.libs.ws.{WSClient, WSRequest}
+import play.api.libs.json.Json.{toJson, stringify}
+import play.api.libs.ws.WSClient
 import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
-import uk.gov.hmrc.play.test.UnitSpec
+import uk.gov.hmrc.play.test.{WithFakeApplication, UnitSpec}
 
-class AbstractConnectorSpec extends UnitSpec with WsClientMocking {
+class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAndAfterEach {
 
-  private val wsClient = mock[WSClient]
-  private val wsRequest = mock[WSRequest]
+  val stubPort = sys.env.getOrElse("WIREMOCK", "22222").toInt
+  val stubHost = "localhost"
+  val wireMockUrl = s"http://$stubHost:$stubPort"
+  val wireMockServer = new WireMockServer(wireMockConfig().port(stubPort))
 
-  private val abstractConnectorImpl = new AbstractConnectorImpl {
-    when(wsClient.url(anyString)).thenReturn(wsRequest)
+  trait Setup {
+    val underTest = new AbstractConnectorImpl(fakeApplication.injector.instanceOf[WSClient])
+  }
+
+  override def beforeEach {
+    wireMockServer.start()
+    WireMock.configureFor(stubHost, stubPort)
+  }
+
+  override def afterEach {
+    wireMockServer.stop()
   }
 
   "Abstract connector" should {
 
-    "throw a runtime exception when the response is '404' not found" in {
-      mockWsClient(wsClient, "http://host.example/foo/bar", NOT_FOUND)
+    "throw a runtime exception when the response is '404' not found" in new Setup {
+
+      stubFor(get(urlPathEqualTo("/foo/bar"))
+        .willReturn(
+          aResponse().withStatus(404)
+        ))
+
       intercept[NotFound] {
-        await(abstractConnectorImpl.get[String]("http://host.example/foo/bar"))
+        await(underTest.get[String](s"$wireMockUrl/foo/bar"))
       }
     }
 
-    "return response json payload when the response is '2xx'" in {
+    "return response json payload when the response is '2xx'" in new Setup {
       implicit val apiDefinitionFormat = Json.format[Foo]
-      mockWsClient(wsClient, "http://host.example/foo/bar", OK, """ { "bar" : "baz" } """)
-      val result = await(abstractConnectorImpl.get[Foo]("http://host.example/foo/bar"))
-      result shouldBe Foo("baz")
+
+      stubFor(get(urlPathEqualTo("/foo/bar"))
+        .willReturn(
+          aResponse()
+            .withStatus(200)
+            .withBody(stringify(toJson(Foo("bar"))))
+        ))
+
+      val result = await(underTest.get[Foo](s"$wireMockUrl/foo/bar"))
+
+      result shouldBe Foo("bar")
     }
 
   }
 
-  class AbstractConnectorImpl extends AbstractConnector(wsClient)
-
+  class AbstractConnectorImpl(wsClient: WSClient) extends AbstractConnector(wsClient)
   case class Foo(bar: String)
-
 }

@@ -28,11 +28,9 @@ object GatewayError {
 
   case class ServerError() extends GatewayError("SERVER_ERROR", "Service unavailable")
 
-  case class NotFound() extends GatewayError("NOT_FOUND", "Requested resource could not be found")
+  case class NotFound() extends GatewayError("NOT_FOUND", "The requested resource could not be found.")
 
   case class MatchingResourceNotFound() extends GatewayError("MATCHING_RESOURCE_NOT_FOUND", "A resource with the name in the request cannot be found in the API")
-
-  case class InvalidAcceptHeader() extends GatewayError("ACCEPT_HEADER_INVALID", "The accept header is missing or invalid")
 
   case class InvalidCredentials() extends GatewayError("INVALID_CREDENTIALS", "Invalid Authentication information provided")
 
@@ -43,7 +41,6 @@ object GatewayError {
   def recovery: PartialFunction[Throwable, Result] = {
     case e: MissingCredentials => Unauthorized(toJson(e))
     case e: InvalidCredentials => Unauthorized(toJson(e))
-    case e: InvalidAcceptHeader => BadRequest(toJson(e))
     case e: MatchingResourceNotFound => PlayNotFound(toJson(e))
     case e: InvalidScope => Forbidden(toJson(e))
     case e: NotFound => PlayNotFound(toJson(e))

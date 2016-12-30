@@ -19,6 +19,7 @@ package uk.gov.hmrc.apigateway.service
 import org.mockito.Mockito.{verify, when}
 import org.scalatest.mockito.MockitoSugar
 import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
+import uk.gov.hmrc.apigateway.exception.GatewayError.{MatchingResourceNotFound, NotFound}
 import uk.gov.hmrc.apigateway.model.AuthType.NONE
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
@@ -49,6 +50,22 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
     "return api definition when proxy request matches api definition endpoint" in {
       mockApiServiceConnectorToReturnSuccess
       await(endpointService.findApiDefinition(proxyRequest)) shouldBe apiDefinitionMatch
+    }
+
+    "fail with NotFound when no version matches the Accept headers in the API Definition" in {
+      val request = proxyRequest.copy(headers = Map("Accept" -> "application/vnd.hmrc.55.0+json"))
+
+      mockApiServiceConnectorToReturnSuccess
+
+      intercept[NotFound]{await(endpointService.findApiDefinition(request))}
+    }
+
+    "fail with MatchingResourceNotFound when no endpoint matches in the API Definition" in {
+      val request = proxyRequest.copy(path = "/api-context/invalidEndpoint")
+
+      mockApiServiceConnectorToReturnSuccess
+
+      intercept[MatchingResourceNotFound]{await(endpointService.findApiDefinition(request))}
     }
 
     "throw an exception when proxy request does not match api definition endpoint" in {

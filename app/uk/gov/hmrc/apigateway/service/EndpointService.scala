@@ -21,7 +21,7 @@ import javax.inject.{Inject, Singleton}
 import play.api.Logger
 import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound, MatchingResourceNotFound}
-import uk.gov.hmrc.apigateway.model.{ApiDefinition, ApiDefinitionMatch, ApiEndpoint, ProxyRequest}
+import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.service.EndpointService._
 import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
 import uk.gov.hmrc.apigateway.util.ProxyRequestUtils.{validateContext, parseVersion}
@@ -53,7 +53,9 @@ object EndpointService {
 
   private def findEndpoint(proxyRequest: ProxyRequest, requestContext: String, requestVersion: String, apiDefinition: ApiDefinition) = {
     def filterEndpoint(apiEndpoint: ApiEndpoint): Boolean =
-      apiEndpoint.method == proxyRequest.httpMethod && pathMatchesPattern(apiEndpoint.uriPattern, proxyRequest.path)
+      apiEndpoint.method == proxyRequest.httpMethod &&
+        pathMatchesPattern(apiEndpoint.uriPattern, proxyRequest.rawPath) &&
+        queryParametersMatch(proxyRequest.queryParameters, apiEndpoint.queryParameters)
 
     val apiVersion = apiDefinition.versions.find(_.version == requestVersion)
     val apiEndpoint = apiVersion.flatMap(_.endpoints.find(filterEndpoint))
@@ -73,6 +75,11 @@ object EndpointService {
       case (Variable, _) => true
       case (PathPart(requiredPart), providedPart) => requiredPart == providedPart
     }
+  }
+
+  private def queryParametersMatch(queryParameters: Map[String, Seq[String]], endpointQueryParameters: Option[Seq[Parameter]] = None)  = {
+    val missingParameter = endpointQueryParameters.exists(_.exists(p => p.required && queryParameters.get(p.name).isEmpty))
+    !missingParameter
   }
 
   private def parsePathParts(value: String) =

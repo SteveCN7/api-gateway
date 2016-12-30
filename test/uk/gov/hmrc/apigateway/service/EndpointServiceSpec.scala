@@ -38,7 +38,7 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
 
   "Endpoint service" should {
 
-    val proxyRequest = ProxyRequest("GET", "/api-context/api-endpoint", Map(ACCEPT -> "application/vnd.hmrc.1.0+json"))
+    val proxyRequest = ProxyRequest("GET", "/api-context/api-endpoint", headers = Map(ACCEPT -> "application/vnd.hmrc.1.0+json"))
     val apiDefinitionMatch = ApiDefinitionMatch("api-context", "http://host.example", "1.0", NONE, None)
 
     "invoke api definition connector with correct service name" in {
@@ -68,6 +68,28 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
       intercept[MatchingResourceNotFound]{await(endpointService.findApiDefinition(request))}
     }
 
+    "fail with MatchingResourceNotFound when a required request parameter is not in the URL" in {
+      val request = proxyRequest.copy(path = "/api-context/api-endpoint")
+
+      val anApiDefinition = ApiDefinition("api-context", "http://host.example", Seq(ApiVersion("1.0",
+        Seq(ApiEndpoint("/api-endpoint", "GET", NONE, queryParameters = Some(Seq(Parameter("requiredParam", required = true))))))))
+
+      mockApiServiceConnectorToReturn("api-context", successful(anApiDefinition))
+
+      intercept[MatchingResourceNotFound]{await(endpointService.findApiDefinition(request))}
+    }
+
+    "succeed when all required request parameter are in the URL" in {
+      val request = proxyRequest.copy(queryParameters = Map("requiredParam" -> Seq("test")))
+
+      val anApiDefinition = ApiDefinition("api-context", "http://host.example", Seq(ApiVersion("1.0",
+        Seq(ApiEndpoint("/api-endpoint", "GET", NONE, queryParameters = Some(Seq(Parameter("requiredParam", required = true))))))))
+
+      mockApiServiceConnectorToReturn("api-context", successful(anApiDefinition))
+
+      await(endpointService.findApiDefinition(request)) shouldBe apiDefinitionMatch
+    }
+
     "throw an exception when proxy request does not match api definition endpoint" in {
       mockApiServiceConnectorToReturnFailure
       intercept[RuntimeException] {
@@ -83,7 +105,7 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
   private def mockApiServiceConnectorToReturnFailure =
     mockApiServiceConnectorToReturn("api-context", failed(new RuntimeException("simulated test exception")))
 
-  private def mockApiServiceConnectorToReturn(serviceName: String, eventualApiDefinition: Future[ApiDefinition]) =
-    when(apiDefinitionConnector.getByContext(serviceName)).thenReturn(eventualApiDefinition)
+  private def mockApiServiceConnectorToReturn(context: String, eventualApiDefinition: Future[ApiDefinition]) =
+    when(apiDefinitionConnector.getByContext(context)).thenReturn(eventualApiDefinition)
 
 }

@@ -31,7 +31,7 @@ object ProxyRequestUtils {
   private val defaultVersion = "1.0"
 
   def validateContext[T](proxyRequest: ProxyRequest): Future[String] =
-    validateOrElse(parseContext(proxyRequest.path), NotFound())
+    validateOrElse(parseContext(proxyRequest.rawPath), NotFound())
 
   def parseVersion[T](proxyRequest: ProxyRequest): Future[String] = {
     val acceptHeader: String = proxyRequest.getHeader(ACCEPT).getOrElse("")

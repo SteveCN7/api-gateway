@@ -28,7 +28,8 @@ class RequestProxyingIntegrationSpec extends BaseFeatureSpec {
   val anApiDefinition = ApiDefinition("api-simulator", api.url,
     Seq(
       ApiVersion("1.0", Seq(ApiEndpoint("version1", "GET", AuthType.NONE))),
-      ApiVersion("2.0", Seq(ApiEndpoint("version2", "GET", AuthType.NONE)))
+      ApiVersion("2.0", Seq(ApiEndpoint("version2", "GET", AuthType.NONE,
+        queryParameters = Some(Seq(Parameter("requiredParam", required = true), Parameter("optionalParam", required = false))))))
     ))
   val apiResponse = """{"response": "ok"}"""
 
@@ -120,6 +121,36 @@ class RequestProxyingIntegrationSpec extends BaseFeatureSpec {
           "code":"NOT_FOUND",
           "message":"The requested resource could not be found."
           } """)
+    }
+
+    scenario("A request without a mandatory request parameter is not proxied") {
+      Given("A request without a mandatory request parameter")
+      val httpRequest = Http(s"$serviceUrl/api-simulator/version2").header(ACCEPT, "application/vnd.hmrc.2.0+json")
+
+      When("The request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("The http response is '404' not found")
+      assertCodeIs(httpResponse, NOT_FOUND)
+
+      And("The response message code is 'NOT_FOUND'")
+      assertBodyIs(httpResponse,
+        """{
+          "code":"MATCHING_RESOURCE_NOT_FOUND",
+          "message":"A resource with the name in the request cannot be found in the API"
+          } """)
+    }
+
+    scenario("A request with all mandatory request parameters is proxied") {
+      Given("A request with the mandatory request parameter")
+      val httpRequest = Http(s"$serviceUrl/api-simulator/version2?requiredParam=test").header(ACCEPT, "application/vnd.hmrc.2.0+json")
+
+      When("The request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("The request is proxied")
+      assertCodeIs(httpResponse, OK)
+      assertBodyIs(httpResponse, apiResponse)
     }
   }
 }

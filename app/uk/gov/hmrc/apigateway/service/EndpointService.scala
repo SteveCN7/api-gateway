@@ -20,11 +20,11 @@ import javax.inject.{Inject, Singleton}
 
 import play.api.Logger
 import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError.MatchingResourceNotFound
+import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound, MatchingResourceNotFound}
 import uk.gov.hmrc.apigateway.model.{ApiDefinition, ApiDefinitionMatch, ApiEndpoint, ProxyRequest}
 import uk.gov.hmrc.apigateway.service.EndpointService._
 import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
-import uk.gov.hmrc.apigateway.util.ProxyRequestUtils.{validateContext, validateVersion}
+import uk.gov.hmrc.apigateway.util.ProxyRequestUtils.{validateContext, parseVersion}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -36,7 +36,7 @@ class EndpointService @Inject()(apiDefinitionConnector: ApiDefinitionConnector) 
   def findApiDefinition(proxyRequest: ProxyRequest): Future[ApiDefinitionMatch] =
     for {
       requestContext <- validateContext(proxyRequest)
-      requestVersion <- validateVersion(proxyRequest)
+      requestVersion <- parseVersion(proxyRequest)
       apiDefinition <- apiDefinitionConnector.getByContext(requestContext)
       apiEndpoint <- findEndpoint(proxyRequest, requestContext, requestVersion, apiDefinition)
     } yield createAndLogApiDefinitionMatch(proxyRequest, requestContext, apiDefinition, requestVersion, apiEndpoint)
@@ -56,12 +56,14 @@ object EndpointService {
     def filterEndpoint(apiEndpoint: ApiEndpoint): Boolean =
       apiEndpoint.method == proxyRequest.httpMethod && pathMatchesPattern(apiEndpoint.uriPattern, proxyRequest.path)
 
-    val maybeEndpoint: Option[ApiEndpoint] = for {
-      apiVersion <- apiDefinition.versions.find(_.version == requestVersion)
-      apiEndpoint <- apiVersion.endpoints.find(filterEndpoint)
-    } yield apiEndpoint
+    val apiVersion = apiDefinition.versions.find(_.version == requestVersion)
+    val apiEndpoint = apiVersion.flatMap(_.endpoints.find(filterEndpoint))
 
-    maybeEndpoint.map(successful).getOrElse(failed(MatchingResourceNotFound()))
+    (apiVersion, apiEndpoint) match {
+      case (None, _) => failed(NotFound())
+      case (_, None) => failed(MatchingResourceNotFound())
+      case (_, Some(endpoint)) => successful(endpoint)
+    }
   }
 
   private def pathMatchesPattern(uriPattern: String, path: String): Boolean = {

@@ -16,80 +16,87 @@
 
 package it.uk.gov.hmrc.apigateway.feature
 
-import it.uk.gov.hmrc.apigateway.WsClientIntegrationSpec
-import org.joda.time.DateTime
+import it.uk.gov.hmrc.apigateway.BaseFeatureSpec
 import play.api.http.Status._
-import play.api.libs.json.Json.{parse, stringify, toJson}
-import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
-import uk.gov.hmrc.apigateway.model.{Authority, ThirdPartyDelegatedAuthority, Token}
-import uk.gov.hmrc.apigateway.play.binding.PlayBindings.authorityFormat
-import uk.gov.hmrc.apigateway.util.HttpHeaders.{ACCEPT, AUTHORIZATION}
+import uk.gov.hmrc.apigateway.model._
+import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
 
 import scalaj.http.Http
 
-class RequestProxyingIntegrationSpec extends WsClientIntegrationSpec {
+class RequestProxyingIntegrationSpec extends BaseFeatureSpec {
+
+  val anApiDefinition = ApiDefinition("api-simulator", api.url,
+    Seq(
+      ApiVersion("1.0", Seq(ApiEndpoint("version1", "GET", AuthType.NONE))),
+      ApiVersion("2.0", Seq(ApiEndpoint("version2", "GET", AuthType.NONE)))
+    ))
+  val apiResponse = """{"response": "ok"}"""
+
+  override def beforeEach() {
+    super.beforeEach()
+
+    Given("An API Definition exists")
+    apiDefinition.willReturnTheApiDefinition(anApiDefinition)
+
+    And("The API returns a response")
+    api.willReturnTheResponse(apiResponse)
+  }
 
   feature("The API gateway proxies requests to downstream services") {
 
-    info("As a third party software developer")
-    info("I want to be able to make requests via the API gateway")
-    info("So that I can invoke services on the API platform")
+    scenario("A request without an 'accept' http header is proxied to the version 1.0") {
+      Given("A request without an 'accept' http header")
+      val httpRequest = Http(s"$serviceUrl/api-simulator/version1")
 
-    scenario("a request without an 'accept' http header is not proxied") {
-      Given("a request without an 'accept' http header")
-      val httpRequest = Http(s"$apiGatewayUrl/foo")
-
-      When("the request is sent to the gateway")
+      When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
 
-      Then("the http response is '400' bad request")
-      assertCodeIs(httpResponse, BAD_REQUEST)
-
-      And("the response message code is 'ACCEPT_HEADER_INVALID'")
-      assertBodyIs(httpResponse, """ {"code":"ACCEPT_HEADER_INVALID","message":"The accept header is missing or invalid"} """)
+      Then("The request is proxied")
+      assertCodeIs(httpResponse, OK)
+      assertBodyIs(httpResponse, apiResponse)
     }
 
-    scenario("a request with a malformed 'accept' http header is not proxied") {
-      Given("a request with a malformed 'accept' http header")
-      val httpRequest = Http(s"$apiGatewayUrl/foo").header(ACCEPT, "application/json")
+    scenario("A request with a malformed 'accept' http header is proxied to the version 1.0") {
+      Given("A request with a malformed 'accept' http header")
+      val httpRequest = Http(s"$serviceUrl/api-simulator/version1").header(ACCEPT, "application/json")
 
-      When("the request is sent to the gateway")
+      When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
 
-      Then("the response is http '400' bad request")
-      assertCodeIs(httpResponse, BAD_REQUEST)
-
-      And("the response message code is 'ACCEPT_HEADER_INVALID'")
-      assertBodyIs(httpResponse, """ {"code":"ACCEPT_HEADER_INVALID","message":"The accept header is missing or invalid"} """)
+      Then("The request is proxied")
+      assertCodeIs(httpResponse, OK)
+      assertBodyIs(httpResponse, apiResponse)
     }
 
-    scenario("a request whose context cannot be matched is not proxied") {
-      Given("a request for a non existent context")
-      val httpRequest = Http(s"$apiGatewayUrl/foo").header(ACCEPT, "application/vnd.hmrc.1.0+json")
-      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=foo", NOT_FOUND)
+    scenario("A request whose context cannot be matched is not proxied") {
+      Given("A request with an invalid context")
+      val httpRequest = Http(s"$serviceUrl/foo").header(ACCEPT, "application/vnd.hmrc.1.0+json")
 
-      When("the request is sent to the gateway")
+      And("No API matches the context")
+      apiDefinition.willNotReturnAnApiDefinitionForContext("foo")
+
+      When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
 
-      Then("the http response is '404' not found")
+      Then("The http response is '404' not found")
       assertCodeIs(httpResponse, NOT_FOUND)
 
-      And("the response message code is 'NOT_FOUND'")
-      assertBodyIs(httpResponse, """ {"code":"NOT_FOUND","message":"Requested resource could not be found"} """)
+      And("The response message code is 'NOT_FOUND'")
+      assertBodyIs(httpResponse, """ {"code":"NOT_FOUND","message":"The requested resource could not be found."} """)
     }
 
-    scenario("a request whose resource cannot be matched is not proxied") {
-      Given("a request for a non existent resource")
-      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/non-existent-resource").header(ACCEPT, "application/vnd.hmrc.1.0+json")
-      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
+    scenario("A request whose resource cannot be matched is not proxied") {
 
-      When("the request is sent to the gateway")
+      Given("A request with an invalid resource")
+      val httpRequest = Http(s"$serviceUrl/api-simulator/non-existent-resource").header(ACCEPT, "application/vnd.hmrc.1.0+json")
+
+      When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
 
-      Then("the http response is '404' not found")
+      Then("The http response is '404' not found")
       assertCodeIs(httpResponse, NOT_FOUND)
 
-      And("the response message code is 'MATCHING_RESOURCE_NOT_FOUND'")
+      And("The response message code is 'MATCHING_RESOURCE_NOT_FOUND'")
       assertBodyIs(httpResponse,
         """{
           "code":"MATCHING_RESOURCE_NOT_FOUND",
@@ -97,121 +104,22 @@ class RequestProxyingIntegrationSpec extends WsClientIntegrationSpec {
           } """)
     }
 
-    scenario("a request whose version cannot be matched is not proxied") {
-      Given("a request without a non existent version")
-      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/version-2-0-endpoint").header(ACCEPT, "application/vnd.hmrc.1.0+json")
-      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
+    scenario("A request whose version cannot be matched is not proxied") {
+      Given("A request without a non existent version")
+      val httpRequest = Http(s"$serviceUrl/api-simulator/version1").header(ACCEPT, "application/vnd.hmrc.3.0+json")
 
-      When("the request is sent to the gateway")
+      When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
 
-      Then("the http response is '404' not found")
+      Then("The http response is '404' not found")
       assertCodeIs(httpResponse, NOT_FOUND)
 
-      And("the response message code is 'MATCHING_RESOURCE_NOT_FOUND'")
+      And("The response message code is 'NOT_FOUND'")
       assertBodyIs(httpResponse,
         """{
-          "code":"MATCHING_RESOURCE_NOT_FOUND",
-          "message":"A resource with the name in the request cannot be found in the API"
+          "code":"NOT_FOUND",
+          "message":"The requested resource could not be found."
           } """)
     }
-
-    scenario("a restricted request without an 'authorization' http header is not proxied") {
-      Given("a request without an 'authorization' http header")
-      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user/latency/1").header(ACCEPT, "application/vnd.hmrc.1.0+json")
-      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
-
-      When("the request is sent to the gateway")
-      val httpResponse = invoke(httpRequest)
-
-      Then("the http response is '401' unauthorized")
-      assertCodeIs(httpResponse, UNAUTHORIZED)
-
-      And("the response message code is 'MISSING_CREDENTIALS'")
-      assertBodyIs(httpResponse, """ {"code":"MISSING_CREDENTIALS","message":"Authentication information is not provided"} """)
-    }
-
-    scenario("a restricted request with an invalid 'authorization' http header is not proxied") {
-      Given("a request with an invalid 'authorization' http header")
-      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user/latency/1").header(ACCEPT, "application/vnd.hmrc.1.0+json").header(AUTHORIZATION, "1234567890abcdefghi1234567890")
-      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
-      mockWsClient(wsClient, "http://tpda.example:9002/authority?access_token=1234567890abcdefghi1234567890", NOT_FOUND)
-
-      When("the request is sent to the gateway")
-      val httpResponse = invoke(httpRequest)
-
-      Then("the http response is '401' unauthorized")
-      assertCodeIs(httpResponse, UNAUTHORIZED)
-
-      And("the response message code is 'INVALID_CREDENTIALS'")
-      assertBodyIs(httpResponse, """ {"code":"INVALID_CREDENTIALS","message":"Invalid Authentication information provided"} """)
-    }
-
-    scenario("a restricted request with invalid scopes is not proxied") {
-      Given("a request with invalid scopes")
-      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user-restricted-version-2-0-endpoint")
-        .header(ACCEPT, "application/vnd.hmrc.2.0+json")
-        .header(AUTHORIZATION, "Bearer 80d964331707baf8872179c805353")
-      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
-      mockWsClient(wsClient, "http://tpda.example:9002/authority?access_token=80d964331707baf8872179c805353", OK, loadStubbedDelegatedAuthority("80d964331707baf8872179c805353"))
-
-      When("the request is sent to the gateway")
-      val httpResponse = invoke(httpRequest)
-
-      Then("the http response is '403' forbidden")
-      assertCodeIs(httpResponse, FORBIDDEN)
-
-      And("the response message code is 'INVALID_SCOPE'")
-      assertBodyIs(httpResponse, """ {"code":"INVALID_SCOPE","message":"Cannot access the required resource. Ensure this token has all the required scopes."} """)
-    }
-
-    scenario("a request passing checks for a user restricted endpoint is proxied") {
-      Given("a request which passes checks for a user restricted endpoint")
-      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/user-restricted-version-2-0-endpoint")
-        .header(ACCEPT, "application/vnd.hmrc.2.0+json")
-        .header(AUTHORIZATION, "Bearer 80d964331707baf8872179c805352")
-      mockWsClient(wsClient, "http://ad.example:9001/api-definition?context=api-simulator", OK, loadStubbedJson("api-definition/api-simulator"))
-      mockWsClient(wsClient, "http://tpda.example:9002/authority?access_token=80d964331707baf8872179c805352", OK, loadStubbedDelegatedAuthority("80d964331707baf8872179c805352"))
-
-      When("the request is sent to the gateway")
-      val httpResponse = invoke(httpRequest)
-
-      Then("the http response is '200' ok")
-      assertCodeIs(httpResponse, OK)
-
-      And("""the response message is '{"message":"response from /user-restricted-version-2-0-endpoint"}'""")
-      assertBodyIs(httpResponse, """ {"message":"response from /user-restricted-version-2-0-endpoint"} """)
-    }
-
-    // TODO
-    scenario("a request passing checks for an open endpoint is proxied") {
-      pending
-      Given("a request which passes checks for an open endpoint")
-      val httpRequest = Http(s"$apiGatewayUrl/api-simulator/open-version-2-0-endpoint")
-        .header(ACCEPT, "application/vnd.hmrc.2.0+json")
-
-      When("the request is sent to the gateway")
-      val httpResponse = invoke(httpRequest)
-
-      Then("the http response is '200' ok")
-      assertCodeIs(httpResponse, OK)
-
-      And("""the response message is '{"message":"Hello World"}'""")
-      assertBodyIs(httpResponse, """ {"message":"Hello World"} """)
-    }
   }
-
-  private def loadStubbedDelegatedAuthority(accessToken: String): String = {
-    Option(loadStubbedJson(s"authority/$accessToken")).map(parse(_).as[Authority]) match {
-      case Some(authority) =>
-        if (authority.authExpired) stringify(toJson(authority))
-        else {
-          val validToken: Token = authority.delegatedAuthority.token.copy(expiresAt = DateTime.now().plusMinutes(5))
-          val validTpda: ThirdPartyDelegatedAuthority = authority.delegatedAuthority.copy(token = validToken)
-          stringify(toJson(authority.copy(delegatedAuthority = validTpda)))
-        }
-      case _ => throw NotFound()
-    }
-  }
-
 }

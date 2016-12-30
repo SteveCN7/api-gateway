@@ -29,6 +29,12 @@ case class ApiDefinition(context: String, serviceBaseUrl: String, versions: Seq[
 
 case class ApiVersion(version: String, endpoints: Seq[ApiEndpoint])
 
-case class ApiEndpoint(uriPattern: String, method: String, authType: AuthType, scope: Option[String] = None)
+case class ApiEndpoint(uriPattern: String,
+                       method: String,
+                       authType: AuthType,
+                       scope: Option[String] = None,
+                       queryParameters: Option[Seq[Parameter]] = None)
+
+case class Parameter(name: String, required: Boolean = false)
 
 case class ApiDefinitionMatch(context: String, serviceBaseUrl: String, apiVersion: String, authType: AuthType, scope: Option[String])

@@ -30,6 +30,7 @@ object PlayBindings {
   }
 
   implicit val authTypeFormat = EnumJson.enumFormat(AuthType)
+  implicit val parameterFormat = Json.format[Parameter]
   implicit val apiEndpointFormat = Json.format[ApiEndpoint]
   implicit val apiVersionFormat = Json.format[ApiVersion]
   implicit val apiDefinitionFormat = Json.format[ApiDefinition]

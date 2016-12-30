@@ -16,24 +16,30 @@
 
 package uk.gov.hmrc.apigateway.model
 
+import java.net.URI
+
 import play.api.mvc.RequestHeader
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
 case class ProxyRequest
 (httpMethod: String,
  path: String,
+ queryParameters: Map[String, Seq[String]] = Map.empty,
  headers: Map[String, String] = Map.empty,
  httpVersion: String = "HTTP/1.1") {
 
   def getHeader(name: String): Option[String] = headers.get(name)
 
   def accessToken = getHeader(AUTHORIZATION) map(_.stripPrefix("Bearer "))
+
+  lazy val rawPath = new URI(path).getRawPath
 }
 
 object ProxyRequest {
 
-  def apply(requestHeader: RequestHeader): ProxyRequest =
-    ProxyRequest(requestHeader.method, requestHeader.uri.stripPrefix("/api-gateway"),
+  def apply(requestHeader: RequestHeader): ProxyRequest = {
+    ProxyRequest(requestHeader.method, requestHeader.uri.stripPrefix("/api-gateway"), requestHeader.queryString,
       requestHeader.headers.headers.toMap, requestHeader.version)
+  }
 
 }

@@ -14,21 +14,20 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.service
+package it.uk.gov.hmrc.apigateway.stubs
 
-import javax.inject.Singleton
+import com.github.tomakehurst.wiremock.client.WireMock._
+import it.uk.gov.hmrc.apigateway.{MockHost, Stub}
 
-import uk.gov.hmrc.apigateway.exception.GatewayError.InvalidScope
-import uk.gov.hmrc.apigateway.model.Authority
+object ApiStub extends Stub {
 
-import scala.concurrent.Future
-import scala.concurrent.Future.{failed, successful}
+  val port = 22220
+  val url = s"http://localhost:$port"
 
-@Singleton
-class ScopeValidator {
+  override val stub = new MockHost(port)
 
-  def validate(authority: Authority, maybeScope: Option[String]): Future[Boolean] = maybeScope match {
-    case Some(scope) if authority.delegatedAuthority.token.scopes.contains(scope) => successful(true)
-    case _ => failed(InvalidScope())
+  def willReturnTheResponse(response: String) = {
+    stub.mock.register(get(anyUrl())
+      .willReturn(aResponse().withStatus(200).withBody(response)))
   }
 }

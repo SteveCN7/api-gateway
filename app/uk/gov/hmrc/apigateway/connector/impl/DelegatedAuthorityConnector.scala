@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 HM Revenue & Customs
+ * Copyright 2017 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,10 +30,10 @@ import scala.concurrent.Future
 
 @Singleton
 class DelegatedAuthorityConnector @Inject()(wsClient: WSClient, cache: CacheManager)
-  extends ServiceConnector(wsClient, cache, "authority") {
+  extends ServiceConnector(wsClient, cache, "third-party-delegated-authority") {
 
   def getByAccessToken(accessToken: String): Future[Authority] =
-    get[Authority](s"$serviceName?access_token=$accessToken") recover {
+    get[Authority](s"authority?access_token=$accessToken") recover {
       case error: NotFound => throw InvalidCredentials()
     }
 

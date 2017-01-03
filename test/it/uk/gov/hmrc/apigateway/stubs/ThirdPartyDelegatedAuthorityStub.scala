@@ -1,0 +1,38 @@
+/*
+ * Copyright 2017 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package it.uk.gov.hmrc.apigateway.stubs
+
+import com.github.tomakehurst.wiremock.client.WireMock._
+import it.uk.gov.hmrc.apigateway.{MockHost, Stub}
+import play.api.libs.json.Json.{stringify, toJson}
+import uk.gov.hmrc.apigateway.model.Authority
+import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
+
+object ThirdPartyDelegatedAuthorityStub extends Stub {
+  override val stub = new MockHost(22222)
+
+  def willReturnTheAuthorityForAccessToken(accessToken: String, authority: Authority) = {
+    stub.mock.register(get(urlPathEqualTo(s"/authority")).withQueryParam("access_token", equalTo(accessToken))
+      .willReturn(aResponse().withStatus(200)
+        .withBody(stringify(toJson(authority)))))
+  }
+
+  def willNotReturnAnAuthorityForAccessToken(accessToken: String) = {
+    stub.mock.register(get(urlPathEqualTo(s"/authority")).withQueryParam("access_token", equalTo(accessToken))
+      .willReturn(aResponse().withStatus(404)))
+  }
+}

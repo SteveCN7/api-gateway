@@ -18,7 +18,7 @@ import play.core.PlayVersion
 import play.sbt.PlayImport._
 import play.sbt.PlayScala
 import sbt.Keys._
-import sbt.Tests.Filter
+import sbt.Tests.{SubProcess, Group, Filter}
 import sbt._
 import uk.gov.hmrc.DefaultBuildSettings._
 import uk.gov.hmrc.SbtAutoBuildPlugin
@@ -46,6 +46,7 @@ object HmrcBuild extends Build {
     "com.typesafe.play" %% "play-test" % PlayVersion.current % "test,it",
     "org.mockito" % "mockito-core" % "2.3.0" % "test,it",
     "com.github.tomakehurst" % "wiremock" % "2.1.12" % "test,it",
+    "org.scalatestplus.play" %% "scalatestplus-play" % "2.0.0-M1" %  "test,it",
     "org.scalaj" %% "scalaj-http" % "2.3.0" % "test,it"
   )
   val appName = "api-gateway"
@@ -66,11 +67,17 @@ object HmrcBuild extends Build {
       testOptions in Test := Seq(Filter(_ startsWith "uk.gov.hmrc")),
       testOptions in IntegrationTest := Seq(Filter(_ startsWith "it.uk.gov.hmrc")),
       unmanagedSourceDirectories in IntegrationTest <<= (baseDirectory in IntegrationTest) (base => Seq(base / "test")),
-      unmanagedResourceDirectories in IntegrationTest <<= (baseDirectory in IntegrationTest) (base => Seq(base / "test/resources"))
+      unmanagedResourceDirectories in IntegrationTest <<= (baseDirectory in IntegrationTest) (base => Seq(base / "test/resources")),
+      testGrouping in IntegrationTest := oneForkedJvmPerTest((definedTests in IntegrationTest).value),
+      parallelExecution in IntegrationTest := false
     )
     .settings(
       resolvers += Resolver.bintrayRepo("hmrc", "releases"),
       resolvers += Resolver.jcenterRepo
     )
 
+  def oneForkedJvmPerTest(tests: Seq[TestDefinition]) =
+    tests map {
+      test => new Group(test.name, Seq(test), SubProcess(ForkOptions(runJVMOptions = Seq("-Dtest.name=" + test.name))))
+    }
 }

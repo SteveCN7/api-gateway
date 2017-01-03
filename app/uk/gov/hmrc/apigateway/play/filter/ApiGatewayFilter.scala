@@ -33,10 +33,7 @@ import scala.concurrent.Future
 abstract class ApiGatewayFilter(implicit m: Materializer) extends Filter {
 
   override def apply(nextFilter: RequestHeader => Future[Result])(requestHeader: RequestHeader) = {
-    if (requestHeader.uri == routes.AdminController.ping().url || requestHeader.uri == routes.AdminController.details().url)
-      nextFilter(requestHeader)
-    else
-      filter(requestHeader, ProxyRequest(requestHeader)) flatMap nextFilter recover GatewayError.recovery
+    filter(requestHeader, ProxyRequest(requestHeader)) flatMap nextFilter recover GatewayError.recovery
   }
 
   def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader]

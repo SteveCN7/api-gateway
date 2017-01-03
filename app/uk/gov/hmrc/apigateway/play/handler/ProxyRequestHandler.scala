@@ -32,10 +32,16 @@ class ProxyRequestHandler @Inject()
  proxyController: ProxyController)
   extends DefaultHttpRequestHandler(proxyRoutes, errorHandler, configuration, filters) {
 
-  override def routeRequest(requestHeader: RequestHeader): Option[Handler] = {
-    proxyRoutes.routes.lift(requestHeader) match {
-      case Some(handler) => Some(handler)
-      case None => Some(proxyController.proxy)
+  override def handlerForRequest(request : play.api.mvc.RequestHeader): (RequestHeader, Handler) = {
+    health.Routes.routes.lift(request) match {
+      case Some(handler) => (request, handler)
+      case None => super.handlerForRequest(request)
     }
+  }
+
+  override def routeRequest(requestHeader: RequestHeader): Option[Handler] = {
+    proxyRoutes.routes
+      .lift(requestHeader)
+      .orElse(Some(proxyController.proxy))
   }
 }

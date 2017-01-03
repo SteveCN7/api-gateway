@@ -30,7 +30,7 @@ class HealthCheckSpec extends BaseFeatureSpec {
       When("We call /ping/ping")
       val httpResponse = invoke(Http(s"$serviceUrl/ping/ping"))
 
-      Then("The http response is '200' unauthorized")
+      Then("The http response is '200' OK")
       assertCodeIs(httpResponse, OK)
     }
   }

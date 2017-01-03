@@ -17,7 +17,6 @@
 package uk.gov.hmrc.apigateway.play.filter
 
 import akka.stream.Materializer
-import org.apache.http.HttpStatus.SC_OK
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.scalatest.mockito.MockitoSugar
@@ -63,15 +62,6 @@ class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar {
       val result = await(genericEndpointFilter(nextFilter)(fakeRequest))
       status(result) shouldBe OK
       bodyOf(result) shouldBe """{"response":"json"}"""
-    }
-
-    "allow ping request to go through" in new Setup {
-      val nextFilter: (RequestHeader) => Future[Result] = { requestHeader => successful(Ok("{}")) }
-      val fakeRequest = FakeRequest("GET", "/ping/ping")
-
-      val result = await(genericEndpointFilter.apply(nextFilter)(fakeRequest))
-
-      status(result) shouldBe SC_OK
     }
   }
 

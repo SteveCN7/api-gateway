@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 HM Revenue & Customs
+ * Copyright 2017 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
       val result: Future[RequestHeader] = await(userRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
 
       result.tags.get(X_APPLICATION_CLIENT_ID) shouldBe Some("clientId")
-      result.tags.get(AUTHORIZATION) shouldBe Some("authBearerToken")
+      result.tags.get(AUTHORIZATION) shouldBe Some("Bearer authBearerToken")
     }
 
   }

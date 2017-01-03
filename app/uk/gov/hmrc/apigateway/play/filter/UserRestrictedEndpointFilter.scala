@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 HM Revenue & Customs
+ * Copyright 2017 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Filter for inspecting requests for user restricted endpoints and
-  * evaluating their eligibility to be proxied to a downstream services.
+  * evaluating their eligibility to be proxied to downstream services.
   */
 @Singleton
 class UserRestrictedEndpointFilter @Inject()
@@ -41,14 +41,18 @@ class UserRestrictedEndpointFilter @Inject()
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
     requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) flatMap authType match {
-      case Some(USER) => for {
-        authority <- authorityService.findAuthority(proxyRequest)
-        delegatedAuthority = authority.delegatedAuthority
-        isValidScope <- scopeValidator.validate(delegatedAuthority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
-      } yield requestHeader
-        .withTag(X_APPLICATION_CLIENT_ID, delegatedAuthority.clientId)
-        .withTag(AUTHORIZATION, delegatedAuthority.authBearerToken)
+
+      case Some(USER) =>
+        for {
+          authority <- authorityService.findAuthority(proxyRequest)
+          delegatedAuthority = authority.delegatedAuthority
+          _ <- scopeValidator.validate(delegatedAuthority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
+        } yield requestHeader
+          .withTag(X_APPLICATION_CLIENT_ID, delegatedAuthority.clientId)
+          .withTag(AUTHORIZATION, s"Bearer ${delegatedAuthority.authBearerToken}")
+
       case _ => successful(requestHeader)
+
     }
 
 }

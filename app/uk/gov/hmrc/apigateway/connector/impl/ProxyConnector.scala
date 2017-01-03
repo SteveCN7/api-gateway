@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 HM Revenue & Customs
+ * Copyright 2017 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,9 @@ class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsC
   def proxy(request: Request[AnyContent], destinationUrl: String): Future[Result] =
     wsClient.url(destinationUrl)
       .withMethod(request.method)
-      .withHeaders((ACCEPT, request.tags(ACCEPT)))
+      .withHeaders(
+        (ACCEPT, request.tags(ACCEPT)),
+        (AUTHORIZATION, request.tags(AUTHORIZATION)))
       .withBody(request.body.toString) // TODO this will not work for binary content, we can tackle it when we need it
       .execute.map { wsResponse =>
       val result = toResult(wsResponse)

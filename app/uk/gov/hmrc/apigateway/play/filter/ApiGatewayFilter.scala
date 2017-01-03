@@ -20,6 +20,7 @@ import akka.stream.Materializer
 import play.api.mvc.{Filter, RequestHeader, Result}
 import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.model.ProxyRequest
+import uk.gov.hmrc.play.health.routes
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -31,8 +32,12 @@ import scala.concurrent.Future
   */
 abstract class ApiGatewayFilter(implicit m: Materializer) extends Filter {
 
-  override def apply(nextFilter: RequestHeader => Future[Result])(requestHeader: RequestHeader) =
-    filter(requestHeader, ProxyRequest(requestHeader)) flatMap nextFilter recover GatewayError.recovery
+  override def apply(nextFilter: RequestHeader => Future[Result])(requestHeader: RequestHeader) = {
+    if (requestHeader.uri == routes.AdminController.ping().url || requestHeader.uri == routes.AdminController.details().url)
+      nextFilter(requestHeader)
+    else
+      filter(requestHeader, ProxyRequest(requestHeader)) flatMap nextFilter recover GatewayError.recovery
+  }
 
   def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader]
 

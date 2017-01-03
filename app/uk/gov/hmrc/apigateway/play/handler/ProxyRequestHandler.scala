@@ -32,6 +32,10 @@ class ProxyRequestHandler @Inject()
  proxyController: ProxyController)
   extends DefaultHttpRequestHandler(proxyRoutes, errorHandler, configuration, filters) {
 
-  override def routeRequest(requestHeader: RequestHeader): Option[Handler] = Some(proxyController.proxy)
-
+  override def routeRequest(requestHeader: RequestHeader): Option[Handler] = {
+    proxyRoutes.routes.lift(requestHeader) match {
+      case Some(handler) => Some(handler)
+      case None => Some(proxyController.proxy)
+    }
+  }
 }

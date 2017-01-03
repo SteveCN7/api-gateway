@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 HM Revenue & Customs
+ * Copyright 2017 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,14 +21,14 @@ import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import it.uk.gov.hmrc.apigateway.stubs.{ThirdPartyDelegatedAuthorityStub, ApiStub, ApiDefinitionStub}
 import org.scalatest._
-import org.scalatestplus.play.OneServerPerSuite
+import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.libs.json.Json._
 
 import scala.concurrent.duration._
 import scalaj.http.{HttpResponse, HttpRequest}
 
-abstract class BaseFeatureSpec extends FeatureSpec with GivenWhenThen with Matchers
-with BeforeAndAfterEach with BeforeAndAfterAll with OneServerPerSuite {
+abstract class BaseFeatureSpec extends FeatureSpec with GivenWhenThen with Matchers with BeforeAndAfterAll
+with GuiceOneServerPerSuite with BeforeAndAfterEach {
 
   override lazy val port = 19111
   val serviceUrl = s"http://localhost:$port"
@@ -39,7 +39,7 @@ with BeforeAndAfterEach with BeforeAndAfterAll with OneServerPerSuite {
   val thirdPartyDelegatedAuthority = ThirdPartyDelegatedAuthorityStub
   val mocks = Seq(apiDefinition, api, thirdPartyDelegatedAuthority)
 
-  override protected def beforeEach(): Unit = {
+  override protected def beforeAll(): Unit = {
     mocks.foreach(m => if (!m.stub.server.isRunning) m.stub.server.start())
   }
 

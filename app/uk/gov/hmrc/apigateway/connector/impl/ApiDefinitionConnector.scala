@@ -21,12 +21,10 @@ import javax.inject.{Inject, Singleton}
 import play.api.libs.ws.WSClient
 import uk.gov.hmrc.apigateway.cache.CacheManager
 import uk.gov.hmrc.apigateway.connector.ServiceConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
 import uk.gov.hmrc.apigateway.model.ApiDefinition
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings.apiDefinitionFormat
 
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
 
 @Singleton
 class ApiDefinitionConnector @Inject()(wsClient: WSClient, cache: CacheManager)

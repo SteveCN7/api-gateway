@@ -22,7 +22,6 @@ import org.joda.time.DateTime.now
 import uk.gov.hmrc.apigateway.connector.impl.DelegatedAuthorityConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, MissingCredentials}
 import uk.gov.hmrc.apigateway.model.{Authority, ProxyRequest}
-import uk.gov.hmrc.apigateway.util.HttpHeaders.AUTHORIZATION
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -40,8 +39,7 @@ class AuthorityService @Inject()(delegatedAuthorityConnector: DelegatedAuthority
 
   private def getDelegatedAuthority(proxyRequest: ProxyRequest): Future[Authority] =
     proxyRequest.accessToken match {
-      case Some(accessToken) =>
-        delegatedAuthorityConnector.getByAccessToken(accessToken)
+      case Some(accessToken) => delegatedAuthorityConnector.getByAccessToken(accessToken)
       case _ => failed(MissingCredentials())
     }
 

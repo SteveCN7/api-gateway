@@ -22,14 +22,13 @@ import akka.stream.Materializer
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.exception.GatewayError.{MissingCredentials, NotFound => _}
 import uk.gov.hmrc.apigateway.model.AuthType.{authType, APPLICATION}
-import uk.gov.hmrc.apigateway.model.{AuthType, ProxyRequest}
+import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.service.AuthorityService
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future.{failed, successful}
+import scala.concurrent.Future.successful
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Success, Try}
 
 /**
   * Filter for inspecting requests for application restricted endpoints and

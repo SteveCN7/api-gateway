@@ -22,7 +22,7 @@ import akka.stream.Materializer
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound => _}
 import uk.gov.hmrc.apigateway.model.AuthType._
-import uk.gov.hmrc.apigateway.model.{AuthType, ProxyRequest}
+import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.service.{AuthorityService, ScopeValidator}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 

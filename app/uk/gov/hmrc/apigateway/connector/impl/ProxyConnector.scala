@@ -35,8 +35,8 @@ class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsC
     wsClient.url(destinationUrl)
       .withMethod(request.method)
       .withHeaders(
-        (ACCEPT, request.tags(ACCEPT)),
-        (AUTHORIZATION, request.tags(AUTHORIZATION)))
+        (ACCEPT, request.tags.get(ACCEPT).orNull),
+        (AUTHORIZATION, request.tags.get(AUTHORIZATION).orNull))
       .withBody(request.body.toString) // TODO this will not work for binary content, we can tackle it when we need it
       .execute.map { wsResponse =>
       val result = toResult(wsResponse)

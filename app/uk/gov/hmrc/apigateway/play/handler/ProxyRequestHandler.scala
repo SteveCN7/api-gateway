@@ -39,9 +39,5 @@ class ProxyRequestHandler @Inject()
     }
   }
 
-  override def routeRequest(requestHeader: RequestHeader): Option[Handler] = {
-    proxyRoutes.routes
-      .lift(requestHeader)
-      .orElse(Some(proxyController.proxy))
-  }
+  override def routeRequest(requestHeader: RequestHeader): Option[Handler] = Some(proxyController.proxy)
 }

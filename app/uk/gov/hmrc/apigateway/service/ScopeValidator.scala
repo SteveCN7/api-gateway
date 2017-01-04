@@ -19,7 +19,7 @@ package uk.gov.hmrc.apigateway.service
 import javax.inject.Singleton
 
 import uk.gov.hmrc.apigateway.exception.GatewayError.InvalidScope
-import uk.gov.hmrc.apigateway.model.Authority
+import uk.gov.hmrc.apigateway.model.ThirdPartyDelegatedAuthority
 
 import scala.concurrent.Future
 import scala.concurrent.Future.{failed, successful}
@@ -27,8 +27,9 @@ import scala.concurrent.Future.{failed, successful}
 @Singleton
 class ScopeValidator {
 
-  def validate(authority: Authority, maybeScope: Option[String]): Future[Boolean] = maybeScope match {
-    case Some(scope) if authority.delegatedAuthority.token.scopes.contains(scope) => successful(true)
-    case _ => failed(InvalidScope())
-  }
+  def validate(delegatedAuthority: ThirdPartyDelegatedAuthority, maybeScope: Option[String]): Future[Boolean] =
+    maybeScope match {
+      case Some(scope) if delegatedAuthority.token.scopes.contains(scope) => successful(true)
+      case _ => failed(InvalidScope())
+    }
 }

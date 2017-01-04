@@ -21,6 +21,7 @@ import org.joda.time.DateTime
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
+import play.api.mvc.RequestHeader
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, InvalidScope}
@@ -30,7 +31,7 @@ import uk.gov.hmrc.apigateway.service.{AuthorityService, ScopeValidator}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.UnitSpec
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.Future.successful
 
 class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
@@ -69,8 +70,10 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
 
       val fakeRequest = FakeRequest("GET", "http://host.example/foo").withTag(X_API_GATEWAY_AUTH_TYPE, USER.toString).withTag(X_API_GATEWAY_SCOPE, "scopeMoo")
 
-      val result = await(userRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
+      val result: Future[RequestHeader] = await(userRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
+
       result.tags.get(X_APPLICATION_CLIENT_ID) shouldBe Some("clientId")
+      result.tags.get(AUTHORIZATION) shouldBe Some("Bearer authBearerToken")
     }
 
   }
@@ -82,10 +85,10 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
     when(authorityService.findAuthority(any[ProxyRequest])).thenReturn(authority)
 
   private def mock(scopeValidationFilter: ScopeValidator, gatewayError: GatewayError) =
-    when(scopeValidationFilter.validate(any(classOf[Authority]), any(classOf[Option[String]]))).thenThrow(gatewayError)
+    when(scopeValidationFilter.validate(any(classOf[ThirdPartyDelegatedAuthority]), any(classOf[Option[String]]))).thenThrow(gatewayError)
 
   private def mock(scopeValidationFilter: ScopeValidator, flag: Boolean) =
-    when(scopeValidationFilter.validate(any(classOf[Authority]), any(classOf[Option[String]]))).thenReturn(successful(flag))
+    when(scopeValidationFilter.validate(any(classOf[ThirdPartyDelegatedAuthority]), any(classOf[Option[String]]))).thenReturn(successful(flag))
 
   private def validAuthority() = {
     val token = Token("accessToken", Set.empty, DateTime.now.plusMinutes(5))

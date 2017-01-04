@@ -27,11 +27,9 @@ class ScopeValidatorSpec extends UnitSpec with MockitoSugar {
   trait Setup {
     val delegatedAuthority = mock[ThirdPartyDelegatedAuthority]
     val token = mock[Token]
-    val authority = mock[Authority]
     val apiDefinitionMatch = mock[ApiDefinitionMatch]
     val scopeValidator = new ScopeValidator
 
-    when(authority.delegatedAuthority).thenReturn(delegatedAuthority)
     when(delegatedAuthority.token).thenReturn(token)
     when(delegatedAuthority.token.scopes).thenReturn(Set("read:scope", "write:scope", "read:another-scope"))
   }
@@ -40,30 +38,30 @@ class ScopeValidatorSpec extends UnitSpec with MockitoSugar {
 
     "throw an exception when the request has no scopes" in new Setup {
       intercept[InvalidScope] {
-        await(scopeValidator.validate(authority, None))
+        await(scopeValidator.validate(delegatedAuthority, None))
       }
     }
 
     "throw an exception when the request scope is empty" in new Setup {
       intercept[InvalidScope] {
-        await(scopeValidator.validate(authority, Some("")))
+        await(scopeValidator.validate(delegatedAuthority, Some("")))
       }
     }
 
     "throw an exception when the request contains multiple scopes" in new Setup {
       intercept[InvalidScope] {
-        await(scopeValidator.validate(authority, Some("read:scope write:scope")))
+        await(scopeValidator.validate(delegatedAuthority, Some("read:scope write:scope")))
       }
     }
 
     "throw an exception when the request does not have any of the required scopes" in new Setup {
       intercept[InvalidScope] {
-        await(scopeValidator.validate(authority, Some("read:scope-1")))
+        await(scopeValidator.validate(delegatedAuthority, Some("read:scope-1")))
       }
     }
 
     "return true when the request has all the required scopes" in new Setup {
-      await(scopeValidator.validate(authority, Some("read:scope"))) shouldBe true
+      await(scopeValidator.validate(delegatedAuthority, Some("read:scope"))) shouldBe true
     }
 
   }

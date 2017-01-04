@@ -33,10 +33,9 @@ class ProxyController @Inject()(proxyService: ProxyService) {
 
   def proxy = Action.async(BodyParsers.parse.anyContent) { implicit request =>
     proxyService.proxy(request) recover {
-      case error => {
-        Logger.error("unexpected error", error)
+      case e =>
+        Logger.error("unexpected error", e)
         InternalServerError(toJson(ServerError()))
-      }
     }
   }
 

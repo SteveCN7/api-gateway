@@ -21,18 +21,22 @@ import javax.inject.{Inject, Singleton}
 import play.api.libs.ws.WSClient
 import uk.gov.hmrc.apigateway.cache.CacheManager
 import uk.gov.hmrc.apigateway.connector.ServiceConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, NotFound}
-import uk.gov.hmrc.apigateway.model.Authority
-import uk.gov.hmrc.apigateway.play.binding.PlayBindings.authorityFormat
+import uk.gov.hmrc.apigateway.model.Application
+import uk.gov.hmrc.apigateway.play.binding.PlayBindings.applicationFormat
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class DelegatedAuthorityConnector @Inject()(wsClient: WSClient, cache: CacheManager)
-  extends ServiceConnector(wsClient, cache, "third-party-delegated-authority") {
+class ThirdPartyApplicationConnector @Inject() (wsClient: WSClient, cache: CacheManager)
+  extends ServiceConnector(wsClient, cache, "third-party-application") {
 
-  def getByAccessToken(accessToken: String): Future[Authority] = {
-    get[Authority](s"authority?access_token=$accessToken")
+  val SERVER_TOKEN_HEADER = "X-server-token"
+
+  def getByServerToken(serverToken: String): Future[Application] = {
+    get[Application](s"$serviceName-$serverToken", s"application", Seq(SERVER_TOKEN_HEADER -> serverToken))
+  }
+
+  def getByClientId(clientId: String): Future[Application] = {
+    get[Application](s"$serviceName-$clientId", s"application?clientId=$clientId")
   }
 }

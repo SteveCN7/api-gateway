@@ -70,9 +70,9 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
 
       val fakeRequest = FakeRequest("GET", "http://host.example/foo").withTag(X_API_GATEWAY_AUTH_TYPE, USER.toString).withTag(X_API_GATEWAY_SCOPE, "scopeMoo")
 
-      val result: Future[RequestHeader] = await(userRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
+      val result = await(userRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
 
-      result.tags.get(X_APPLICATION_CLIENT_ID) shouldBe Some("clientId")
+      result.tags.get(X_APPLICATION_ID) shouldBe Some("clientId")
       result.tags.get(AUTHORIZATION) shouldBe Some("Bearer authBearerToken")
     }
 

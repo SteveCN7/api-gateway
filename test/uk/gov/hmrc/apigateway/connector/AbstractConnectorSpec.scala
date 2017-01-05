@@ -76,6 +76,20 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
       result shouldBe Foo("bar")
     }
 
+    "add headers to the request when provided" in new Setup {
+      implicit val apiDefinitionFormat = Json.format[Foo]
+
+      stubFor(get(urlPathEqualTo("/foo/bar")).withHeader("foo", equalTo("bar"))
+        .willReturn(
+          aResponse()
+            .withStatus(200)
+            .withBody(stringify(toJson(Foo("bar"))))
+        ))
+
+      val result = await(underTest.get[Foo](s"$wireMockUrl/foo/bar", Seq(("foo", "bar"))))
+
+      result shouldBe Foo("bar")
+    }
   }
 
   class AbstractConnectorImpl(wsClient: WSClient) extends AbstractConnector(wsClient)

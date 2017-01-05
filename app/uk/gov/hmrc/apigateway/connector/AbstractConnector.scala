@@ -28,8 +28,10 @@ import scala.reflect.ClassTag
 
 abstract class AbstractConnector(wsClient: WSClient) {
 
-  def get[T: ClassTag](url: String)(implicit format: Format[T]): Future[T] = {
-    wsClient.url(url).get() map {
+  def get[T: ClassTag](url: String)(implicit format: Format[T]): Future[T] =  get(url, Seq.empty[(String, String)])
+
+  def get[T: ClassTag](url: String, headers: Seq[(String, String)])(implicit format: Format[T]): Future[T] = {
+    wsClient.url(url).withHeaders(headers : _*).get() map {
       case wsResponse if wsResponse.status >= OK && wsResponse.status < 300 =>
         Logger.debug(s"GET $url ${wsResponse.status}")
         wsResponse.json.as[T]
@@ -39,5 +41,4 @@ abstract class AbstractConnector(wsClient: WSClient) {
         throw NotFound()
     }
   }
-
 }

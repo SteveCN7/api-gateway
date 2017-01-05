@@ -14,25 +14,27 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.connector.impl
+package uk.gov.hmrc.apigateway.service
 
 import javax.inject.{Inject, Singleton}
 
-import play.api.libs.ws.WSClient
-import uk.gov.hmrc.apigateway.cache.CacheManager
-import uk.gov.hmrc.apigateway.connector.ServiceConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, NotFound}
-import uk.gov.hmrc.apigateway.model.Authority
-import uk.gov.hmrc.apigateway.play.binding.PlayBindings.authorityFormat
-
+import uk.gov.hmrc.apigateway.connector.impl.ThirdPartyApplicationConnector
+import uk.gov.hmrc.apigateway.exception.GatewayError.InvalidCredentials
+import uk.gov.hmrc.apigateway.model.Application
 import scala.concurrent.ExecutionContext.Implicits.global
+
 import scala.concurrent.Future
 
 @Singleton
-class DelegatedAuthorityConnector @Inject()(wsClient: WSClient, cache: CacheManager)
-  extends ServiceConnector(wsClient, cache, "third-party-delegated-authority") {
+class ApplicationService @Inject()(applicationConnector: ThirdPartyApplicationConnector) {
 
-  def getByAccessToken(accessToken: String): Future[Authority] = {
-    get[Authority](s"authority?access_token=$accessToken")
+  def getByServerToken(serverToken: String): Future[Application] = {
+    applicationConnector.getByServerToken(serverToken).recoverWith {
+      case _ => throw InvalidCredentials()
+    }
+  }
+
+  def getByClientId(clientId: String) = {
+    applicationConnector.getByClientId(clientId)
   }
 }

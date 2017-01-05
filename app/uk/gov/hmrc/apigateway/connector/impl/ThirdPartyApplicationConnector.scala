@@ -33,7 +33,7 @@ class ThirdPartyApplicationConnector @Inject() (wsClient: WSClient, cache: Cache
   val SERVER_TOKEN_HEADER = "X-server-token"
 
   def getByServerToken(serverToken: String): Future[Application] = {
-    get[Application](s"$serviceName-$serverToken", s"application", Seq((SERVER_TOKEN_HEADER, serverToken)))
+    get[Application](s"$serviceName-$serverToken", s"application", Seq(SERVER_TOKEN_HEADER -> serverToken))
   }
 
   def getByClientId(clientId: String): Future[Application] = {

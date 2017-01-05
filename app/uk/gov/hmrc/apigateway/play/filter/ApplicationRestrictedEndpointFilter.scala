@@ -38,16 +38,16 @@ class ApplicationRestrictedEndpointFilter @Inject()
 (authorityService: AuthorityService, applicationService: ApplicationService)
 (implicit override val mat: Materializer, executionContext: ExecutionContext) extends ApiGatewayFilter {
 
-  def getAppByAuthority(proxyRequest: ProxyRequest): Future[Application] = {
+  private def getAppByAuthority(proxyRequest: ProxyRequest): Future[Application] = {
     for {
       authority <- authorityService.findAuthority(proxyRequest)
       app <- applicationService.getByClientId(authority.delegatedAuthority.clientId)
     } yield app
   }
 
-  def getApplication(serverToken: String, proxyRequest: ProxyRequest): Future[Application] = {
+  private def getApplication(serverToken: String, proxyRequest: ProxyRequest): Future[Application] = {
     getAppByAuthority(proxyRequest).recoverWith {
-      case InvalidCredentials() => Future.failed(InvalidCredentials())
+      case e: InvalidCredentials => Future.failed(e)
       case _ => applicationService.getByServerToken(serverToken)
     }
   }

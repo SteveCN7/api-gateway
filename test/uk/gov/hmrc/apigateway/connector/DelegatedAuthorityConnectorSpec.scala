@@ -24,7 +24,7 @@ import org.joda.time.DateTime
 import org.scalatest.BeforeAndAfterEach
 import play.api.libs.json.Json._
 import uk.gov.hmrc.apigateway.connector.impl.DelegatedAuthorityConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError.InvalidCredentials
+import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound, InvalidCredentials}
 import uk.gov.hmrc.apigateway.model.{Authority, ThirdPartyDelegatedAuthority, Token}
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings.authorityFormat
 import uk.gov.hmrc.play.test.{WithFakeApplication, UnitSpec}
@@ -54,7 +54,7 @@ class DelegatedAuthorityConnectorSpec extends UnitSpec with BeforeAndAfterEach w
   "Delegated authority connector" should {
     val accessToken = "31c99f9482de49544c6cc3374c378028"
 
-    "throw an exception when access token is invalid" in new Setup {
+    "propagate an exception when access token is invalid" in new Setup {
 
       stubFor(get(urlPathEqualTo("/authority"))
         .withQueryParam("access_token", equalTo(accessToken))
@@ -62,7 +62,7 @@ class DelegatedAuthorityConnectorSpec extends UnitSpec with BeforeAndAfterEach w
           aResponse().withStatus(404)
       ))
 
-      intercept[InvalidCredentials] {
+      intercept[NotFound] {
         await(underTest.getByAccessToken(accessToken))
       }
     }

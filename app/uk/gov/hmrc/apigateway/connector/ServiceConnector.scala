@@ -32,7 +32,7 @@ abstract class ServiceConnector(wsClient: WSClient, cache: CacheManager, val ser
   lazy val expiration = getConfInt(s"$serviceName.caching.expirationInSeconds", 120)
 
   override def get[T: ClassTag](urlPath: String)(implicit format: Format[T]): Future[T] =
-    get(urlPath, urlPath)
+    get(urlPath, urlPath, Seq.empty)
 
   def get[T: ClassTag](key: String, urlPath: String)(implicit format: Format[T]): Future[T] =
     get(key, urlPath, Seq.empty)

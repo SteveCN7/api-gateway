@@ -32,7 +32,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Filter for inspecting requests for user restricted endpoints and
-  * evaluating their eligibility to be proxied to a downstream services.
+  * evaluating their eligibility to be proxied to downstream services.
   */
 @Singleton
 class UserRestrictedEndpointFilter @Inject()
@@ -41,12 +41,18 @@ class UserRestrictedEndpointFilter @Inject()
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
     requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) flatMap authType match {
-      case Some(USER) => for {
-        authority <- authorityService.findAuthority(proxyRequest)
-        isValidScope <- scopeValidator.validate(authority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
-      // TODO implement token swap
-      } yield requestHeader.withTag(X_APPLICATION_ID, authority.delegatedAuthority.clientId)
+
+      case Some(USER) =>
+        for {
+          authority <- authorityService.findAuthority(proxyRequest)
+          delegatedAuthority = authority.delegatedAuthority
+          _ <- scopeValidator.validate(delegatedAuthority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
+        } yield requestHeader
+          .withTag(X_APPLICATION_ID, delegatedAuthority.clientId)
+          .withTag(AUTHORIZATION, s"Bearer ${delegatedAuthority.authBearerToken}")
+
       case _ => successful(requestHeader)
+
     }
 
 }

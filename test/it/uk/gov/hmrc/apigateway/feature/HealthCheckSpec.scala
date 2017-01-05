@@ -14,22 +14,24 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.service
+package it.uk.gov.hmrc.apigateway.feature
 
-import javax.inject.Singleton
+import it.uk.gov.hmrc.apigateway.BaseFeatureSpec
+import play.api.http.Status._
 
-import uk.gov.hmrc.apigateway.exception.GatewayError.InvalidScope
-import uk.gov.hmrc.apigateway.model.ThirdPartyDelegatedAuthority
+import scalaj.http.Http
 
-import scala.concurrent.Future
-import scala.concurrent.Future.{failed, successful}
+class HealthCheckSpec extends BaseFeatureSpec {
 
-@Singleton
-class ScopeValidator {
+  feature("Health Check for Docktor") {
 
-  def validate(delegatedAuthority: ThirdPartyDelegatedAuthority, maybeScope: Option[String]): Future[Boolean] =
-    maybeScope match {
-      case Some(scope) if delegatedAuthority.token.scopes.contains(scope) => successful(true)
-      case _ => failed(InvalidScope())
+    scenario("Ping should return 200 (OK) when the service is up and running") {
+
+      When("We call /ping/ping")
+      val httpResponse = invoke(Http(s"$serviceUrl/ping/ping"))
+
+      Then("The http response is '200' OK")
+      assertCodeIs(httpResponse, OK)
     }
+  }
 }

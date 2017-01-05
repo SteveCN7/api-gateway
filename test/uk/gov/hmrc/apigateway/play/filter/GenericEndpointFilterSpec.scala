@@ -63,7 +63,6 @@ class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar {
       status(result) shouldBe OK
       bodyOf(result) shouldBe """{"response":"json"}"""
     }
-
   }
 
 }

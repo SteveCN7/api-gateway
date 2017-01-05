@@ -20,14 +20,13 @@ import javax.inject.{Inject, Singleton}
 
 import akka.stream.Materializer
 import play.api.mvc._
-import uk.gov.hmrc.apigateway.exception.GatewayError.{MissingCredentials, NotFound => _}
+import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound => _, InvalidCredentials, MissingCredentials}
 import uk.gov.hmrc.apigateway.model.AuthType.{authType, APPLICATION}
-import uk.gov.hmrc.apigateway.model.ProxyRequest
-import uk.gov.hmrc.apigateway.service.AuthorityService
+import uk.gov.hmrc.apigateway.model.{Application, ProxyRequest}
+import uk.gov.hmrc.apigateway.service.{ApplicationService, AuthorityService}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future.successful
+import scala.concurrent.Future._
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -36,21 +35,30 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 @Singleton
 class ApplicationRestrictedEndpointFilter @Inject()
-(authorityService: AuthorityService)
+(authorityService: AuthorityService, applicationService: ApplicationService)
 (implicit override val mat: Materializer, executionContext: ExecutionContext) extends ApiGatewayFilter {
+
+  def getAppByAuthority(proxyRequest: ProxyRequest): Future[Application] = {
+    for {
+      authority <- authorityService.findAuthority(proxyRequest)
+      app <- applicationService.getByClientId(authority.delegatedAuthority.clientId)
+    } yield app
+  }
+
+  def getApplication(serverToken: String, proxyRequest: ProxyRequest): Future[Application] = {
+    getAppByAuthority(proxyRequest).recoverWith {
+      case InvalidCredentials() => Future.failed(InvalidCredentials())
+      case _ => applicationService.getByServerToken(serverToken)
+    }
+  }
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
     requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) flatMap authType match {
       case Some(APPLICATION) =>
-        authorityService.findAuthority(proxyRequest) map { authority =>
-          requestHeader.withTag(X_APPLICATION_CLIENT_ID, authority.delegatedAuthority.clientId)
-        } recover {
-          case _ => requestHeader.headers.get(AUTHORIZATION) match {
-            case Some(bearerToken) =>
-              //TODO Fetch Client ID from third-party-application
-              requestHeader
-            case _ => throw MissingCredentials()
-          }
+        proxyRequest.accessToken match {
+          case Some(serverToken) =>
+            getApplication(serverToken, proxyRequest).map(app => requestHeader.withTag(X_APPLICATION_ID, app.id.toString))
+          case _ => throw MissingCredentials()
         }
       case _ => successful(requestHeader)
     }

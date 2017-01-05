@@ -38,11 +38,11 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics) {
     def getOrUpdate() = {
       cache.get[T](key) match {
         case Some(value) =>
-          Logger.debug(s"Cache hit for context [$serviceName]")
+          Logger.debug(s"Cache hit for key [$key]")
           metrics.cacheHit(serviceName)
           Future.successful(value)
         case _ =>
-          Logger.debug(s"Cache miss for context [$serviceName]. Caching flag is set to: [$caching] with expiration: [$expiration]")
+          Logger.debug(s"Cache miss for key [$key]. Caching flag is set to: [$caching] with expiration: [$expiration]")
           metrics.cacheMiss(serviceName)
           fallbackFunction map { result =>
             cache.set(key, result, expiration seconds)

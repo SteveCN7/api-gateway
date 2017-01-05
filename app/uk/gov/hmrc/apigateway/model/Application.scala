@@ -14,15 +14,8 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.util
+package uk.gov.hmrc.apigateway.model
 
-object HttpHeaders {
+import java.util.UUID
 
-  val X_API_GATEWAY_ENDPOINT = "x-api-gateway-proxy-endpoint"
-  val X_API_GATEWAY_SCOPE = "x-api-gateway-scope"
-  val X_API_GATEWAY_AUTH_TYPE = "x-api-gateway-auth-type"
-  val X_APPLICATION_ID = "x-application-id"
-  val AUTHORIZATION = "Authorization"
-  val ACCEPT = "Accept"
-
-}
+case class Application(id: UUID, name: String)

@@ -45,7 +45,7 @@ class UserRestrictedEndpointFilter @Inject()
         authority <- authorityService.findAuthority(proxyRequest)
         isValidScope <- scopeValidator.validate(authority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
       // TODO implement token swap
-      } yield requestHeader.withTag(X_APPLICATION_CLIENT_ID, authority.delegatedAuthority.clientId)
+      } yield requestHeader.withTag(X_APPLICATION_ID, authority.delegatedAuthority.clientId)
       case _ => successful(requestHeader)
     }
 

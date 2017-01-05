@@ -19,23 +19,23 @@ package uk.gov.hmrc.apigateway.config
 import javax.inject.{Singleton, Inject}
 
 import com.typesafe.config.Config
+import play.api.libs.json.Json
+import play.api.mvc.Request
 import play.api.{Application, Configuration}
+import play.twirl.api.Html
+import uk.gov.hmrc.apigateway.exception.GatewayError.ServerError
 import uk.gov.hmrc.play.audit.filters.AuditFilter
-import uk.gov.hmrc.play.auth.controllers.AuthParamsControllerConfig
 import uk.gov.hmrc.play.config.{AppName, ControllerConfig, RunMode}
 import uk.gov.hmrc.play.filters.MicroserviceFilterSupport
-import uk.gov.hmrc.play.http.logging.filters.LoggingFilter
-import uk.gov.hmrc.play.microservice.bootstrap.DefaultMicroserviceGlobal
+import uk.gov.hmrc.play.frontend.bootstrap.DefaultFrontendGlobal
+import uk.gov.hmrc.play.audit.filters.FrontendAuditFilter
+import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
+import uk.gov.hmrc.play.http.logging.filters.FrontendLoggingFilter
 
 @Singleton
 class ControllerConfiguration @Inject() (configuration: Configuration) extends ControllerConfig {
   import net.ceedubs.ficus.Ficus._
   lazy val controllerConfigs = configuration.underlying.as[Config]("controllers")
-}
-
-@Singleton
-class AuthParamsControllerConfiguration @Inject() (controllerConfiguration: ControllerConfiguration) extends AuthParamsControllerConfig {
-  lazy val controllerConfigs = controllerConfiguration.controllerConfigs
 }
 
 @Singleton
@@ -45,17 +45,18 @@ class MicroserviceAuditFilter @Inject() (controllerConfiguration: ControllerConf
 }
 
 @Singleton
-class MicroserviceLoggingFilter @Inject() (controllerConfiguration: ControllerConfiguration) extends LoggingFilter with MicroserviceFilterSupport {
+class MicroserviceLoggingFilter @Inject() (controllerConfiguration: ControllerConfiguration) extends FrontendLoggingFilter with MicroserviceFilterSupport {
   override def controllerNeedsLogging(controllerName: String) = controllerConfiguration.paramsForController(controllerName).needsLogging
 }
 
 @Singleton
 class MicroserviceGlobal @Inject() (override val loggingFilter: MicroserviceLoggingFilter,
-                                    override val microserviceAuditFilter: MicroserviceAuditFilter) extends DefaultMicroserviceGlobal with RunMode {
+                                    override val frontendAuditFilter: FrontendAuditFilter) extends DefaultFrontendGlobal with RunMode {
 
   override val auditConnector = MicroserviceAuditConnector
 
   override def microserviceMetricsConfig(implicit app: Application): Option[Configuration] = app.configuration.getConfig("microservice.metrics")
 
-  override val authFilter = None
+  override def standardErrorTemplate(pageTitle: String, heading: String, message: String)(implicit request: Request[_]): Html =
+    Html(Json.toJson(ServerError()).toString)
 }

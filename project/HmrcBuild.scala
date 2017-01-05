@@ -31,13 +31,12 @@ object HmrcBuild extends Build {
   private val compileDependencies = Seq(
     ws,
     cache,
-    "uk.gov.hmrc" %% "microservice-bootstrap" % "5.7.0",
-    "uk.gov.hmrc" %% "play-authorisation" % "4.2.0",
+    "uk.gov.hmrc" %% "frontend-bootstrap" % "7.10.0",
     "uk.gov.hmrc" %% "play-health" % "2.0.0",
     "uk.gov.hmrc" %% "play-url-binders" % "2.0.0",
     "uk.gov.hmrc" %% "play-config" % "3.0.0",
     "uk.gov.hmrc" %% "play-filters" % "5.6.0",
-    "uk.gov.hmrc" %% "play-json-logger" % "3.0.0",
+    "uk.gov.hmrc" %% "logback-json-logger" % "3.1.0",
     "com.kenshoo" %% "metrics-play" % "2.4.0_0.4.1"
   )
   private val testDependencies = Seq(

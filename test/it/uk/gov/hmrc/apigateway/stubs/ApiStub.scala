@@ -18,6 +18,7 @@ package it.uk.gov.hmrc.apigateway.stubs
 
 import com.github.tomakehurst.wiremock.client.WireMock._
 import it.uk.gov.hmrc.apigateway.{MockHost, Stub}
+import play.api.http.Status.OK
 
 object ApiStub extends Stub {
 
@@ -28,6 +29,6 @@ object ApiStub extends Stub {
 
   def willReturnTheResponse(response: String) = {
     stub.mock.register(get(anyUrl())
-      .willReturn(aResponse().withStatus(200).withBody(response)))
+      .willReturn(aResponse().withStatus(OK).withBody(response)))
   }
 }

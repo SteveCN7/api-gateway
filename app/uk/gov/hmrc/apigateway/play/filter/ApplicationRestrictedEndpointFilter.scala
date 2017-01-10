@@ -55,11 +55,7 @@ class ApplicationRestrictedEndpointFilter @Inject()
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
     requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) flatMap authType match {
       case Some(APPLICATION) =>
-        proxyRequest.accessToken match {
-          case Some(serverToken) =>
-            getApplication(serverToken, proxyRequest).map(app => requestHeader.withTag(X_APPLICATION_ID, app.id.toString))
-          case _ => throw MissingCredentials()
-        }
+            getApplication(accessToken(proxyRequest), proxyRequest).map(app => requestHeader.withTag(X_APPLICATION_ID, app.id.toString))
       case _ => successful(requestHeader)
     }
 }

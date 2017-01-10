@@ -19,7 +19,7 @@ package it.uk.gov.hmrc.apigateway
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
-import it.uk.gov.hmrc.apigateway.stubs.{ThirdPartyDelegatedAuthorityStub, ApiStub, ApiDefinitionStub}
+import it.uk.gov.hmrc.apigateway.stubs.{ThirdPartyApplicationStub, ThirdPartyDelegatedAuthorityStub, ApiStub, ApiDefinitionStub}
 import org.scalatest._
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.libs.json.Json._
@@ -37,7 +37,8 @@ with GuiceOneServerPerSuite with BeforeAndAfterEach {
   val apiDefinition = ApiDefinitionStub
   val api = ApiStub
   val thirdPartyDelegatedAuthority = ThirdPartyDelegatedAuthorityStub
-  val mocks = Seq(apiDefinition, api, thirdPartyDelegatedAuthority)
+  val thirdPartyApplication = ThirdPartyApplicationStub
+  val mocks = Seq(apiDefinition, api, thirdPartyDelegatedAuthority, thirdPartyApplication)
 
   override protected def beforeAll(): Unit = {
     mocks.foreach(m => if (!m.stub.server.isRunning) m.stub.server.start())

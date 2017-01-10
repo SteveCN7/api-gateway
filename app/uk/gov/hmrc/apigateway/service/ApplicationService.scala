@@ -21,8 +21,8 @@ import javax.inject.{Inject, Singleton}
 import uk.gov.hmrc.apigateway.connector.impl.ThirdPartyApplicationConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.InvalidCredentials
 import uk.gov.hmrc.apigateway.model.Application
-import scala.concurrent.ExecutionContext.Implicits.global
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton

@@ -20,7 +20,6 @@ import java.util.UUID
 
 import akka.stream.Materializer
 import org.joda.time.DateTime
-import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import play.api.test.FakeRequest
@@ -39,7 +38,12 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
 
   implicit val executionContextExecutor = ExecutionContext.Implicits.global
   implicit val materializer = mock[Materializer]
+
   val serverToken = "serverToken"
+  val fakeRequest = FakeRequest("GET", "http://host.example/foo")
+    .withHeaders(AUTHORIZATION -> s"Bearer $serverToken")
+    .withTag(X_API_GATEWAY_AUTH_TYPE, APPLICATION.toString)
+  val proxyRequest = ProxyRequest(fakeRequest)
 
   trait Setup {
     val mockAuthorityService = mock[AuthorityService]
@@ -49,15 +53,11 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
 
   "Application restricted endpoint filter" should {
 
-    val fakeRequest = FakeRequest("GET", "http://host.example/foo")
-      .withHeaders((AUTHORIZATION -> s"Bearer $serverToken"))
-      .withTag(X_API_GATEWAY_AUTH_TYPE, APPLICATION.toString)
-
     "process a request with a valid user token" in new Setup {
       val application = anApplication()
       mock(mockAuthorityService, validAuthority())
       mockByClientId(mockApplicationService, validAuthority(), application)
-      val result = await(applicationRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
+      val result = await(applicationRestrictedEndpointFilter.filter(fakeRequest, proxyRequest))
       result.tags.get(X_APPLICATION_ID) shouldBe Some(application.id.toString)
     }
 
@@ -65,14 +65,14 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
       val application = anApplication()
       mock(mockAuthorityService, NotFound())
       mockByServerToken(mockApplicationService, serverToken, application)
-      val result = await(applicationRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
+      val result = await(applicationRestrictedEndpointFilter.filter(fakeRequest, proxyRequest))
       result.tags.get(X_APPLICATION_ID) shouldBe Some(application.id.toString)
     }
 
    "propagate an invalid credentials error for an expired user token" in new Setup {
       mock(mockAuthorityService, InvalidCredentials())
       intercept[InvalidCredentials] {
-        await(applicationRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
+        await(applicationRestrictedEndpointFilter.filter(fakeRequest, proxyRequest))
       }
     }
 
@@ -82,7 +82,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
       mockByServerToken(mockApplicationService, serverToken, InvalidCredentials())
 
       intercept[InvalidCredentials] {
-        await(applicationRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
+        await(applicationRestrictedEndpointFilter.filter(fakeRequest, proxyRequest))
       }
     }
 
@@ -99,16 +99,16 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
       val fakeRequest = FakeRequest("GET", "http://host.example/foo")
         .withTag(X_API_GATEWAY_AUTH_TYPE, USER.toString)
 
-      val result = await(applicationRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
+      val result = await(applicationRestrictedEndpointFilter.filter(fakeRequest, proxyRequest))
       result.tags shouldBe fakeRequest.tags
     }
   }
 
   private def mock(authorityService: AuthorityService, gatewayError: GatewayError) =
-    when(authorityService.findAuthority(any[ProxyRequest])).thenReturn(failed(gatewayError))
+    when(authorityService.findAuthority(proxyRequest)).thenReturn(failed(gatewayError))
 
   private def mock(authorityService: AuthorityService, authority: Authority) =
-    when(authorityService.findAuthority(any[ProxyRequest])).thenReturn(authority)
+    when(authorityService.findAuthority(proxyRequest)).thenReturn(authority)
 
   private def mockByClientId(applicationService: ApplicationService, authority: Authority, application: Application) =
     when(applicationService.getByClientId(authority.delegatedAuthority.clientId)).thenReturn(application)

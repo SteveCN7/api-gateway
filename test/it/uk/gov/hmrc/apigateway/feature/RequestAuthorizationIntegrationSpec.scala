@@ -16,6 +16,7 @@
 
 package it.uk.gov.hmrc.apigateway.feature
 
+import java.util.UUID
 import it.uk.gov.hmrc.apigateway.BaseFeatureSpec
 import org.joda.time.DateTime.now
 import play.api.http.Status._
@@ -36,6 +37,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
     )
   val apiResponse = """{"response": "ok"}"""
   val accessToken = "accessToken"
+  val application = Application(UUID.randomUUID(), "App Name")
   val authority = Authority(
     ThirdPartyDelegatedAuthority("authBearerToken", "clientId", Token(accessToken, Set("scope1"), now().plusHours(3))),
     authExpired = false)
@@ -76,6 +78,9 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       And("An authority does not exist for the access token")
       thirdPartyDelegatedAuthority.willNotReturnAnAuthorityForAccessToken(accessToken)
 
+      And("An application does not exist for the access token")
+      thirdPartyApplication.willNotReturnAnApplicationForServerToken(accessToken)
+
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
 
@@ -84,6 +89,29 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
 
       And("The response message code is 'INVALID_CREDENTIALS'")
       assertBodyIs(httpResponse, """ {"code":"INVALID_CREDENTIALS","message":"Invalid Authentication information provided"} """)
+    }
+
+    scenario("A restricted request with a valid server token http header is not proxied") {
+
+      Given("A request")
+      val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
+        .header(ACCEPT, "application/vnd.hmrc.1.0+json")
+        .header(AUTHORIZATION, s"Bearer $accessToken")
+
+      And("An authority does not exist for the access token")
+      thirdPartyDelegatedAuthority.willNotReturnAnAuthorityForAccessToken(accessToken)
+
+      And("An application exists for the access token")
+      thirdPartyApplication.willReturnTheApplicationForServerToken(accessToken, application)
+
+      When("The request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("The http response is '401' unauthorized")
+      assertCodeIs(httpResponse, UNAUTHORIZED)
+
+      And("The response message code is 'INCORRECT_ACCESS_TOKEN_TYPE'")
+      assertBodyIs(httpResponse, """ {"code":"INCORRECT_ACCESS_TOKEN_TYPE","message":"The access token type used is not supported when invoking the API"} """)
     }
 
     scenario("A restricted request with invalid scopes is not proxied") {

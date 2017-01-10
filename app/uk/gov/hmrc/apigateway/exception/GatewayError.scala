@@ -36,11 +36,14 @@ object GatewayError {
 
   case class MissingCredentials() extends GatewayError("MISSING_CREDENTIALS", "Authentication information is not provided")
 
+  case class IncorrectAccessTokenType() extends GatewayError("INCORRECT_ACCESS_TOKEN_TYPE", "The access token type used is not supported when invoking the API")
+
   case class InvalidScope() extends GatewayError("INVALID_SCOPE", "Cannot access the required resource. Ensure this token has all the required scopes.")
 
   def recovery: PartialFunction[Throwable, Result] = {
     case e: MissingCredentials => Unauthorized(toJson(e))
     case e: InvalidCredentials => Unauthorized(toJson(e))
+    case e: IncorrectAccessTokenType => Unauthorized(toJson(e))
     case e: MatchingResourceNotFound => PlayNotFound(toJson(e))
     case e: InvalidScope => Forbidden(toJson(e))
     case e: NotFound => PlayNotFound(toJson(e))

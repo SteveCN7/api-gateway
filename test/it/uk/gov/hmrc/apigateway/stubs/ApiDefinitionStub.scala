@@ -21,6 +21,7 @@ import it.uk.gov.hmrc.apigateway.{MockHost, Stub}
 import play.api.libs.json.Json.{toJson, stringify}
 import uk.gov.hmrc.apigateway.model.ApiDefinition
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
+import play.api.http.Status._
 
 object ApiDefinitionStub extends Stub {
 
@@ -28,12 +29,12 @@ object ApiDefinitionStub extends Stub {
 
   def willReturnTheApiDefinition(apiDefinition: ApiDefinition) = {
     stub.mock.register(get(urlPathEqualTo(s"/api-definition")).withQueryParam("context", equalTo(apiDefinition.context))
-      .willReturn(aResponse().withStatus(200)
+      .willReturn(aResponse().withStatus(OK)
         .withBody(stringify(toJson(apiDefinition)))))
   }
 
   def willNotReturnAnApiDefinitionForContext(context: String) = {
     stub.mock.register(get(urlPathEqualTo(s"/api-definition")).withQueryParam("context", equalTo(context))
-      .willReturn(aResponse().withStatus(404)))
+      .willReturn(aResponse().withStatus(NOT_FOUND)))
   }
 }

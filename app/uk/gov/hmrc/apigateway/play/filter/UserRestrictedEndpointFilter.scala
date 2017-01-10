@@ -20,10 +20,10 @@ import javax.inject.{Inject, Singleton}
 
 import akka.stream.Materializer
 import play.api.mvc._
-import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, NotFound}
+import uk.gov.hmrc.apigateway.exception.GatewayError.{MissingCredentials, IncorrectAccessTokenType, InvalidCredentials, NotFound}
 import uk.gov.hmrc.apigateway.model.AuthType._
-import uk.gov.hmrc.apigateway.model.ProxyRequest
-import uk.gov.hmrc.apigateway.service.{AuthorityService, ScopeValidator}
+import uk.gov.hmrc.apigateway.model.{Application, Authority, ProxyRequest}
+import uk.gov.hmrc.apigateway.service.{ApplicationService, AuthorityService, ScopeValidator}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
 import scala.concurrent.Future.successful
@@ -35,18 +35,19 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 @Singleton
 class UserRestrictedEndpointFilter @Inject()
-(authorityService: AuthorityService, scopeValidator: ScopeValidator)
+(authorityService: AuthorityService, applicationService: ApplicationService, scopeValidator: ScopeValidator)
 (implicit override val mat: Materializer, executionContext: ExecutionContext) extends ApiGatewayFilter {
 
-  private def getAuthority(proxyRequest: ProxyRequest) = {
-    authorityService.findAuthority(proxyRequest) recover {
-      case error: NotFound => throw InvalidCredentials()
+  private def getApplicationByServerToken(proxyRequest: ProxyRequest): Future[Application] =
+    applicationService.getByServerToken(accessToken(proxyRequest))
+
+  private def getAuthority(proxyRequest: ProxyRequest): Future[Authority] =
+    authorityService.findAuthority(proxyRequest) recoverWith {
+      case e: NotFound => getApplicationByServerToken(proxyRequest).map(_ => throw IncorrectAccessTokenType())
     }
-  }
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
     requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) flatMap authType match {
-
       case Some(USER) =>
         for {
           authority <- getAuthority(proxyRequest)
@@ -55,8 +56,6 @@ class UserRestrictedEndpointFilter @Inject()
         } yield requestHeader
           .withTag(X_APPLICATION_ID, delegatedAuthority.clientId)
           .withTag(AUTHORIZATION, s"Bearer ${delegatedAuthority.authBearerToken}")
-
       case _ => successful(requestHeader)
     }
-
 }

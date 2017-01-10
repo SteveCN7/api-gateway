@@ -19,6 +19,7 @@ package uk.gov.hmrc.apigateway.play.filter
 import akka.stream.Materializer
 import play.api.mvc.{Filter, RequestHeader, Result}
 import uk.gov.hmrc.apigateway.exception.GatewayError
+import uk.gov.hmrc.apigateway.exception.GatewayError.MissingCredentials
 import uk.gov.hmrc.apigateway.model.ProxyRequest
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -36,4 +37,7 @@ abstract class ApiGatewayFilter(implicit m: Materializer) extends Filter {
 
   def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader]
 
+  def accessToken(proxyRequest: ProxyRequest) = {
+    proxyRequest.accessToken.getOrElse(throw MissingCredentials())
+  }
 }

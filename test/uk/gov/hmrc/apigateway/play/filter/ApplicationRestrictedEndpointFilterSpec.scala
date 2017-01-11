@@ -39,7 +39,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
     val applicationService = mock[ApplicationService]
     val underTest = new ApplicationRestrictedEndpointFilter(authorityService, applicationService)
 
-    val accessToken = "accessToken"
+    val serverToken = "accessToken"
     val clientId = "clientId"
 
     val basicRequest = new FakeRequest(
@@ -51,7 +51,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
       .withTag(X_API_GATEWAY_AUTH_TYPE, APPLICATION.toString)
       .withTag(X_API_GATEWAY_API_CONTEXT, "c")
       .withTag(X_API_GATEWAY_API_VERSION, "v")
-    val applicationRequestWithToken = applicationRequest.copy(headers = Headers(AUTHORIZATION -> s"Bearer $accessToken"))
+    val applicationRequestWithToken = applicationRequest.copy(headers = Headers(AUTHORIZATION -> s"Bearer $serverToken"))
   }
 
   "Application restricted endpoint filter" should {
@@ -63,7 +63,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
     }
 
     "propagate the error, with a request without a valid server token" in new Setup {
-      mockApplicationByServerToken(applicationService, serverToken = accessToken, ServerError())
+      mockApplicationByServerToken(applicationService, serverToken, ServerError())
 
       intercept[ServerError] {
         await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
@@ -71,7 +71,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
     }
 
     "propagate the error, with a request without a valid access token" in new Setup {
-      mockApplicationByServerToken(applicationService, serverToken = accessToken, NotFound())
+      mockApplicationByServerToken(applicationService, serverToken, NotFound())
       mockAuthority(authorityService, InvalidCredentials())
 
       intercept[InvalidCredentials] {
@@ -80,7 +80,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
     }
 
     "propagate the error, when the application cannot be fetched" in new Setup {
-      mockApplicationByServerToken(applicationService, serverToken = accessToken, NotFound())
+      mockApplicationByServerToken(applicationService, serverToken, NotFound())
       mockAuthority(authorityService, validAuthority())
       mockApplicationByClientId(applicationService, clientId, ServerError())
 
@@ -90,7 +90,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
     }
 
     "propagate the error, when the application API subscriptions cannot be fetched" in new Setup {
-      mockApplicationByServerToken(applicationService, serverToken = accessToken, NotFound())
+      mockApplicationByServerToken(applicationService, serverToken, NotFound())
       mockAuthority(authorityService, validAuthority())
       mockApplicationByClientId(applicationService, clientId, anApplication())
       mockApiSubscriptions(applicationService, ServerError())
@@ -101,7 +101,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
     }
 
     "process a request with a valid access token that meets all requirements" in new Setup {
-      mockApplicationByServerToken(applicationService, serverToken = accessToken, NotFound())
+      mockApplicationByServerToken(applicationService, serverToken, NotFound())
       mockAuthority(authorityService, validAuthority())
       mockApplicationByClientId(applicationService, clientId, anApplication())
       mockApiSubscriptions(applicationService)
@@ -111,7 +111,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
     }
 
     "process a request with a valid server token that meets all requirements" in new Setup {
-      mockApplicationByServerToken(applicationService, serverToken = accessToken, anApplication())
+      mockApplicationByServerToken(applicationService, serverToken, anApplication())
       mockApiSubscriptions(applicationService)
 
       val result = await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))

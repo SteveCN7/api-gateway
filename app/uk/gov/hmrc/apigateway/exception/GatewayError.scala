@@ -40,12 +40,15 @@ object GatewayError {
 
   case class InvalidScope() extends GatewayError("INVALID_SCOPE", "Cannot access the required resource. Ensure this token has all the required scopes.")
 
+  case class InvalidSubscription() extends GatewayError("RESOURCE_FORBIDDEN", "The application is not subscribed to the API which it is attempting to invoke")
+
   def recovery: PartialFunction[Throwable, Result] = {
     case e: MissingCredentials => Unauthorized(toJson(e))
     case e: InvalidCredentials => Unauthorized(toJson(e))
     case e: IncorrectAccessTokenType => Unauthorized(toJson(e))
     case e: MatchingResourceNotFound => PlayNotFound(toJson(e))
     case e: InvalidScope => Forbidden(toJson(e))
+    case e: InvalidSubscription => Forbidden(toJson(e))
     case e: NotFound => PlayNotFound(toJson(e))
     case e =>
       Logger.error("unexpected error", e)

@@ -57,7 +57,7 @@ class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar {
 
     "process a request which meets all requirements" in new Setup {
       val apiDefinitionMatch = ApiDefinitionMatch("foo", "http://host.example", "1,0", NONE, None)
-      when(endpointService.findApiDefinition(any[ProxyRequest])).thenReturn(apiDefinitionMatch)
+      when(endpointService.findApiDefinition(any[ProxyRequest])).thenReturn(successful(apiDefinitionMatch))
 
       val result = await(genericEndpointFilter(nextFilter)(fakeRequest))
       status(result) shouldBe OK

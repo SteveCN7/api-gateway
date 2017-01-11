@@ -30,14 +30,14 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Filter for inspecting requests for generic (open and/or restricted) endpoints
-  * and evaluating their eligibility to be proxied to a downstream services.
+  * and evaluating their eligibility to be proxied to downstream services.
   */
 @Singleton
 class GenericEndpointFilter @Inject()
 (endpointService: EndpointService)
 (implicit override val mat: Materializer, executionContext: ExecutionContext) extends ApiGatewayFilter {
 
-  override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
+  override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
     for {
       apiDefinitionMatch <- endpointService.findApiDefinition(proxyRequest)
     // TODO implement global rate limit filter???
@@ -46,5 +46,8 @@ class GenericEndpointFilter @Inject()
       .withTag(X_API_GATEWAY_ENDPOINT, s"${apiDefinitionMatch.serviceBaseUrl}/${proxyRequest.path}")
       .withTag(X_API_GATEWAY_SCOPE, apiDefinitionMatch.scope.orNull)
       .withTag(X_API_GATEWAY_AUTH_TYPE, apiDefinitionMatch.authType.toString)
+      .withTag(X_API_GATEWAY_API_CONTEXT, apiDefinitionMatch.context)
+      .withTag(X_API_GATEWAY_API_VERSION, apiDefinitionMatch.apiVersion)
+  }
 
 }

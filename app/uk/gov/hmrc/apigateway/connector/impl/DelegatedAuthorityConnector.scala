@@ -21,11 +21,9 @@ import javax.inject.{Inject, Singleton}
 import play.api.libs.ws.WSClient
 import uk.gov.hmrc.apigateway.cache.CacheManager
 import uk.gov.hmrc.apigateway.connector.ServiceConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, NotFound}
 import uk.gov.hmrc.apigateway.model.Authority
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings.authorityFormat
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton

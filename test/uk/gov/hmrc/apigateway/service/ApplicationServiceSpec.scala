@@ -19,53 +19,111 @@ package uk.gov.hmrc.apigateway.service
 import java.util.UUID
 
 import org.mockito.Mockito._
+import org.mockito.ArgumentMatchers._
 import org.scalatest.mockito.MockitoSugar
 import uk.gov.hmrc.apigateway.connector.impl.ThirdPartyApplicationConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, NotFound}
-import uk.gov.hmrc.apigateway.model.Application
+import uk.gov.hmrc.apigateway.exception.GatewayError._
+import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
+import scala.concurrent.Future._
 
 class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
 
   trait Setup {
-    val application = Application(UUID.randomUUID(), "App Name")
+    val serverToken = "serverToken"
+    val applicationId = UUID.randomUUID()
+    val clientId = "clientId"
+    val application = Application(id = applicationId, name = "App Name")
+
+    val v1 = Version("1.0")
+    val v2 = Version("2.0")
+    val subscriptions = Seq(
+      API(context = "c1", versions = Seq(Subscription(v1, subscribed = true), Subscription(v2, subscribed = false))),
+      API(context = "c2", versions = Seq(Subscription(v1, subscribed = false), Subscription(v2, subscribed = true))))
+
     val applicationConnector = mock[ThirdPartyApplicationConnector]
     val underTest = new ApplicationService(applicationConnector)
   }
 
-  "get by server token" should {
-    val serverToken = "serverToken"
+  "Get application by server token" should {
 
-    "return the application when server token is valid" in new Setup {
-      when(applicationConnector.getByServerToken(serverToken)).thenReturn(application)
+    "return the application when an application exists for the given server token" in new Setup {
+      when(applicationConnector.getApplicationByServerToken(serverToken)).thenReturn(successful(application))
       val result = await(underTest.getByServerToken(serverToken))
       result shouldBe application
     }
 
-    "return an invalid credentials error if the application cannot be fetched" in new Setup {
-      when(applicationConnector.getByServerToken(serverToken)).thenReturn(Future.failed(NotFound()))
-      intercept[InvalidCredentials] {
+    "propagate the error when the application cannot be fetched for the given server token" in new Setup {
+      when(applicationConnector.getApplicationByServerToken(serverToken)).thenReturn(failed(NotFound()))
+      intercept[NotFound] {
         await(underTest.getByServerToken(serverToken))
       }
     }
   }
 
-  "get by client id" should {
-    val clientId = "clientId"
+  "Get application by client id" should {
 
     "return the application when an application exists for the given client id" in new Setup {
-      when(applicationConnector.getByClientId(clientId)).thenReturn(application)
+      when(applicationConnector.getApplicationByClientId(clientId)).thenReturn(successful(application))
       val result = await(underTest.getByClientId(clientId))
       result shouldBe application
     }
 
-    "propagate an error when the application cannot be fetched" in new Setup {
-      when(applicationConnector.getByClientId(clientId)).thenReturn(Future.failed(NotFound()))
+    "propagate the error when the application cannot be fetched for the given client id" in new Setup {
+      when(applicationConnector.getApplicationByClientId(clientId)).thenReturn(failed(NotFound()))
       intercept[NotFound] {
         await(underTest.getByClientId(clientId))
       }
     }
   }
+
+  "Validate application is subscribed to api" should {
+
+    "propagate the exception when getSubscriptions() fails" in new Setup {
+      when(applicationConnector.getSubscriptionsByApplicationId(applicationId.toString)).thenReturn(failed(NotFound()))
+      intercept[NotFound] {
+        await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "ccc", "vvv"))
+      }
+    }
+
+    "throw an exception when the application has no subscriptions" in new Setup {
+      mockSubscriptions(applicationConnector, successful(Seq.empty))
+      intercept[InvalidSubscription] {
+        await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "c2", "2.0"))
+      }
+    }
+
+    "throw an exception when the application is not subscribed to any API with the same context of the request" in new Setup {
+      mockSubscriptions(applicationConnector, successful(subscriptions))
+      intercept[InvalidSubscription] {
+        await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "c3", "1.0"))
+      }
+    }
+
+    "throw an exception when the application is not subscribed to any API with the same version of the request" in new Setup {
+      mockSubscriptions(applicationConnector, successful(subscriptions))
+      intercept[InvalidSubscription] {
+        await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "c1", "3.0"))
+      }
+    }
+
+    "throw an exception when the application is not subscribed to the specific version used in the request" in new Setup {
+      mockSubscriptions(applicationConnector, successful(subscriptions))
+      intercept[InvalidSubscription] {
+        await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "c2", "1.0"))
+      }
+    }
+
+    "return `true` when the version and the context of the request are correct" in new Setup {
+      mockSubscriptions(applicationConnector, successful(subscriptions))
+      await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "c2", "2.0"))
+    }
+
+  }
+
+  private def mockSubscriptions(applicationConnector: ThirdPartyApplicationConnector, eventualSubscriptions: Future[Seq[API]]) =
+    when(applicationConnector.getSubscriptionsByApplicationId(anyString())).thenReturn(eventualSubscriptions)
+
 }

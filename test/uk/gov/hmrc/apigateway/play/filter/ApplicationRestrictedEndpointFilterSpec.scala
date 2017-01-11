@@ -16,14 +16,10 @@
 
 package uk.gov.hmrc.apigateway.play.filter
 
-import java.util.UUID
-
 import akka.stream.Materializer
-import org.joda.time.DateTime
-import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
+import play.api.mvc.Headers
 import play.api.test.FakeRequest
-import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.exception.GatewayError._
 import uk.gov.hmrc.apigateway.model.AuthType._
 import uk.gov.hmrc.apigateway.model._
@@ -32,98 +28,93 @@ import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.ExecutionContext
-import scala.concurrent.Future.failed
 
-class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar {
+class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with EndpointFilterMocking {
 
   implicit val executionContextExecutor = ExecutionContext.Implicits.global
   implicit val materializer = mock[Materializer]
 
-  val serverToken = "serverToken"
-  val fakeRequest = FakeRequest("GET", "http://host.example/foo")
-    .withHeaders(AUTHORIZATION -> s"Bearer $serverToken")
-    .withTag(X_API_GATEWAY_AUTH_TYPE, APPLICATION.toString)
-  val proxyRequest = ProxyRequest(fakeRequest)
+  private trait Setup {
+    val authorityService = mock[AuthorityService]
+    val applicationService = mock[ApplicationService]
+    val underTest = new ApplicationRestrictedEndpointFilter(authorityService, applicationService)
 
-  trait Setup {
-    val mockAuthorityService = mock[AuthorityService]
-    val mockApplicationService = mock[ApplicationService]
-    val applicationRestrictedEndpointFilter = new ApplicationRestrictedEndpointFilter(mockAuthorityService, mockApplicationService)
+    val basicRequest = new FakeRequest(
+      method = "GET",
+      uri = "http://host.example/foo",
+      headers = Headers(),
+      body = "")
+    val applicationRequest = basicRequest
+      .withTag(X_API_GATEWAY_AUTH_TYPE, APPLICATION.toString)
+      .withTag(X_API_GATEWAY_API_CONTEXT, "c")
+      .withTag(X_API_GATEWAY_API_VERSION, "v")
+    val applicationRequestWithToken = applicationRequest.copy(headers = Headers(AUTHORIZATION -> "Bearer T0K3N"))
   }
 
   "Application restricted endpoint filter" should {
 
-    "process a request with a valid user token" in new Setup {
-      val application = anApplication()
-      mock(mockAuthorityService, validAuthority())
-      mockByClientId(mockApplicationService, validAuthority(), application)
-      val result = await(applicationRestrictedEndpointFilter.filter(fakeRequest, proxyRequest))
-      result.tags.get(X_APPLICATION_ID) shouldBe Some(application.id.toString)
-    }
-
-    "process a request with a valid server token" in new Setup {
-      val application = anApplication()
-      mock(mockAuthorityService, NotFound())
-      mockByServerToken(mockApplicationService, serverToken, application)
-      val result = await(applicationRestrictedEndpointFilter.filter(fakeRequest, proxyRequest))
-      result.tags.get(X_APPLICATION_ID) shouldBe Some(application.id.toString)
-    }
-
-   "propagate an invalid credentials error for an expired user token" in new Setup {
-      mock(mockAuthorityService, InvalidCredentials())
-      intercept[InvalidCredentials] {
-        await(applicationRestrictedEndpointFilter.filter(fakeRequest, proxyRequest))
-      }
-    }
-
-    "propagate an invalid credentials error for an invalid server token" in new Setup {
-      val application = anApplication()
-      mock(mockAuthorityService, NotFound())
-      mockByServerToken(mockApplicationService, serverToken, InvalidCredentials())
-
-      intercept[InvalidCredentials] {
-        await(applicationRestrictedEndpointFilter.filter(fakeRequest, proxyRequest))
-      }
-    }
-
-    "return a missing credentials error for a request without an authorization header" in new Setup {
-      val fakeRequest = FakeRequest("GET", "http://host.example/foo")
-        .withTag(X_API_GATEWAY_AUTH_TYPE, APPLICATION.toString)
-
+    "fail with a request not matching authority" in new Setup {
       intercept[MissingCredentials] {
-        await(applicationRestrictedEndpointFilter.filter(fakeRequest, ProxyRequest(fakeRequest)))
+        await(underTest.filter(applicationRequest, ProxyRequest(applicationRequest)))
       }
     }
 
-    "ignore a request for a resource which is not application restricted" in new Setup {
-      val fakeRequest = FakeRequest("GET", "http://host.example/foo")
-        .withTag(X_API_GATEWAY_AUTH_TYPE, USER.toString)
+    "propagate the error, with a request without a valid server token" in new Setup {
+      mockApplicationByServerToken(applicationService, "T0K3N", ServerError())
 
-      val result = await(applicationRestrictedEndpointFilter.filter(fakeRequest, proxyRequest))
-      result.tags shouldBe fakeRequest.tags
+      intercept[ServerError] {
+        await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
+      }
     }
+
+    "propagate the error, with a request without a valid access token" in new Setup {
+      mockApplicationByServerToken(applicationService, "T0K3N", NotFound())
+      mockAuthority(authorityService, InvalidCredentials())
+
+      intercept[InvalidCredentials] {
+        await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
+      }
+    }
+
+    "propagate the error, when the application cannot be fetched" in new Setup {
+      mockApplicationByServerToken(applicationService, "T0K3N", NotFound())
+      mockAuthority(authorityService, validAuthority())
+      mockApplicationByClientId(applicationService, "clientId", ServerError())
+
+      intercept[ServerError] {
+        await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
+      }
+    }
+
+    "propagate the error, when the application subscriptions cannot be fetched" in new Setup {
+      mockApplicationByServerToken(applicationService, "T0K3N", NotFound())
+      mockAuthority(authorityService, validAuthority())
+      mockApplicationByClientId(applicationService, "clientId", anApplication())
+      mockSubscriptions(applicationService, ServerError())
+
+      intercept[ServerError] {
+        await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
+      }
+    }
+
+    "process a request with a valid access token that meets all requirements" in new Setup {
+      mockApplicationByServerToken(applicationService, "T0K3N", NotFound())
+      mockAuthority(authorityService, validAuthority())
+      mockApplicationByClientId(applicationService, "clientId", anApplication())
+      mockSubscriptions(applicationService)
+
+      val result = await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
+      result.headers shouldBe applicationRequestWithToken.headers
+    }
+
+    "process a request with a valid server token that meets all requirements" in new Setup {
+      mockApplicationByServerToken(applicationService, "T0K3N", anApplication())
+      mockSubscriptions(applicationService)
+
+      val result = await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
+      result.headers shouldBe applicationRequestWithToken.headers
+    }
+
   }
 
-  private def mock(authorityService: AuthorityService, gatewayError: GatewayError) =
-    when(authorityService.findAuthority(proxyRequest)).thenReturn(failed(gatewayError))
-
-  private def mock(authorityService: AuthorityService, authority: Authority) =
-    when(authorityService.findAuthority(proxyRequest)).thenReturn(authority)
-
-  private def mockByClientId(applicationService: ApplicationService, authority: Authority, application: Application) =
-    when(applicationService.getByClientId(authority.delegatedAuthority.clientId)).thenReturn(application)
-
-  private def mockByServerToken(applicationService: ApplicationService, accessToken: String, application: Application) =
-    when(applicationService.getByServerToken(accessToken)).thenReturn(application)
-
-  private def mockByServerToken(applicationService: ApplicationService, accessToken: String, gatewayError: GatewayError) =
-    when(applicationService.getByServerToken(accessToken)).thenReturn(failed(gatewayError))
-
-  private def validAuthority() = {
-    val token = Token(serverToken, Set.empty, DateTime.now.plusMinutes(5))
-    val thirdPartyDelegatedAuthority = ThirdPartyDelegatedAuthority("authBearerToken", "clientId", token)
-    Authority(thirdPartyDelegatedAuthority, authExpired = false)
-  }
-
-  private def anApplication() = Application(UUID.randomUUID(), "App Name")
 }

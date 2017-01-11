@@ -20,10 +20,10 @@ import javax.inject.{Inject, Singleton}
 
 import akka.stream.Materializer
 import play.api.mvc._
-import uk.gov.hmrc.apigateway.exception.GatewayError.{MissingCredentials, IncorrectAccessTokenType, InvalidCredentials, NotFound}
+import uk.gov.hmrc.apigateway.exception.GatewayError._
 import uk.gov.hmrc.apigateway.model.AuthType._
-import uk.gov.hmrc.apigateway.model.{Application, Authority, ProxyRequest}
-import uk.gov.hmrc.apigateway.service.{ApplicationService, AuthorityService, ScopeValidator}
+import uk.gov.hmrc.apigateway.model._
+import uk.gov.hmrc.apigateway.service._
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
 import scala.concurrent.Future.successful
@@ -39,23 +39,32 @@ class UserRestrictedEndpointFilter @Inject()
 (implicit override val mat: Materializer, executionContext: ExecutionContext) extends ApiGatewayFilter {
 
   private def getApplicationByServerToken(proxyRequest: ProxyRequest): Future[Application] =
-    applicationService.getByServerToken(accessToken(proxyRequest))
+    applicationService.getByServerToken(accessToken(proxyRequest)) recover {
+      case e: NotFound => throw InvalidCredentials()
+    }
 
   private def getAuthority(proxyRequest: ProxyRequest): Future[Authority] =
     authorityService.findAuthority(proxyRequest) recoverWith {
       case e: NotFound => getApplicationByServerToken(proxyRequest).map(_ => throw IncorrectAccessTokenType())
     }
 
-  override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
+  private def validateRequestAndSwapToken(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
+    for {
+      authority <- getAuthority(proxyRequest)
+      application <- applicationService.getByClientId(authority.delegatedAuthority.clientId)
+      _ <- applicationService.validateApplicationIsSubscribedToApi(application.id.toString,
+        requestHeader.tags(X_API_GATEWAY_API_CONTEXT), requestHeader.tags(X_API_GATEWAY_API_VERSION))
+      delegatedAuthority = authority.delegatedAuthority
+      _ <- scopeValidator.validate(delegatedAuthority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
+    } yield requestHeader.withTag(AUTHORIZATION, s"Bearer ${delegatedAuthority.authBearerToken}")
+  }
+
+  override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
     requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) flatMap authType match {
-      case Some(USER) =>
-        for {
-          authority <- getAuthority(proxyRequest)
-          delegatedAuthority = authority.delegatedAuthority
-          _ <- scopeValidator.validate(delegatedAuthority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
-        } yield requestHeader
-          .withTag(X_APPLICATION_ID, delegatedAuthority.clientId)
-          .withTag(AUTHORIZATION, s"Bearer ${delegatedAuthority.authBearerToken}")
+      case Some(USER) => validateRequestAndSwapToken(requestHeader, proxyRequest)
       case _ => successful(requestHeader)
     }
+
+  }
+
 }

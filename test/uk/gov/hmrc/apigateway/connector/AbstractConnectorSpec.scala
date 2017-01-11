@@ -21,6 +21,7 @@ import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration._
 import org.scalatest.BeforeAndAfterEach
+import play.api.http.Status._
 import play.api.libs.json.Json
 import play.api.libs.json.Json.{toJson, stringify}
 import play.api.libs.ws.WSClient
@@ -49,11 +50,11 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
 
   "Abstract connector" should {
 
-    "throw a runtime exception when the response is '404' not found" in new Setup {
+    "throw a not found error when the response is '404' not found" in new Setup {
 
       stubFor(get(urlPathEqualTo("/foo/bar"))
         .willReturn(
-          aResponse().withStatus(404)
+          aResponse().withStatus(NOT_FOUND)
         ))
 
       intercept[NotFound] {
@@ -67,7 +68,7 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
       stubFor(get(urlPathEqualTo("/foo/bar"))
         .willReturn(
           aResponse()
-            .withStatus(200)
+            .withStatus(OK)
             .withBody(stringify(toJson(Foo("bar"))))
         ))
 
@@ -82,7 +83,7 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
       stubFor(get(urlPathEqualTo("/foo/bar")).withHeader("foo", equalTo("bar"))
         .willReturn(
           aResponse()
-            .withStatus(200)
+            .withStatus(OK)
             .withBody(stringify(toJson(Foo("bar"))))
         ))
 

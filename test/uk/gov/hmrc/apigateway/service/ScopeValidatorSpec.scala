@@ -61,7 +61,7 @@ class ScopeValidatorSpec extends UnitSpec with MockitoSugar {
     }
 
     "return true when the request has all the required scopes" in new Setup {
-      await(scopeValidator.validate(delegatedAuthority, Some("read:scope"))) shouldBe true
+      await(scopeValidator.validate(delegatedAuthority, Some("read:scope")))
     }
 
   }

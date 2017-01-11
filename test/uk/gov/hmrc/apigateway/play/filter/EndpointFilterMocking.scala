@@ -65,11 +65,11 @@ trait EndpointFilterMocking {
   protected def mockApplicationByServerToken(applicationService: ApplicationService, serverToken: String, application: Application) =
     when(applicationService.getByServerToken(serverToken)).thenReturn(successful(anApplication()))
 
-  protected def mockSubscriptions(applicationService: ApplicationService, gatewayError: GatewayError) =
+  protected def mockApiSubscriptions(applicationService: ApplicationService, gatewayError: GatewayError) =
     when(applicationService.validateApplicationIsSubscribedToApi(anyString(), anyString(), anyString()))
       .thenReturn(failed(gatewayError))
 
-  protected def mockSubscriptions(applicationService: ApplicationService) =
+  protected def mockApiSubscriptions(applicationService: ApplicationService) =
     when(applicationService.validateApplicationIsSubscribedToApi(anyString(), anyString(), anyString()))
       .thenReturn(successful(()))
 

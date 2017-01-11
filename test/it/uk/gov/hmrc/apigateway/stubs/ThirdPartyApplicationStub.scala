@@ -17,7 +17,7 @@
 package it.uk.gov.hmrc.apigateway.stubs
 
 import it.uk.gov.hmrc.apigateway.{MockHost, Stub}
-import uk.gov.hmrc.apigateway.model.{API, Application}
+import uk.gov.hmrc.apigateway.model.{Api, Application}
 
 object ThirdPartyApplicationStub extends Stub with ThirdPartyApplicationStubMappings {
 
@@ -35,7 +35,7 @@ object ThirdPartyApplicationStub extends Stub with ThirdPartyApplicationStubMapp
   def willNotFindAnApplicationForClientId(clientId: String) =
     stub.mock.register(willNotFindAnyApplicationForClientId(clientId))
 
-  def willReturnTheSubscriptionsForApplicationId(applicationId: String, subscriptions: Seq[API]) =
+  def willReturnTheSubscriptionsForApplicationId(applicationId: String, subscriptions: Seq[Api]) =
     stub.mock.register(returnTheSubscriptionsForApplicationId(applicationId, subscriptions))
 
   def willNotFindSubscriptionsForApplicationId(applicationId: String) =

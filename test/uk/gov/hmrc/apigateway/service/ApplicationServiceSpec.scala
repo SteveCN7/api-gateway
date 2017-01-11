@@ -39,9 +39,9 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
 
     val v1 = Version("1.0")
     val v2 = Version("2.0")
-    val subscriptions = Seq(
-      API(context = "c1", versions = Seq(Subscription(v1, subscribed = true), Subscription(v2, subscribed = false))),
-      API(context = "c2", versions = Seq(Subscription(v1, subscribed = false), Subscription(v2, subscribed = true))))
+    val apis = Seq(
+      Api(context = "c1", versions = Seq(Subscription(v1, subscribed = true), Subscription(v2, subscribed = false))),
+      Api(context = "c2", versions = Seq(Subscription(v1, subscribed = false), Subscription(v2, subscribed = true))))
 
     val applicationConnector = mock[ThirdPartyApplicationConnector]
     val underTest = new ApplicationService(applicationConnector)
@@ -96,34 +96,34 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
     }
 
     "throw an exception when the application is not subscribed to any API with the same context of the request" in new Setup {
-      mockSubscriptions(applicationConnector, successful(subscriptions))
+      mockSubscriptions(applicationConnector, successful(apis))
       intercept[InvalidSubscription] {
         await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "c3", "1.0"))
       }
     }
 
     "throw an exception when the application is not subscribed to any API with the same version of the request" in new Setup {
-      mockSubscriptions(applicationConnector, successful(subscriptions))
+      mockSubscriptions(applicationConnector, successful(apis))
       intercept[InvalidSubscription] {
         await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "c1", "3.0"))
       }
     }
 
     "throw an exception when the application is not subscribed to the specific version used in the request" in new Setup {
-      mockSubscriptions(applicationConnector, successful(subscriptions))
+      mockSubscriptions(applicationConnector, successful(apis))
       intercept[InvalidSubscription] {
         await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "c2", "1.0"))
       }
     }
 
-    "return `true` when the version and the context of the request are correct" in new Setup {
-      mockSubscriptions(applicationConnector, successful(subscriptions))
+    "does not throw any exception when the version and the context of the request are correct" in new Setup {
+      mockSubscriptions(applicationConnector, successful(apis))
       await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "c2", "2.0"))
     }
 
   }
 
-  private def mockSubscriptions(applicationConnector: ThirdPartyApplicationConnector, eventualSubscriptions: Future[Seq[API]]) =
+  private def mockSubscriptions(applicationConnector: ThirdPartyApplicationConnector, eventualSubscriptions: Future[Seq[Api]]) =
     when(applicationConnector.getSubscriptionsByApplicationId(anyString())).thenReturn(eventualSubscriptions)
 
 }

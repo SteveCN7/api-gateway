@@ -22,4 +22,4 @@ case class Application(id: UUID, name: String)
 
 case class Version(version: String)
 case class Subscription(version: Version, subscribed: Boolean)
-case class API(context: String, versions: Seq[Subscription])
+case class Api(context: String, versions: Seq[Subscription])

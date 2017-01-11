@@ -39,16 +39,16 @@ class ApplicationService @Inject()(applicationConnector: ThirdPartyApplicationCo
 
   def validateApplicationIsSubscribedToApi(applicationId: String, requestApiContext: String, requestApiVersion: String): Future[Unit] = {
 
-    def subscribed(appSubscriptions: Seq[API]): Boolean = {
-      appSubscriptions.exists { sub: API =>
-        sub.context == requestApiContext && sub.versions.exists { sub: Subscription =>
+    def subscribed(appSubscriptions: Seq[Api]): Boolean = {
+      appSubscriptions.exists { api: Api =>
+        api.context == requestApiContext && api.versions.exists { sub: Subscription =>
           sub.subscribed && sub.version.version == requestApiVersion
         }
       }
     }
 
     applicationConnector.getSubscriptionsByApplicationId(applicationId) flatMap {
-      case appSubscriptions: Seq[API] if subscribed(appSubscriptions) => successful(())
+      case appSubscriptions: Seq[Api] if subscribed(appSubscriptions) => successful(())
       case _ => failed(InvalidSubscription())
     }
   }

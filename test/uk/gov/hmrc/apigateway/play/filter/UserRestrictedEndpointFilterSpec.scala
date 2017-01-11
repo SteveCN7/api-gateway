@@ -45,6 +45,8 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
     val applicationService = mock[ApplicationService]
     val scopeValidator = mock[ScopeValidator]
     val underTest = new UserRestrictedEndpointFilter(authorityService, applicationService, scopeValidator)
+
+    val clientId = "clientId"
   }
 
   "User restricted endpoint filter" should {
@@ -71,11 +73,11 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
     }
 
     "decline a request with a valid server token" in new Setup {
-      val serverToken = "ToKeN"
+      val serverToken = "serverToken"
       val request = fakeRequest.copy(headers = Headers(AUTHORIZATION -> serverToken))
 
       mockAuthority(authorityService, NotFound())
-      mockApplicationByClientId(applicationService, "clientId", NotFound())
+      mockApplicationByClientId(applicationService, clientId, NotFound())
       mockApplicationByServerToken(applicationService, serverToken, anApplication())
       intercept[IncorrectAccessTokenType] {
         await(underTest.filter(request, ProxyRequest(request)))
@@ -84,16 +86,16 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
 
     "decline a request not matching an application" in new Setup {
       mockAuthority(authorityService, validAuthority())
-      mockApplicationByClientId(applicationService, "clientId", ServerError())
+      mockApplicationByClientId(applicationService, clientId, ServerError())
       intercept[ServerError] {
         await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
       }
     }
 
-    "decline a request not matching the application subscriptions" in new Setup {
+    "decline a request not matching the application API subscriptions" in new Setup {
       mockAuthority(authorityService, validAuthority())
-      mockApplicationByClientId(applicationService, "clientId", anApplication())
-      mockSubscriptions(applicationService, InvalidSubscription())
+      mockApplicationByClientId(applicationService, clientId, anApplication())
+      mockApiSubscriptions(applicationService, InvalidSubscription())
       intercept[InvalidSubscription] {
         await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
       }
@@ -101,8 +103,8 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
 
     "decline a request not matching scopes" in new Setup {
       mockAuthority(authorityService, validAuthority())
-      mockApplicationByClientId(applicationService, "clientId", anApplication())
-      mockSubscriptions(applicationService)
+      mockApplicationByClientId(applicationService, clientId, anApplication())
+      mockApiSubscriptions(applicationService)
       mockScopeValidation(scopeValidator, InvalidScope())
       intercept[InvalidScope] {
         await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
@@ -112,8 +114,8 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
     "process a request which meets all requirements" in new Setup {
       mockAuthority(authorityService, validAuthority())
       mockScopeValidation(scopeValidator)
-      mockApplicationByClientId(applicationService, "clientId", anApplication())
-      mockSubscriptions(applicationService)
+      mockApplicationByClientId(applicationService, clientId, anApplication())
+      mockApiSubscriptions(applicationService)
 
       val result: Future[RequestHeader] = await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
       result.tags(AUTHORIZATION) shouldBe "Bearer authBearerToken"

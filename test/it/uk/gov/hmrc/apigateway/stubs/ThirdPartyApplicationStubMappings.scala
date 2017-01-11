@@ -20,7 +20,7 @@ import com.github.tomakehurst.wiremock.client.MappingBuilder
 import com.github.tomakehurst.wiremock.client.WireMock._
 import play.api.http.Status._
 import play.api.libs.json.Json._
-import uk.gov.hmrc.apigateway.model.{API, Application}
+import uk.gov.hmrc.apigateway.model.{Api, Application}
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
@@ -58,7 +58,7 @@ trait ThirdPartyApplicationStubMappings {
         aResponse().withStatus(NOT_FOUND)
       )
 
-  protected def returnTheSubscriptionsForApplicationId(applicationId: String, subscriptions: Seq[API]): MappingBuilder =
+  protected def returnTheSubscriptionsForApplicationId(applicationId: String, subscriptions: Seq[Api]): MappingBuilder =
     get(urlPathEqualTo(s"/application/$applicationId/subscription"))
       .willReturn(
         aResponse()

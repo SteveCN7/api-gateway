@@ -42,8 +42,8 @@ class ThirdPartyApplicationConnectorSpec extends UnitSpec with BeforeAndAfterEac
   val v1 = Version("1.0")
   val v2 = Version("2.0")
   val subscriptions = Seq(
-    API(context = "c1", versions = Seq(Subscription(v1, subscribed = true), Subscription(v2, subscribed = false))),
-    API(context = "c2", versions = Seq(Subscription(v1, subscribed = false), Subscription(v2, subscribed = true))))
+    Api(context = "c1", versions = Seq(Subscription(v1, subscribed = true), Subscription(v2, subscribed = false))),
+    Api(context = "c2", versions = Seq(Subscription(v1, subscribed = false), Subscription(v2, subscribed = true))))
 
   trait Setup {
     val underTest = fakeApplication.injector.instanceOf[ThirdPartyApplicationConnector]

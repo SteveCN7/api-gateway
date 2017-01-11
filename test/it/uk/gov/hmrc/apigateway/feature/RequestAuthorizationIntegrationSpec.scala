@@ -28,12 +28,12 @@ import scalaj.http.Http
 
 class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
 
-  private val wrongSubscriptions = Seq(API(
+  private val wrongApis = Seq(Api(
     context = "context",
     versions = Seq(Subscription(Version("4.0"), subscribed = true)))
   )
 
-  private val correctSubscriptions = Seq(API(
+  private val correctApis = Seq(Api(
     context = "api-simulator",
     versions = Seq(Subscription(Version("1.0"), subscribed = true)))
   )
@@ -48,10 +48,11 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       ))
     )
   private val apiResponse = """{"response": "ok"}"""
-  private val accessToken = "token"
+  private val accessToken = "accessToken"
+  private val clientId = "clientId"
 
   private val authority = Authority(
-    ThirdPartyDelegatedAuthority("authBearerToken", "clientId", Token(accessToken, Set("scope1"), now().plusHours(3))),
+    ThirdPartyDelegatedAuthority("authBearerToken", clientId, Token(accessToken, Set("scope1"), now().plusHours(3))),
     authExpired = false)
 
   private val applicationId = UUID.randomUUID()
@@ -94,6 +95,9 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       And("An authority does not exist for the access token")
       thirdPartyDelegatedAuthority.willNotReturnAnAuthorityForAccessToken(accessToken)
 
+      And("The token does not match any application")
+      thirdPartyApplication.willNotFindAnApplicationForServerToken(serverToken = accessToken)
+
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
 
@@ -106,7 +110,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
 
     scenario("A user restricted request attempting to use a valid server token is not proxied") {
 
-      val serverToken = "TKN"
+      val serverToken = "serverToken"
 
       Given("A request with a server token")
       val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
@@ -134,13 +138,13 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       Given("A valid request")
       val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
         .header(ACCEPT, "application/vnd.hmrc.1.0+json")
-        .header(AUTHORIZATION, "Bearer token")
+        .header(AUTHORIZATION, s"Bearer $accessToken")
 
       And("The access token matches an authority")
-      thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken("token", authority)
+      thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken(accessToken, authority)
 
       And("An application is not found for the delegated authority")
-      thirdPartyApplication.willNotFindAnApplicationForClientId("clientId")
+      thirdPartyApplication.willNotFindAnApplicationForClientId(clientId)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -148,24 +152,24 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       Then("The http response is '404' not found")
       assertCodeIs(httpResponse, NOT_FOUND)
 
-      And("The response message code is 'SERVER_ERROR'")
+      And("The response message code is 'NOT_FOUND'")
       assertBodyIs(httpResponse, """ {"code":"NOT_FOUND","message":"The requested resource could not be found."} """)
     }
 
-    scenario("A user restricted request with invalid subscriptions is not proxied") {
+    scenario("A user restricted request not matching the application API subscriptions is not proxied") {
 
       Given("A valid request")
       val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
         .header(ACCEPT, "application/vnd.hmrc.1.0+json")
-        .header(AUTHORIZATION, "Bearer token")
+        .header(AUTHORIZATION, s"Bearer $accessToken")
 
       And("The access token matches an authority")
-      thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken("token", authority)
+      thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken(accessToken, authority)
 
       And("An application exists for the delegated authority")
-      thirdPartyApplication.willReturnTheApplicationForClientId("clientId", application)
+      thirdPartyApplication.willReturnTheApplicationForClientId(clientId, application)
 
-      And("The application is subscribed to the correct API")
+      And("The application subscriptions are not found")
       thirdPartyApplication.willNotFindSubscriptionsForApplicationId(applicationId.toString)
 
       When("The request is sent to the gateway")
@@ -174,8 +178,34 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       Then("The http response is '404' not found")
       assertCodeIs(httpResponse, NOT_FOUND)
 
-      And("The response message code is 'SERVER_ERROR'")
+      And("The response message code is 'NOT_FOUND'")
       assertBodyIs(httpResponse, """ {"code":"NOT_FOUND","message":"The requested resource could not be found."} """)
+    }
+
+    scenario("A user restricted request with invalid subscriptions is not proxied") {
+
+      Given("A valid request")
+      val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
+        .header(ACCEPT, "application/vnd.hmrc.1.0+json")
+        .header(AUTHORIZATION, s"Bearer $accessToken")
+
+      And("The access token matches an authority")
+      thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken(accessToken, authority)
+
+      And("An application exists for the delegated authority")
+      thirdPartyApplication.willReturnTheApplicationForClientId(clientId, application)
+
+      And("The application subscriptions are invalid")
+      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, wrongApis)
+
+      When("The request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("The http response is '404' not found")
+      assertCodeIs(httpResponse, FORBIDDEN)
+
+      And("The response message code is 'RESOURCE_FORBIDDEN'")
+      assertBodyIs(httpResponse, """ {"code":"RESOURCE_FORBIDDEN","message":"The application is not subscribed to the API which it is attempting to invoke"} """)
     }
 
     scenario("A user restricted request with invalid scopes is not proxied") {
@@ -187,14 +217,11 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       And("The access token matches an authority with 'scope1'")
       thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken(accessToken, authority)
 
-      And("The access token matches an authority with 'scope1'")
-      thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken("token", authority)
-
       And("An application exists for the delegated authority")
-      thirdPartyApplication.willReturnTheApplicationForClientId("clientId", application)
+      thirdPartyApplication.willReturnTheApplicationForClientId(clientId, application)
 
       And("The application is subscribed to the correct API")
-      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, correctSubscriptions)
+      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, correctApis)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -211,16 +238,16 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       Given("A request to an endpoint requiring 'scope1'")
       val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
         .header(ACCEPT, "application/vnd.hmrc.1.0+json")
-        .header(AUTHORIZATION, "Bearer token")
+        .header(AUTHORIZATION, s"Bearer $accessToken")
 
       And("The access token matches an authority with 'scope1'")
-      thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken("token", authority)
+      thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken(accessToken, authority)
 
       And("An application exists for the delegated authority")
-      thirdPartyApplication.willReturnTheApplicationForClientId("clientId", application)
+      thirdPartyApplication.willReturnTheApplicationForClientId(clientId, application)
 
       And("The application is subscribed to the correct API")
-      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, correctSubscriptions)
+      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, correctApis)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -253,13 +280,13 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       Given("A request with valid headers")
       val httpRequest = Http(s"$serviceUrl/api-simulator/application")
         .header(ACCEPT, "application/vnd.hmrc.1.0+json")
-        .header(AUTHORIZATION, "Bearer token")
+        .header(AUTHORIZATION, s"Bearer $accessToken")
 
       And("The server token matches an application")
-      thirdPartyApplication.willReturnTheApplicationForServerToken("token", application)
+      thirdPartyApplication.willReturnTheApplicationForServerToken(serverToken = accessToken, application)
 
       And("The application is subscribed to the correct API")
-      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, correctSubscriptions)
+      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, correctApis)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -274,19 +301,19 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       Given("A request with valid headers")
       val httpRequest = Http(s"$serviceUrl/api-simulator/application")
         .header(ACCEPT, "application/vnd.hmrc.1.0+json")
-        .header(AUTHORIZATION, "Bearer token")
+        .header(AUTHORIZATION, s"Bearer $accessToken")
 
       And("The access token does not match applications")
-      thirdPartyApplication.willNotFindAnApplicationForServerToken("token")
+      thirdPartyApplication.willNotFindAnApplicationForServerToken(serverToken = accessToken)
 
-      And("The access token matches an authority'")
-      thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken("token", authority)
+      And("The access token matches the authority'")
+      thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken(accessToken, authority)
 
       And("An application exists for the delegated authority")
-      thirdPartyApplication.willReturnTheApplicationForClientId("clientId", application)
+      thirdPartyApplication.willReturnTheApplicationForClientId(clientId, application)
 
       And("The application is subscribed to the correct API")
-      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, correctSubscriptions)
+      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, correctApis)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -301,13 +328,13 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       Given("A request with valid headers")
       val httpRequest = Http(s"$serviceUrl/api-simulator/application")
         .header(ACCEPT, "application/vnd.hmrc.1.0+json")
-        .header(AUTHORIZATION, "Bearer token")
+        .header(AUTHORIZATION, s"Bearer $accessToken")
 
       And("The token does not match any authority")
-      thirdPartyDelegatedAuthority.willNotReturnAnAuthorityForAccessToken("token")
+      thirdPartyDelegatedAuthority.willNotReturnAnAuthorityForAccessToken(accessToken)
 
       And("The token does not match any application")
-      thirdPartyApplication.willNotFindAnApplicationForServerToken("token")
+      thirdPartyApplication.willNotFindAnApplicationForServerToken(serverToken = accessToken)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -315,7 +342,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       Then("The http response is '404' not found")
       assertCodeIs(httpResponse, NOT_FOUND)
 
-      And("The response message code is 'SERVER_ERROR'")
+      And("The response message code is 'NOT_FOUND'")
       assertBodyIs(httpResponse, """ {"code":"NOT_FOUND","message":"The requested resource could not be found."} """)
     }
 
@@ -324,16 +351,16 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       Given("A request with valid headers")
       val httpRequest = Http(s"$serviceUrl/api-simulator/application")
         .header(ACCEPT, "application/vnd.hmrc.1.0+json")
-        .header(AUTHORIZATION, "Bearer token")
+        .header(AUTHORIZATION, s"Bearer $accessToken")
 
       And("The token does not match any application")
-      thirdPartyApplication.willNotFindAnApplicationForServerToken("token")
+      thirdPartyApplication.willNotFindAnApplicationForServerToken(serverToken = accessToken)
 
-      And("The token matches an authority")
-      thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken("token", authority)
+      And("The token matches the authority")
+      thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken(accessToken, authority)
 
       And("The delegated authority does not match any application")
-      thirdPartyApplication.willNotFindAnApplicationForClientId("clientId")
+      thirdPartyApplication.willNotFindAnApplicationForClientId(clientId)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -345,17 +372,17 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       assertBodyIs(httpResponse, """ {"code":"NOT_FOUND","message":"The requested resource could not be found."} """)
     }
 
-    scenario("An application restricted request not matching subscriptions is not proxied") {
+    scenario("An application restricted request not matching API subscriptions is not proxied") {
 
       Given("A request with valid headers")
       val httpRequest = Http(s"$serviceUrl/api-simulator/application")
         .header(ACCEPT, "application/vnd.hmrc.1.0+json")
-        .header(AUTHORIZATION, "Bearer token")
+        .header(AUTHORIZATION, s"Bearer $accessToken")
 
       And("The server token matches an application")
-      thirdPartyApplication.willReturnTheApplicationForServerToken("token", application)
+      thirdPartyApplication.willReturnTheApplicationForServerToken(serverToken = accessToken, application)
 
-      And("there is an error when fetching the subscriptions")
+      And("The application subscriptions are not found")
       thirdPartyApplication.willNotFindSubscriptionsForApplicationId(applicationId.toString)
 
       When("The request is sent to the gateway")
@@ -364,10 +391,32 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       Then("The http response is '404' not found")
       assertCodeIs(httpResponse, NOT_FOUND)
 
-      And("The response message code is 'SERVER_ERROR'")
+      And("The response message code is 'NOT_FOUND'")
       assertBodyIs(httpResponse, """ {"code":"NOT_FOUND","message":"The requested resource could not be found."} """)
     }
 
+    scenario("An application restricted request with invalid API subscriptions is not proxied") {
+
+      Given("A request with valid headers")
+      val httpRequest = Http(s"$serviceUrl/api-simulator/application")
+        .header(ACCEPT, "application/vnd.hmrc.1.0+json")
+        .header(AUTHORIZATION, s"Bearer $accessToken")
+
+      And("The server token matches an application")
+      thirdPartyApplication.willReturnTheApplicationForServerToken(serverToken = accessToken, application)
+
+      And("The application subscriptions are invalid")
+      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, wrongApis)
+
+      When("The request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("The http response is '404' not found")
+      assertCodeIs(httpResponse, FORBIDDEN)
+
+      And("The response message code is 'RESOURCE_FORBIDDEN'")
+      assertBodyIs(httpResponse, """ {"code":"RESOURCE_FORBIDDEN","message":"The application is not subscribed to the API which it is attempting to invoke"} """)
+    }
   }
 
   feature("Open endpoint") {

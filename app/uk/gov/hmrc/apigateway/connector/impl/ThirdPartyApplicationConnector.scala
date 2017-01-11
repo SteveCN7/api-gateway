@@ -44,8 +44,8 @@ class ThirdPartyApplicationConnector @Inject() (wsClient: WSClient, cache: Cache
       urlPath = s"application?clientId=$clientId"
     )
 
-  def getSubscriptionsByApplicationId(applicationId: String): Future[Seq[API]] =
-    get[Seq[API]](
+  def getSubscriptionsByApplicationId(applicationId: String): Future[Seq[Api]] =
+    get[Seq[Api]](
       key = s"$serviceName-$applicationId",
       urlPath = s"application/$applicationId/subscription"
     )

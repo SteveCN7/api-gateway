@@ -37,7 +37,7 @@ object PlayBindings {
   implicit val applicationFormat = Json.format[Application]
   implicit val versionFormat = Json.format[Version]
   implicit val subscriptionFormat = Json.format[Subscription]
-  implicit val apiFormat = Json.format[API]
+  implicit val apiFormat = Json.format[Api]
 
   implicit val tokenFormat = Json.format[Token]
   implicit val thirdPartyDelegatedAuthorityFormat = Json.format[ThirdPartyDelegatedAuthority]

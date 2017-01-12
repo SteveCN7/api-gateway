@@ -50,7 +50,7 @@ class ApplicationRestrictedEndpointFilter @Inject()
     authorityService.findAuthority(proxyRequest) recover {
       case e: NotFound =>
         Logger.error("The application restricted endpoint filter could not find any authority", e)
-        throw ServerError()
+        throw InvalidCredentials()
     }
 
   private def getAppByAuthority(proxyRequest: ProxyRequest): Future[Application] = {
@@ -60,7 +60,7 @@ class ApplicationRestrictedEndpointFilter @Inject()
     } yield app
   }
 
-  private def validateApplicationSubscriptions(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
+  private def validateRequest(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
     applicationService.getByServerToken(accessToken(proxyRequest)) recoverWith {
       case e: NotFound => getAppByAuthority(proxyRequest)
     } flatMap {
@@ -71,7 +71,7 @@ class ApplicationRestrictedEndpointFilter @Inject()
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
     requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) flatMap authType match {
-      case Some(APPLICATION) => validateApplicationSubscriptions(requestHeader, proxyRequest)
+      case Some(APPLICATION) => validateRequest(requestHeader, proxyRequest)
       case _ => successful(requestHeader)
     }
 }

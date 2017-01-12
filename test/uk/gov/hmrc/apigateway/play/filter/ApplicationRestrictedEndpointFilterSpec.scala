@@ -62,7 +62,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
       }
     }
 
-    "propagate the error, with a request without a valid server token" in new Setup {
+    "propagate the error, when there is a failure in fetching the application by server token" in new Setup {
       mockApplicationByServerToken(applicationService, serverToken, ServerError())
 
       intercept[ServerError] {
@@ -70,16 +70,16 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
       }
     }
 
-    "propagate the error, with a request without a valid access token" in new Setup {
+    "fail, with a request without a valid access token" in new Setup {
       mockApplicationByServerToken(applicationService, serverToken, NotFound())
-      mockAuthority(authorityService, InvalidCredentials())
+      mockAuthority(authorityService, NotFound())
 
       intercept[InvalidCredentials] {
         await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
       }
     }
 
-    "propagate the error, when the application cannot be fetched" in new Setup {
+    "propagate the error, when there is a failure in fetching the application by client id" in new Setup {
       mockApplicationByServerToken(applicationService, serverToken, NotFound())
       mockAuthority(authorityService, validAuthority())
       mockApplicationByClientId(applicationService, clientId, ServerError())
@@ -89,7 +89,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
       }
     }
 
-    "propagate the error, when the application API subscriptions cannot be fetched" in new Setup {
+    "propagate the error, when there is a failure in finding the application subscriptions" in new Setup {
       mockApplicationByServerToken(applicationService, serverToken, NotFound())
       mockAuthority(authorityService, validAuthority())
       mockApplicationByClientId(applicationService, clientId, anApplication())

@@ -83,7 +83,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
       }
     }
 
-    "decline a request not matching an application" in new Setup {
+    "propagate the error, when there is a failure in fetching the application" in new Setup {
       mockAuthority(authorityService, validAuthority())
       mockApplicationByClientId(applicationService, clientId, ServerError())
       intercept[ServerError] {

@@ -133,7 +133,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       assertBodyIs(httpResponse, """ {"code":"INCORRECT_ACCESS_TOKEN_TYPE","message":"The access token type used is not supported when invoking the API"} """)
     }
 
-    scenario("A user restricted request that does not find the application from the authority is not proxied") {
+    scenario("A user restricted request, that fails with a NOT_FOUND when fetching the application by authority, is not proxied") {
 
       Given("A valid request")
       val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
@@ -156,7 +156,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       assertBodyIs(httpResponse, """ {"code":"SERVER_ERROR","message":"Internal server error"} """)
     }
 
-    scenario("A user restricted request that fails finding the application from the authority is not proxied") {
+    scenario("A user restricted request, that fails when fetching the application by authority, is not proxied") {
 
       Given("A valid request")
       val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
@@ -347,7 +347,8 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       assertBodyIs(httpResponse, apiResponse)
     }
 
-    scenario("An application restricted request not finding applications nor authorities is not proxied") {
+    scenario("An application restricted request, that fails with a NOT_FOUND when fetching the application " +
+      "by server token and when retrieving the authority, is not proxied") {
 
       Given("A request with valid headers")
       val httpRequest = Http(s"$serviceUrl/api-simulator/application")
@@ -363,14 +364,15 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
 
-      Then("The http response is '500' internal server error")
-      assertCodeIs(httpResponse, INTERNAL_SERVER_ERROR)
+      Then("The http response is '401' unauthorized")
+      assertCodeIs(httpResponse, UNAUTHORIZED)
 
-      And("The response message code is 'SERVER_ERROR'")
-      assertBodyIs(httpResponse, """ {"code":"SERVER_ERROR","message":"Internal server error"} """)
+      And("The response message code is 'UNAUTHORIZED'")
+      assertBodyIs(httpResponse, """ {"code":"INVALID_CREDENTIALS","message":"Invalid Authentication information provided"} """)
     }
 
-    scenario("An application restricted request that does not find applications is not proxied") {
+    scenario("An application restricted request, that fails with a NOT_FOUND when fetching the application " +
+      "by server token and also by client id, is not proxied") {
 
       Given("A request with valid headers")
       val httpRequest = Http(s"$serviceUrl/api-simulator/application")

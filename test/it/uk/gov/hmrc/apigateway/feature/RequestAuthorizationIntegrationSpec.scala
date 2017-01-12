@@ -133,7 +133,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       assertBodyIs(httpResponse, """ {"code":"INCORRECT_ACCESS_TOKEN_TYPE","message":"The access token type used is not supported when invoking the API"} """)
     }
 
-    scenario("A user restricted request that does not match applications is not proxied") {
+    scenario("A user restricted request that does not find the application from the authority is not proxied") {
 
       Given("A valid request")
       val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
@@ -149,14 +149,37 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
 
-      Then("The http response is '404' not found")
-      assertCodeIs(httpResponse, NOT_FOUND)
+      Then("The http response is '500' internal server error")
+      assertCodeIs(httpResponse, INTERNAL_SERVER_ERROR)
 
-      And("The response message code is 'NOT_FOUND'")
-      assertBodyIs(httpResponse, """ {"code":"NOT_FOUND","message":"The requested resource could not be found."} """)
+      And("The response message code is 'SERVER_ERROR'")
+      assertBodyIs(httpResponse, """ {"code":"SERVER_ERROR","message":"Internal server error"} """)
     }
 
-    scenario("A user restricted request not matching the application API subscriptions is not proxied") {
+    scenario("A user restricted request that fails finding the application from the authority is not proxied") {
+
+      Given("A valid request")
+      val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
+        .header(ACCEPT, "application/vnd.hmrc.1.0+json")
+        .header(AUTHORIZATION, s"Bearer $accessToken")
+
+      And("The access token matches an authority")
+      thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken(accessToken, authority)
+
+      And("There is an error while retrieving the application by client id")
+      thirdPartyApplication.willFailFindingTheApplicationForClientId(clientId)
+
+      When("The request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("The http response is '500' internal server error")
+      assertCodeIs(httpResponse, INTERNAL_SERVER_ERROR)
+
+      And("The response message code is 'SERVER_ERROR'")
+      assertBodyIs(httpResponse, """ {"code":"SERVER_ERROR","message":"Internal server error"} """)
+    }
+
+    scenario("A user restricted request that fails when fetching the application subscriptions is not proxied") {
 
       Given("A valid request")
       val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
@@ -169,17 +192,17 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       And("An application exists for the delegated authority")
       thirdPartyApplication.willReturnTheApplicationForClientId(clientId, application)
 
-      And("The application subscriptions are not found")
-      thirdPartyApplication.willNotFindSubscriptionsForApplicationId(applicationId.toString)
+      And("There is a failure while finding the application subscriptions")
+      thirdPartyApplication.willFailFindingTheSubscriptionsForApplicationId(applicationId.toString)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
 
-      Then("The http response is '404' not found")
-      assertCodeIs(httpResponse, NOT_FOUND)
+      Then("The http response is '500' internal server error")
+      assertCodeIs(httpResponse, INTERNAL_SERVER_ERROR)
 
-      And("The response message code is 'NOT_FOUND'")
-      assertBodyIs(httpResponse, """ {"code":"NOT_FOUND","message":"The requested resource could not be found."} """)
+      And("The response message code is 'SERVER_ERROR'")
+      assertBodyIs(httpResponse, """ {"code":"SERVER_ERROR","message":"Internal server error"} """)
     }
 
     scenario("A user restricted request with invalid subscriptions is not proxied") {
@@ -201,7 +224,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
 
-      Then("The http response is '404' not found")
+      Then("The http response is '403' forbidden")
       assertCodeIs(httpResponse, FORBIDDEN)
 
       And("The response message code is 'RESOURCE_FORBIDDEN'")
@@ -257,6 +280,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       assertBodyIs(httpResponse, apiResponse)
     }
   }
+
 
   feature("Application Restricted endpoint") {
 
@@ -323,56 +347,56 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       assertBodyIs(httpResponse, apiResponse)
     }
 
-    scenario("An application restricted request not matching applications nor authorities is not proxied") {
+    scenario("An application restricted request not finding applications nor authorities is not proxied") {
 
       Given("A request with valid headers")
       val httpRequest = Http(s"$serviceUrl/api-simulator/application")
         .header(ACCEPT, "application/vnd.hmrc.1.0+json")
         .header(AUTHORIZATION, s"Bearer $accessToken")
+
+      And("No applications are found by server token")
+      thirdPartyApplication.willNotFindAnApplicationForServerToken(serverToken = accessToken)
 
       And("The token does not match any authority")
       thirdPartyDelegatedAuthority.willNotReturnAnAuthorityForAccessToken(accessToken)
 
-      And("The token does not match any application")
-      thirdPartyApplication.willNotFindAnApplicationForServerToken(serverToken = accessToken)
-
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
 
-      Then("The http response is '404' not found")
-      assertCodeIs(httpResponse, NOT_FOUND)
+      Then("The http response is '500' internal server error")
+      assertCodeIs(httpResponse, INTERNAL_SERVER_ERROR)
 
-      And("The response message code is 'NOT_FOUND'")
-      assertBodyIs(httpResponse, """ {"code":"NOT_FOUND","message":"The requested resource could not be found."} """)
+      And("The response message code is 'SERVER_ERROR'")
+      assertBodyIs(httpResponse, """ {"code":"SERVER_ERROR","message":"Internal server error"} """)
     }
 
-    scenario("An application restricted request not matching applications is not proxied") {
+    scenario("An application restricted request that does not find applications is not proxied") {
 
       Given("A request with valid headers")
       val httpRequest = Http(s"$serviceUrl/api-simulator/application")
         .header(ACCEPT, "application/vnd.hmrc.1.0+json")
         .header(AUTHORIZATION, s"Bearer $accessToken")
 
-      And("The token does not match any application")
+      And("No applications are found by server token")
       thirdPartyApplication.willNotFindAnApplicationForServerToken(serverToken = accessToken)
 
       And("The token matches the authority")
       thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken(accessToken, authority)
 
-      And("The delegated authority does not match any application")
+      And("No applications are found from the delegated authority")
       thirdPartyApplication.willNotFindAnApplicationForClientId(clientId)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
 
-      Then("The http response is '404' not found")
-      assertCodeIs(httpResponse, NOT_FOUND)
+      Then("The http response is '500' internal server error")
+      assertCodeIs(httpResponse, INTERNAL_SERVER_ERROR)
 
       And("The response message code is 'SERVER_ERROR'")
-      assertBodyIs(httpResponse, """ {"code":"NOT_FOUND","message":"The requested resource could not be found."} """)
+      assertBodyIs(httpResponse, """ {"code":"SERVER_ERROR","message":"Internal server error"} """)
     }
 
-    scenario("An application restricted request not matching API subscriptions is not proxied") {
+    scenario("An application restricted request failing finding subscriptions is not proxied") {
 
       Given("A request with valid headers")
       val httpRequest = Http(s"$serviceUrl/api-simulator/application")
@@ -382,17 +406,17 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       And("The server token matches an application")
       thirdPartyApplication.willReturnTheApplicationForServerToken(serverToken = accessToken, application)
 
-      And("The application subscriptions are not found")
-      thirdPartyApplication.willNotFindSubscriptionsForApplicationId(applicationId.toString)
+      And("There is an error while fetching the application subscriptions")
+      thirdPartyApplication.willFailFindingTheSubscriptionsForApplicationId(applicationId.toString)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
 
-      Then("The http response is '404' not found")
-      assertCodeIs(httpResponse, NOT_FOUND)
+      Then("The http response is '500' internal server error")
+      assertCodeIs(httpResponse, INTERNAL_SERVER_ERROR)
 
-      And("The response message code is 'NOT_FOUND'")
-      assertBodyIs(httpResponse, """ {"code":"NOT_FOUND","message":"The requested resource could not be found."} """)
+      And("The response message code is 'SERVER_ERROR'")
+      assertBodyIs(httpResponse, """ {"code":"SERVER_ERROR","message":"Internal server error"} """)
     }
 
     scenario("An application restricted request with invalid API subscriptions is not proxied") {
@@ -411,13 +435,43 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
 
-      Then("The http response is '404' not found")
+      Then("The http response is '403' forbidden")
+      assertCodeIs(httpResponse, FORBIDDEN)
+
+      And("The response message code is 'RESOURCE_FORBIDDEN'")
+      assertBodyIs(httpResponse, """ {"code":"RESOURCE_FORBIDDEN","message":"The application is not subscribed to the API which it is attempting to invoke"} """)
+    }
+
+    scenario("An application restricted request with no subscriptions is not proxied") {
+
+      Given("A request with valid headers")
+      val httpRequest = Http(s"$serviceUrl/api-simulator/application")
+        .header(ACCEPT, "application/vnd.hmrc.1.0+json")
+        .header(AUTHORIZATION, s"Bearer $accessToken")
+
+      And("No applications are found by server token")
+      thirdPartyApplication.willNotFindAnApplicationForServerToken(serverToken = accessToken)
+
+      And("The token matches the authority")
+      thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken(accessToken, authority)
+
+      And("An application exists for the delegated authority")
+      thirdPartyApplication.willReturnTheApplicationForClientId(clientId, application)
+
+      And("The application is not subscribed to any API")
+      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, Seq())
+
+      When("The request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("The http response is '403' forbidden")
       assertCodeIs(httpResponse, FORBIDDEN)
 
       And("The response message code is 'RESOURCE_FORBIDDEN'")
       assertBodyIs(httpResponse, """ {"code":"RESOURCE_FORBIDDEN","message":"The application is not subscribed to the API which it is attempting to invoke"} """)
     }
   }
+
 
   feature("Open endpoint") {
 

@@ -42,6 +42,14 @@ trait ThirdPartyApplicationStubMappings {
         aResponse().withStatus(NOT_FOUND)
       )
 
+  protected def failFindingTheApplicationForServerToken(serverToken: String): MappingBuilder =
+    get(urlPathEqualTo("/application"))
+      .withHeader(X_API_GATEWAY_SERVER_TOKEN, equalTo(serverToken))
+      .willReturn(
+        aResponse().withStatus(BAD_GATEWAY)
+      )
+
+
   protected def returnTheApplicationForClientId(clientId: String, application: Application): MappingBuilder =
     get(urlPathEqualTo("/application"))
       .withQueryParam("clientId", equalTo(clientId))
@@ -58,6 +66,14 @@ trait ThirdPartyApplicationStubMappings {
         aResponse().withStatus(NOT_FOUND)
       )
 
+  protected def failFindingTheApplicationForClientId(clientId: String): MappingBuilder =
+    get(urlPathEqualTo("/application"))
+      .withQueryParam("clientId", equalTo(clientId))
+      .willReturn(
+        aResponse().withStatus(GATEWAY_TIMEOUT)
+      )
+
+
   protected def returnTheSubscriptionsForApplicationId(applicationId: String, subscriptions: Seq[Api]): MappingBuilder =
     get(urlPathEqualTo(s"/application/$applicationId/subscription"))
       .willReturn(
@@ -72,4 +88,9 @@ trait ThirdPartyApplicationStubMappings {
         aResponse().withStatus(NOT_FOUND)
       )
 
+  protected def failFindingTheSubscriptionsForApplicationId(applicationId: String): MappingBuilder =
+    get(urlPathEqualTo(s"/application/$applicationId/subscription"))
+      .willReturn(
+        aResponse().withStatus(INTERNAL_SERVER_ERROR)
+      )
 }

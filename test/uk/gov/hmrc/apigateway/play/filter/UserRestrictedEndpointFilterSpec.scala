@@ -77,7 +77,6 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
       val request = fakeRequest.copy(headers = Headers(AUTHORIZATION -> serverToken))
 
       mockAuthority(authorityService, NotFound())
-      mockApplicationByClientId(applicationService, clientId, NotFound())
       mockApplicationByServerToken(applicationService, serverToken, anApplication())
       intercept[IncorrectAccessTokenType] {
         await(underTest.filter(request, ProxyRequest(request)))

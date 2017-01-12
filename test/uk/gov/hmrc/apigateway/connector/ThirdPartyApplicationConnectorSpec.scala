@@ -81,8 +81,8 @@ class ThirdPartyApplicationConnectorSpec extends UnitSpec with BeforeAndAfterEac
     val clientId = "aoihefiwohg93hg9ueirgnvoenvl"
 
     "propagate the exception when the application cannot be fetched by client id" in new Setup {
-      stubFor(willNotFindAnyApplicationForClientId(clientId))
-      intercept[NotFound] {
+      stubFor(failFindingTheApplicationForClientId(clientId))
+      intercept[ServerError] {
         await(underTest.getApplicationByClientId(clientId))
       }
     }
@@ -96,8 +96,8 @@ class ThirdPartyApplicationConnectorSpec extends UnitSpec with BeforeAndAfterEac
   "getSubscriptionsByApplicationId" should {
 
     "propagate the exception when the subscriptions cannot be fetched" in new Setup {
-      stubFor(willNotFindAnySubscriptionForApplicationId(applicationId.toString))
-      intercept[NotFound] {
+      stubFor(failFindingTheSubscriptionsForApplicationId(applicationId.toString))
+      intercept[ServerError] {
         await(underTest.getSubscriptionsByApplicationId(applicationId.toString))
       }
     }

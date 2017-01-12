@@ -19,6 +19,7 @@ package uk.gov.hmrc.apigateway.play.filter
 import javax.inject.{Inject, Singleton}
 
 import akka.stream.Materializer
+import play.api.Logger
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.exception.GatewayError._
 import uk.gov.hmrc.apigateway.model.AuthType._
@@ -48,13 +49,20 @@ class UserRestrictedEndpointFilter @Inject()
       case e: NotFound => getApplicationByServerToken(proxyRequest).map(_ => throw IncorrectAccessTokenType())
     }
 
+  private def getApplicationByClientId(clientId: String): Future[Application] =
+    applicationService.getByClientId(clientId) recover {
+      case e: NotFound =>
+        Logger.error(s"The user restricted endpoint filter could not find any application by client id: $clientId", e)
+        throw ServerError()
+    }
+
   private def validateRequestAndSwapToken(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
     for {
       authority <- getAuthority(proxyRequest)
-      application <- applicationService.getByClientId(authority.delegatedAuthority.clientId)
+      delegatedAuthority = authority.delegatedAuthority
+      application <- getApplicationByClientId(delegatedAuthority.clientId)
       _ <- applicationService.validateApplicationIsSubscribedToApi(application.id.toString,
         requestHeader.tags(X_API_GATEWAY_API_CONTEXT), requestHeader.tags(X_API_GATEWAY_API_VERSION))
-      delegatedAuthority = authority.delegatedAuthority
       _ <- scopeValidator.validate(delegatedAuthority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
     } yield requestHeader.withTag(AUTHORIZATION, s"Bearer ${delegatedAuthority.authBearerToken}")
   }

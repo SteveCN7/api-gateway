@@ -29,11 +29,19 @@ object ThirdPartyApplicationStub extends Stub with ThirdPartyApplicationStubMapp
   def willNotFindAnApplicationForServerToken(serverToken: String) =
     stub.mock.register(willNotFindAnyApplicationForServerToken(serverToken))
 
+  def willFailFindingTheApplicationForServerToken(serverToken: String) =
+    stub.mock.register(failFindingTheApplicationForServerToken(serverToken))
+
+
   def willReturnTheApplicationForClientId(clientId: String, application: Application) =
     stub.mock.register(returnTheApplicationForClientId(clientId, application))
 
   def willNotFindAnApplicationForClientId(clientId: String) =
     stub.mock.register(willNotFindAnyApplicationForClientId(clientId))
+
+  def willFailFindingTheApplicationForClientId(clientId: String) =
+    stub.mock.register(failFindingTheApplicationForClientId(clientId))
+
 
   def willReturnTheSubscriptionsForApplicationId(applicationId: String, subscriptions: Seq[Api]) =
     stub.mock.register(returnTheSubscriptionsForApplicationId(applicationId, subscriptions))
@@ -41,4 +49,6 @@ object ThirdPartyApplicationStub extends Stub with ThirdPartyApplicationStubMapp
   def willNotFindSubscriptionsForApplicationId(applicationId: String) =
     stub.mock.register(willNotFindAnySubscriptionForApplicationId(applicationId))
 
+  def willFailFindingTheSubscriptionsForApplicationId(applicationId: String) =
+    stub.mock.register(failFindingTheSubscriptionsForApplicationId(applicationId))
 }

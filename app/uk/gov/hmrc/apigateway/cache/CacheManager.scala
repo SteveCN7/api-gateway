@@ -51,6 +51,6 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics) {
       }
     }
 
-    if(caching) getOrUpdate() else fallbackFunction
+    if (caching) getOrUpdate() else fallbackFunction
   }
 }

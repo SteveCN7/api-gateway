@@ -21,22 +21,32 @@ import javax.inject.{Inject, Singleton}
 import play.api.libs.ws.WSClient
 import uk.gov.hmrc.apigateway.cache.CacheManager
 import uk.gov.hmrc.apigateway.connector.ServiceConnector
-import uk.gov.hmrc.apigateway.model.Application
-import uk.gov.hmrc.apigateway.play.binding.PlayBindings.applicationFormat
+import uk.gov.hmrc.apigateway.model._
+import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
+import uk.gov.hmrc.apigateway.util.HttpHeaders.X_API_GATEWAY_SERVER_TOKEN
 
 import scala.concurrent.Future
 
 @Singleton
 class ThirdPartyApplicationConnector @Inject() (wsClient: WSClient, cache: CacheManager)
-  extends ServiceConnector(wsClient, cache, "third-party-application") {
+  extends ServiceConnector(wsClient, cache, serviceName = "third-party-application") {
 
-  val SERVER_TOKEN_HEADER = "X-server-token"
+  def getApplicationByServerToken(serverToken: String): Future[Application] =
+    get[Application](
+      key = s"$serviceName-$serverToken",
+      urlPath = "application",
+      headers = Seq(X_API_GATEWAY_SERVER_TOKEN -> serverToken)
+    )
 
-  def getByServerToken(serverToken: String): Future[Application] = {
-    get[Application](s"$serviceName-$serverToken", s"application", Seq(SERVER_TOKEN_HEADER -> serverToken))
-  }
+  def getApplicationByClientId(clientId: String): Future[Application] =
+    get[Application](
+      key = s"$serviceName-$clientId",
+      urlPath = s"application?clientId=$clientId"
+    )
 
-  def getByClientId(clientId: String): Future[Application] = {
-    get[Application](s"$serviceName-$clientId", s"application?clientId=$clientId")
-  }
+  def getSubscriptionsByApplicationId(applicationId: String): Future[Seq[Api]] =
+    get[Seq[Api]](
+      key = s"$serviceName-$applicationId",
+      urlPath = s"application/$applicationId/subscription"
+    )
 }

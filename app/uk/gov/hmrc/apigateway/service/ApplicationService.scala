@@ -19,22 +19,38 @@ package uk.gov.hmrc.apigateway.service
 import javax.inject.{Inject, Singleton}
 
 import uk.gov.hmrc.apigateway.connector.impl.ThirdPartyApplicationConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError.InvalidCredentials
-import uk.gov.hmrc.apigateway.model.Application
+import uk.gov.hmrc.apigateway.exception.GatewayError._
+import uk.gov.hmrc.apigateway.model._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.Future.{failed, successful}
 
 @Singleton
 class ApplicationService @Inject()(applicationConnector: ThirdPartyApplicationConnector) {
 
   def getByServerToken(serverToken: String): Future[Application] = {
-    applicationConnector.getByServerToken(serverToken).recoverWith {
-      case _ => throw InvalidCredentials()
+    applicationConnector.getApplicationByServerToken(serverToken)
+  }
+
+  def getByClientId(clientId: String): Future[Application] = {
+    applicationConnector.getApplicationByClientId(clientId)
+  }
+
+  def validateApplicationIsSubscribedToApi(applicationId: String, requestApiContext: String, requestApiVersion: String): Future[Unit] = {
+
+    def subscribed(appSubscriptions: Seq[Api]): Boolean = {
+      appSubscriptions.exists { api: Api =>
+        api.context == requestApiContext && api.versions.exists { sub: Subscription =>
+          sub.subscribed && sub.version.version == requestApiVersion
+        }
+      }
+    }
+
+    applicationConnector.getSubscriptionsByApplicationId(applicationId) flatMap {
+      case appSubscriptions: Seq[Api] if subscribed(appSubscriptions) => successful(())
+      case _ => failed(InvalidSubscription())
     }
   }
 
-  def getByClientId(clientId: String) = {
-    applicationConnector.getByClientId(clientId)
-  }
 }

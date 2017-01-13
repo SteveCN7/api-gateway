@@ -25,16 +25,16 @@ import play.api.http.Status._
 
 object ApiDefinitionStub extends Stub {
 
-  override val stub = new MockHost(22221)
+  override val stub = MockHost(22221)
 
   def willReturnTheApiDefinition(apiDefinition: ApiDefinition) = {
-    stub.mock.register(get(urlPathEqualTo(s"/api-definition")).withQueryParam("context", equalTo(apiDefinition.context))
+    stub.mock.register(get(urlPathEqualTo("/api-definition")).withQueryParam("context", equalTo(apiDefinition.context))
       .willReturn(aResponse().withStatus(OK)
         .withBody(stringify(toJson(apiDefinition)))))
   }
 
   def willNotReturnAnApiDefinitionForContext(context: String) = {
-    stub.mock.register(get(urlPathEqualTo(s"/api-definition")).withQueryParam("context", equalTo(context))
+    stub.mock.register(get(urlPathEqualTo("/api-definition")).withQueryParam("context", equalTo(context))
       .willReturn(aResponse().withStatus(NOT_FOUND)))
   }
 }

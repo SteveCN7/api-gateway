@@ -20,16 +20,15 @@ import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration._
+import it.uk.gov.hmrc.apigateway.stubs.ThirdPartyDelegatedAuthorityStubMappings
 import org.joda.time.DateTime
 import org.scalatest.BeforeAndAfterEach
-import play.api.libs.json.Json._
 import uk.gov.hmrc.apigateway.connector.impl.DelegatedAuthorityConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound, InvalidCredentials}
+import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
 import uk.gov.hmrc.apigateway.model.{Authority, ThirdPartyDelegatedAuthority, Token}
-import uk.gov.hmrc.apigateway.play.binding.PlayBindings.authorityFormat
 import uk.gov.hmrc.play.test.{WithFakeApplication, UnitSpec}
 
-class DelegatedAuthorityConnectorSpec extends UnitSpec with BeforeAndAfterEach with WithFakeApplication {
+class DelegatedAuthorityConnectorSpec extends UnitSpec with BeforeAndAfterEach with WithFakeApplication with ThirdPartyDelegatedAuthorityStubMappings {
 
   val stubPort = sys.env.getOrElse("WIREMOCK", "22222").toInt
   val stubHost = "localhost"
@@ -54,29 +53,15 @@ class DelegatedAuthorityConnectorSpec extends UnitSpec with BeforeAndAfterEach w
   "Delegated authority connector" should {
     val accessToken = "31c99f9482de49544c6cc3374c378028"
 
-    "propagate an exception when access token is invalid" in new Setup {
-
-      stubFor(get(urlPathEqualTo("/authority"))
-        .withQueryParam("access_token", equalTo(accessToken))
-        .willReturn(
-          aResponse().withStatus(404)
-      ))
-
+    "propagate the exception when access token is invalid" in new Setup {
+      stubFor(doNotReturnAnAuthorityForAccessToken(accessToken))
       intercept[NotFound] {
         await(underTest.getByAccessToken(accessToken))
       }
     }
 
     "return the delegated authority when access token is valid" in new Setup {
-
-      stubFor(get(urlPathEqualTo(s"/authority"))
-        .withQueryParam("access_token", equalTo(accessToken))
-        .willReturn(
-          aResponse()
-            .withStatus(200)
-            .withBody(stringify(toJson(authority)))
-        ))
-
+      stubFor(returnTheAuthorityForAccessToken(accessToken, authority))
       await(underTest.getByAccessToken(accessToken)) shouldBe authority
     }
 

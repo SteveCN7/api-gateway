@@ -19,43 +19,59 @@ package uk.gov.hmrc.apigateway.play.filter
 import javax.inject.{Inject, Singleton}
 
 import akka.stream.Materializer
+import play.api.Logger
 import play.api.mvc._
-import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound => _, InvalidCredentials, MissingCredentials}
-import uk.gov.hmrc.apigateway.model.AuthType.{authType, APPLICATION}
-import uk.gov.hmrc.apigateway.model.{Application, ProxyRequest}
-import uk.gov.hmrc.apigateway.service.{ApplicationService, AuthorityService}
+import uk.gov.hmrc.apigateway.exception.GatewayError._
+import uk.gov.hmrc.apigateway.model.AuthType.{APPLICATION, authType}
+import uk.gov.hmrc.apigateway.model._
+import uk.gov.hmrc.apigateway.service._
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
-import scala.concurrent.Future._
+import scala.concurrent.Future.successful
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Filter for inspecting requests for application restricted endpoints and
-  * evaluating their eligibility to be proxied to a downstream services.
+  * evaluating their eligibility to be proxied to downstream services.
   */
 @Singleton
 class ApplicationRestrictedEndpointFilter @Inject()
 (authorityService: AuthorityService, applicationService: ApplicationService)
 (implicit override val mat: Materializer, executionContext: ExecutionContext) extends ApiGatewayFilter {
 
+  private def getApplicationByClientId(clientId: String): Future[Application] =
+    applicationService.getByClientId(clientId) recover {
+      case e: NotFound =>
+        Logger.error(s"The application restricted endpoint filter could not find any application by client id: $clientId", e)
+        throw ServerError()
+    }
+
+  private def getAuthority(proxyRequest: ProxyRequest): Future[Authority] =
+    authorityService.findAuthority(proxyRequest) recover {
+      case e: NotFound =>
+        Logger.error("The application restricted endpoint filter could not find any authority", e)
+        throw InvalidCredentials()
+    }
+
   private def getAppByAuthority(proxyRequest: ProxyRequest): Future[Application] = {
     for {
-      authority <- authorityService.findAuthority(proxyRequest)
-      app <- applicationService.getByClientId(authority.delegatedAuthority.clientId)
+      authority <- getAuthority(proxyRequest)
+      app <- getApplicationByClientId(authority.delegatedAuthority.clientId)
     } yield app
   }
 
-  private def getApplication(serverToken: String, proxyRequest: ProxyRequest): Future[Application] = {
-    getAppByAuthority(proxyRequest).recoverWith {
-      case e: InvalidCredentials => Future.failed(e)
-      case _ => applicationService.getByServerToken(serverToken)
-    }
+  private def validateRequest(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
+    applicationService.getByServerToken(accessToken(proxyRequest)) recoverWith {
+      case e: NotFound => getAppByAuthority(proxyRequest)
+    } flatMap {
+      app => applicationService.validateApplicationIsSubscribedToApi(app.id.toString,
+        requestHeader.tags(X_API_GATEWAY_API_CONTEXT), requestHeader.tags(X_API_GATEWAY_API_VERSION))
+    } map { _ => requestHeader }
   }
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
     requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) flatMap authType match {
-      case Some(APPLICATION) =>
-            getApplication(accessToken(proxyRequest), proxyRequest).map(app => requestHeader.withTag(X_APPLICATION_ID, app.id.toString))
+      case Some(APPLICATION) => validateRequest(requestHeader, proxyRequest)
       case _ => successful(requestHeader)
     }
 }

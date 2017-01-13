@@ -37,7 +37,7 @@ abstract class ApiGatewayFilter(implicit m: Materializer) extends Filter {
 
   def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader]
 
-  def accessToken(proxyRequest: ProxyRequest) = {
+  protected def accessToken(proxyRequest: ProxyRequest): String = {
     proxyRequest.accessToken.getOrElse(throw MissingCredentials())
   }
 }

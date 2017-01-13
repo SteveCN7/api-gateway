@@ -16,24 +16,15 @@
 
 package it.uk.gov.hmrc.apigateway.stubs
 
-import com.github.tomakehurst.wiremock.client.WireMock._
 import it.uk.gov.hmrc.apigateway.{MockHost, Stub}
-import play.api.libs.json.Json.{stringify, toJson}
 import uk.gov.hmrc.apigateway.model.Authority
-import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
-import play.api.http.Status._
 
-object ThirdPartyDelegatedAuthorityStub extends Stub {
-  override val stub = new MockHost(22222)
+object ThirdPartyDelegatedAuthorityStub extends Stub with ThirdPartyDelegatedAuthorityStubMappings {
+  override val stub = MockHost(22222)
 
-  def willReturnTheAuthorityForAccessToken(accessToken: String, authority: Authority) = {
-    stub.mock.register(get(urlPathEqualTo(s"/authority")).withQueryParam("access_token", equalTo(accessToken))
-      .willReturn(aResponse().withStatus(OK)
-        .withBody(stringify(toJson(authority)))))
-  }
+  def willReturnTheAuthorityForAccessToken(accessToken: String, authority: Authority) =
+    stub.mock.register(returnTheAuthorityForAccessToken(accessToken, authority))
 
-  def willNotReturnAnAuthorityForAccessToken(accessToken: String) = {
-    stub.mock.register(get(urlPathEqualTo(s"/authority")).withQueryParam("access_token", equalTo(accessToken))
-      .willReturn(aResponse().withStatus(NOT_FOUND)))
-  }
+  def willNotReturnAnAuthorityForAccessToken(accessToken: String) =
+    stub.mock.register(doNotReturnAnAuthorityForAccessToken(accessToken))
 }

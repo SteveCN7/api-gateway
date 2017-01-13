@@ -53,9 +53,10 @@ class AuthorityServiceSpec extends UnitSpec with MockitoSugar {
     }
 
     "return the delegated authority when credentials are valid" in {
-      val unexpiredAuthority = authorityWithExpiration(now.plusMinutes(5))
+      val inFiveMinutes = now().plusMinutes(5)
+      val unexpiredAuthority = authorityWithExpiration(inFiveMinutes)
 
-      mockDelegatedAuthorityConnector(authorityWithExpiration(now.plusMinutes(5)))
+      mockDelegatedAuthorityConnector(authorityWithExpiration(inFiveMinutes))
 
       await(authorityService.findAuthority(request)) shouldBe unexpiredAuthority
     }

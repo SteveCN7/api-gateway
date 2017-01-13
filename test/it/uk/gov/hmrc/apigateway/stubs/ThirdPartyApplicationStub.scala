@@ -16,24 +16,39 @@
 
 package it.uk.gov.hmrc.apigateway.stubs
 
-import com.github.tomakehurst.wiremock.client.WireMock._
 import it.uk.gov.hmrc.apigateway.{MockHost, Stub}
-import play.api.libs.json.Json._
-import uk.gov.hmrc.apigateway.model.Application
-import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
-import play.api.http.Status._
+import uk.gov.hmrc.apigateway.model.{Api, Application}
 
-object ThirdPartyApplicationStub extends Stub {
-  override val stub = new MockHost(22223)
+object ThirdPartyApplicationStub extends Stub with ThirdPartyApplicationStubMappings {
 
-  def willReturnTheApplicationForServerToken(serverToken: String, application: Application) = {
-    stub.mock.register(get(urlPathEqualTo(s"/application")).withHeader("X-server-token", equalTo(serverToken))
-      .willReturn(aResponse().withStatus(OK)
-        .withBody(stringify(toJson(application)))))
-  }
+  override val stub = MockHost(22223)
 
-  def willNotReturnAnApplicationForServerToken(serverToken: String) = {
-    stub.mock.register(get(urlPathEqualTo(s"/application")).withHeader("X-server-token", equalTo(serverToken))
-      .willReturn(aResponse().withStatus(NOT_FOUND)))
-  }
+  def willReturnTheApplicationForServerToken(serverToken: String, application: Application) =
+    stub.mock.register(returnTheApplicationForServerToken(serverToken, application))
+
+  def willNotFindAnApplicationForServerToken(serverToken: String) =
+    stub.mock.register(willNotFindAnyApplicationForServerToken(serverToken))
+
+  def willFailFindingTheApplicationForServerToken(serverToken: String) =
+    stub.mock.register(failFindingTheApplicationForServerToken(serverToken))
+
+
+  def willReturnTheApplicationForClientId(clientId: String, application: Application) =
+    stub.mock.register(returnTheApplicationForClientId(clientId, application))
+
+  def willNotFindAnApplicationForClientId(clientId: String) =
+    stub.mock.register(willNotFindAnyApplicationForClientId(clientId))
+
+  def willFailFindingTheApplicationForClientId(clientId: String) =
+    stub.mock.register(failFindingTheApplicationForClientId(clientId))
+
+
+  def willReturnTheSubscriptionsForApplicationId(applicationId: String, subscriptions: Seq[Api]) =
+    stub.mock.register(returnTheSubscriptionsForApplicationId(applicationId, subscriptions))
+
+  def willNotFindSubscriptionsForApplicationId(applicationId: String) =
+    stub.mock.register(willNotFindAnySubscriptionForApplicationId(applicationId))
+
+  def willFailFindingTheSubscriptionsForApplicationId(applicationId: String) =
+    stub.mock.register(failFindingTheSubscriptionsForApplicationId(applicationId))
 }

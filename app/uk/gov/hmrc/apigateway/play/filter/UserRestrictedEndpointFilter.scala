@@ -52,7 +52,7 @@ class UserRestrictedEndpointFilter @Inject()
   private def getApplicationByClientId(clientId: String): Future[Application] =
     applicationService.getByClientId(clientId) recover {
       case e: NotFound =>
-        Logger.error(s"The user restricted endpoint filter could not find any application by client id: $clientId", e)
+        Logger.error(s"No application found for the client id: $clientId")
         throw ServerError()
     }
 

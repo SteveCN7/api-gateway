@@ -42,14 +42,14 @@ class ApplicationRestrictedEndpointFilter @Inject()
   private def getApplicationByClientId(clientId: String): Future[Application] =
     applicationService.getByClientId(clientId) recover {
       case e: NotFound =>
-        Logger.error(s"The application restricted endpoint filter could not find any application by client id: $clientId", e)
+        Logger.error(s"No application found for the client id: $clientId")
         throw ServerError()
     }
 
   private def getAuthority(proxyRequest: ProxyRequest): Future[Authority] =
     authorityService.findAuthority(proxyRequest) recover {
       case e: NotFound =>
-        Logger.error("The application restricted endpoint filter could not find any authority", e)
+        Logger.debug("No authority found for the access token")
         throw InvalidCredentials()
     }
 

@@ -41,7 +41,7 @@ abstract class AbstractConnector(wsClient: WSClient) {
         throw NotFound()
 
       case wsResponse =>
-        Logger.debug(s"Response status not handled: GET $url ${wsResponse.status}")
+        Logger.error(s"Response status not handled: GET $url ${wsResponse.status} ${wsResponse.body}")
         throw ServerError()
     }
   }

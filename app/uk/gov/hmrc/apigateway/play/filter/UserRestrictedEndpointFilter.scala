@@ -49,22 +49,35 @@ class UserRestrictedEndpointFilter @Inject()
       case e: NotFound => getApplicationByServerToken(proxyRequest).map(_ => throw IncorrectAccessTokenType())
     }
 
-  private def getApplicationByClientId(clientId: String): Future[Application] =
+  private def getApplicationByClientId(clientId: String): Future[Application] = {
     applicationService.getByClientId(clientId) recover {
       case e: NotFound =>
         Logger.error(s"No application found for the client id: $clientId")
         throw ServerError()
     }
+  }
 
   private def validateRequestAndSwapToken(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
-    for {
-      authority <- getAuthority(proxyRequest)
-      delegatedAuthority = authority.delegatedAuthority
-      application <- getApplicationByClientId(delegatedAuthority.clientId)
-      _ <- applicationService.validateApplicationIsSubscribedToApi(application.id.toString,
-        requestHeader.tags(X_API_GATEWAY_API_CONTEXT), requestHeader.tags(X_API_GATEWAY_API_VERSION))
-      _ <- scopeValidator.validate(delegatedAuthority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
-    } yield requestHeader.withTag(AUTHORIZATION, s"Bearer ${delegatedAuthority.authBearerToken}")
+
+    getAuthority(proxyRequest).map(_.delegatedAuthority).flatMap { delegAuth: ThirdPartyDelegatedAuthority =>
+
+      lazy val scopeValidationF = scopeValidator.validate(delegAuth, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
+
+      // TODO: capire perche' parallelismo does not work!
+      lazy val appSubscriptionsValidationF =
+        for {
+          app <- getApplicationByClientId(delegAuth.clientId)
+          _ = Thread.sleep(3000)
+          _ <- applicationService.validateApplicationIsSubscribedToApi(app.id.toString,
+            requestHeader.tags(X_API_GATEWAY_API_CONTEXT), requestHeader.tags(X_API_GATEWAY_API_VERSION))
+        } yield ()
+
+      // TODO: unit-tests could fail because the two for-comprehension generators are executed in parallel
+      for {
+        _ <- scopeValidationF
+        _ <- appSubscriptionsValidationF
+      } yield requestHeader.withTag(AUTHORIZATION, s"Bearer ${delegAuth.authBearerToken}")
+    }
   }
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
@@ -72,7 +85,6 @@ class UserRestrictedEndpointFilter @Inject()
       case Some(USER) => validateRequestAndSwapToken(requestHeader, proxyRequest)
       case _ => successful(requestHeader)
     }
-
   }
 
 }

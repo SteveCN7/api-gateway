@@ -34,6 +34,9 @@ class ApplicationService @Inject()(applicationConnector: ThirdPartyApplicationCo
   }
 
   def getByClientId(clientId: String): Future[Application] = {
+
+//    Thread.sleep(3000)
+
     applicationConnector.getApplicationByClientId(clientId)
   }
 

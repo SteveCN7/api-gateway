@@ -63,6 +63,47 @@ class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar {
       status(result) shouldBe OK
       bodyOf(result) shouldBe """{"response":"json"}"""
     }
+
+    "STEFANO" in new Setup {
+
+      //https://github.com/scala/async
+
+      import akka.actor.Actor
+      import scala.async.Async
+      import scala.concurrent._
+      import scala.concurrent.duration._
+
+      class StefanoActor extends Actor {
+
+        def receive = {
+        }
+      }
+      class HelloActor extends Actor {
+        def receive = {
+          case "hello" => println("hello back at you")
+          case _       => println("huh?")
+        }
+      }
+
+        val f2 = successful {
+          blocking {
+            Thread.sleep(2000)
+            println(2)
+            Thread.sleep(2000)
+            ()
+          }
+        }
+
+      val f1 = successful { println(1); () }
+
+        val x = for {
+        x2 <- f2
+        x1 <- f1
+      } yield 5
+
+      val cc = Await.result(x, 5.seconds)
+      println (cc)
+    }
   }
 
 }

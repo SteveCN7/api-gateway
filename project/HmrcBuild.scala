@@ -31,6 +31,7 @@ object HmrcBuild extends Build {
   private val compileDependencies = Seq(
     ws,
     cache,
+    "org.scala-lang.modules" % "scala-async_2.11" % "0.9.6",
     "uk.gov.hmrc" %% "frontend-bootstrap" % "7.10.0",
     "uk.gov.hmrc" %% "play-health" % "2.0.0",
     "uk.gov.hmrc" %% "play-url-binders" % "2.0.0",

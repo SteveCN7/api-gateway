@@ -24,6 +24,9 @@ object HttpHeaders {
   val X_API_GATEWAY_API_CONTEXT = "x-api-gateway-api-context"
   val X_API_GATEWAY_API_VERSION = "x-api-gateway-api-version"
   val X_API_GATEWAY_SERVER_TOKEN = "X-server-token"
+  val X_API_GATEWAY_CLIENT_ID = "X-Client-ID"
+  val X_API_GATEWAY_AUTHORIZATION_TOKEN = "X-Client-Authorization-Token"
+  val X_API_GATEWAY_REQUEST_TIMESTAMP = "X-Request-Timestamp"
   val AUTHORIZATION = "Authorization"
   val ACCEPT = "Accept"
 

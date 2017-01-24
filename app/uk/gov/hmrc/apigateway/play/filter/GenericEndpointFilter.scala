@@ -48,6 +48,7 @@ class GenericEndpointFilter @Inject()
       .withTag(X_API_GATEWAY_AUTH_TYPE, apiDefinitionMatch.authType.toString)
       .withTag(X_API_GATEWAY_API_CONTEXT, apiDefinitionMatch.context)
       .withTag(X_API_GATEWAY_API_VERSION, apiDefinitionMatch.apiVersion)
+      .withTag(X_API_GATEWAY_REQUEST_TIMESTAMP, System.nanoTime().toString)
   }
 
 }

@@ -39,6 +39,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
     .withTag(X_API_GATEWAY_SCOPE, "scopeMoo")
     .withTag(X_API_GATEWAY_API_CONTEXT, "context")
     .withTag(X_API_GATEWAY_API_VERSION, "version")
+    .copy(headers = Headers("Authorization" -> "Bearer accessToken"))
 
   trait Setup {
     val authorityService = mock[AuthorityService]
@@ -117,7 +118,10 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
       mockApiSubscriptions(applicationService)
 
       val result: Future[RequestHeader] = await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
+
       result.tags(AUTHORIZATION) shouldBe "Bearer authBearerToken"
+      result.tags(X_API_GATEWAY_AUTHORIZATION_TOKEN) shouldBe "accessToken"
+      result.tags(X_API_GATEWAY_CLIENT_ID) shouldBe clientId
     }
 
   }

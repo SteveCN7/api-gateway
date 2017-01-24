@@ -16,18 +16,22 @@
 
 package it.uk.gov.hmrc.apigateway.stubs
 
-import it.uk.gov.hmrc.apigateway.{MockHost, Stub}
+import com.github.tomakehurst.wiremock.client.WireMock._
+import play.api.http.Status._
+import play.api.libs.json.Json.{stringify, toJson}
 import uk.gov.hmrc.apigateway.model.ApiDefinition
+import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 
-object ApiDefinitionStub extends Stub with ApiDefinitionStubMappings {
+trait ApiDefinitionStubMappings {
 
-  override val stub = MockHost(22221)
-
-  def willReturnTheApiDefinition(apiDefinition: ApiDefinition) = {
-    stub.mock.register(returnTheApiDefinition(apiDefinition))
+  def returnTheApiDefinition(apiDefinition: ApiDefinition) = {
+    get(urlPathEqualTo("/api-definition")).withQueryParam("context", equalTo(apiDefinition.context))
+      .willReturn(aResponse().withStatus(OK)
+        .withBody(stringify(toJson(apiDefinition))))
   }
 
-  def willNotReturnAnApiDefinitionForContext(context: String) = {
-    stub.mock.register(notReturnAnApiDefinitionForContext(context))
+  def notReturnAnApiDefinitionForContext(context: String) = {
+    get(urlPathEqualTo("/api-definition")).withQueryParam("context", equalTo(context))
+      .willReturn(aResponse().withStatus(NOT_FOUND))
   }
 }

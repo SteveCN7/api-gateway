@@ -74,7 +74,7 @@ trait EndpointFilterMocking {
       .thenReturn(successful(()))
 
   protected def anApplication(): Application =
-    Application(id = UUID.randomUUID(), name = "appName")
+    Application(id = UUID.randomUUID(), clientId = "clientId", name = "appName")
 
   protected def validAuthority(): Authority = {
     val token = Token("accessToken", Set.empty, DateTime.now.plusMinutes(5))

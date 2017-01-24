@@ -64,7 +64,10 @@ class UserRestrictedEndpointFilter @Inject()
       _ <- applicationService.validateApplicationIsSubscribedToApi(application.id.toString,
         requestHeader.tags(X_API_GATEWAY_API_CONTEXT), requestHeader.tags(X_API_GATEWAY_API_VERSION))
       _ <- scopeValidator.validate(delegatedAuthority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
-    } yield requestHeader.withTag(AUTHORIZATION, s"Bearer ${delegatedAuthority.authBearerToken}")
+    } yield requestHeader
+      .withTag(AUTHORIZATION, s"Bearer ${delegatedAuthority.authBearerToken}")
+      .withTag(X_API_GATEWAY_AUTHORIZATION_TOKEN, proxyRequest.accessToken.getOrElse(""))
+      .withTag(X_API_GATEWAY_CLIENT_ID, delegatedAuthority.clientId)
   }
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {

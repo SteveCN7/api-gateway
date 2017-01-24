@@ -108,6 +108,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
 
       val result = await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
       result.headers shouldBe applicationRequestWithToken.headers
+      result.tags(X_API_GATEWAY_CLIENT_ID) shouldBe clientId
     }
 
     "process a request with a valid server token that meets all requirements" in new Setup {
@@ -116,6 +117,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
 
       val result = await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
       result.headers shouldBe applicationRequestWithToken.headers
+      result.tags(X_API_GATEWAY_CLIENT_ID) shouldBe clientId
     }
 
   }

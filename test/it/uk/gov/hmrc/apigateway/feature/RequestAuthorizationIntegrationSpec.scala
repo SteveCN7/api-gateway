@@ -56,7 +56,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
     authExpired = false)
 
   private val applicationId = UUID.randomUUID()
-  private val application = Application(applicationId, "appName")
+  private val application = Application(applicationId, "clientId", "appName")
 
   override def beforeEach() {
     super.beforeEach()

@@ -35,7 +35,7 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
     val serverToken = "serverToken"
     val applicationId = UUID.randomUUID()
     val clientId = "clientId"
-    val application = Application(id = applicationId, name = "App Name")
+    val application = Application(id = applicationId, clientId = "clientId", name = "App Name")
 
     val v1 = Version("1.0")
     val v2 = Version("2.0")

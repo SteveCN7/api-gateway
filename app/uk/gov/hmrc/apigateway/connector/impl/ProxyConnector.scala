@@ -34,15 +34,22 @@ class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsC
   def proxy(request: Request[AnyContent], destinationUrl: String): Future[Result] =
     wsClient.url(destinationUrl)
       .withMethod(request.method)
-      .withHeaders(
-        (ACCEPT, request.tags.get(ACCEPT).orNull),
-        (AUTHORIZATION, request.tags.get(AUTHORIZATION).orNull))
+      .withHeaders(Seq() ++
+        header(request, ACCEPT) ++
+        header(request, AUTHORIZATION) ++
+        header(request, X_API_GATEWAY_CLIENT_ID) ++
+        header(request, X_API_GATEWAY_AUTHORIZATION_TOKEN) ++
+        header(request, X_API_GATEWAY_REQUEST_TIMESTAMP): _*)
       .withBody(request.body.toString) // TODO this will not work for binary content, we can tackle it when we need it
       .execute.map { wsResponse =>
       val result = toResult(wsResponse)
       Logger.info(s"request [$request] response [$wsResponse] result [$result]")
       result
     }
+
+  private def header(request: Request[AnyContent], headerName: String): Option[(String, String)] = {
+    request.tags.get(headerName).map(value => headerName -> value)
+  }
 
   private def toResult(streamedResponse: WSResponse): Result =
     Result(

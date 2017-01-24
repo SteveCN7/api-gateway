@@ -16,9 +16,7 @@
 
 package uk.gov.hmrc.apigateway.play.filter
 
-
 import akka.stream.Materializer
-import org.joda.time.DateTimeUtils
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.scalatest.BeforeAndAfterEach
@@ -47,10 +45,6 @@ class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar with BeforeAn
   trait Setup {
     val endpointService = mock[EndpointService]
     val genericEndpointFilter = new GenericEndpointFilter(endpointService)
-  }
-
-  override def beforeEach() {
-    DateTimeUtils.setCurrentMillisFixed(10000)
   }
 
   val apiDefinitionMatch = ApiDefinitionMatch("foo", "http://api.service", "1.0", NONE, None)

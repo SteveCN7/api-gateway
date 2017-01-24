@@ -16,20 +16,14 @@
 
 package uk.gov.hmrc.apigateway.connector
 
-import java.security.cert.X509Certificate
-
 import com.github.tomakehurst.wiremock.WireMockServer
-import com.github.tomakehurst.wiremock.client.{MappingBuilder, WireMock}
+import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration._
 import org.scalatest.BeforeAndAfterEach
-import org.scalatest.prop.{TableDrivenPropertyChecks, GeneratorDrivenPropertyChecks}
 import org.scalatest.prop.Tables.Table
 import play.api.http.Status._
-import play.api.mvc.{Headers, AnyContentAsEmpty, AnyContent, Request}
-import play.api.mvc.Results.EmptyContent
-import play.api.test.{FakeHeaders, FakeRequest}
-import play.mvc.BodyParser.AnyContent
+import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.{WithFakeApplication, UnitSpec}

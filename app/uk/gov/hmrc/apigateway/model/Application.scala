@@ -18,7 +18,7 @@ package uk.gov.hmrc.apigateway.model
 
 import java.util.UUID
 
-case class Application(id: UUID, name: String)
+case class Application(id: UUID, clientId: String, name: String)
 
 case class Version(version: String)
 case class Subscription(version: Version, subscribed: Boolean)

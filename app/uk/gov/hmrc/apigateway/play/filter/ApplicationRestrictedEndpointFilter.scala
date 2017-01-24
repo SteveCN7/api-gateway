@@ -61,12 +61,14 @@ class ApplicationRestrictedEndpointFilter @Inject()
   }
 
   private def validateRequest(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
-    applicationService.getByServerToken(accessToken(proxyRequest)) recoverWith {
+    val applicationFuture = applicationService.getByServerToken(accessToken(proxyRequest)) recoverWith {
       case e: NotFound => getAppByAuthority(proxyRequest)
-    } flatMap {
-      app => applicationService.validateApplicationIsSubscribedToApi(app.id.toString,
+    }
+    for {
+      app <- applicationFuture
+      _ <- applicationService.validateApplicationIsSubscribedToApi(app.id.toString,
         requestHeader.tags(X_API_GATEWAY_API_CONTEXT), requestHeader.tags(X_API_GATEWAY_API_VERSION))
-    } map { _ => requestHeader }
+    } yield requestHeader.withTag(X_API_GATEWAY_CLIENT_ID, app.clientId)
   }
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =

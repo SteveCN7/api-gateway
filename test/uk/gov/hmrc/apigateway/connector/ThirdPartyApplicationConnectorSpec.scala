@@ -37,7 +37,7 @@ class ThirdPartyApplicationConnectorSpec extends UnitSpec with BeforeAndAfterEac
   val wireMockServer = new WireMockServer(wireMockConfig().port(stubPort))
 
   val applicationId = UUID.randomUUID()
-  val application = Application(applicationId, "App Name")
+  val application = Application(applicationId, "clientId", "App Name")
 
   val v1 = Version("1.0")
   val v2 = Version("2.0")

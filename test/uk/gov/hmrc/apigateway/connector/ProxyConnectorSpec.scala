@@ -90,6 +90,19 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
           .withHeader(header, equalTo(value)))
       }
     }
+
+    "Not include headers when there is no tag in the request" in new Setup {
+
+      val requestWithoutTags = request.copyFakeRequest(tags = Map())
+
+      underTest.proxy(requestWithoutTags, s"$wireMockUrl/world")
+
+      verify(getRequestedFor(urlEqualTo("/world"))
+        .withoutHeader("Authorization")
+        .withoutHeader("X-Client-ID")
+        .withoutHeader("X-Client-Authorization-Token")
+        .withoutHeader("X-Request-Timestamp"))
+    }
   }
 
   def givenTheUrlReturns(endpoint: String, status: Int) = {

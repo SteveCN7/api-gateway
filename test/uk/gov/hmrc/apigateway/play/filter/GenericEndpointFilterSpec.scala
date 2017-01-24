@@ -77,6 +77,7 @@ class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar with BeforeAn
     }
 
     "set the tags to the requestHeader" in new Setup {
+      val timeBeforeExecution = System.nanoTime()
       val request = fakeRequest.copyFakeRequest(
         uri = "foo/path",
         headers = Headers("Accept" -> "application/vnd.hmrc.1.0+json"))
@@ -92,7 +93,8 @@ class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar with BeforeAn
       (tags \ X_API_GATEWAY_API_CONTEXT).as[String] shouldBe "foo"
       (tags \ X_API_GATEWAY_API_VERSION).as[String] shouldBe "1.0"
       val timestamp = (tags \ X_API_GATEWAY_REQUEST_TIMESTAMP).as[String]
-      (System.nanoTime() - timestamp.toLong) should be < 5.seconds.toNanos
+      val timeAfterExecution = System.nanoTime()
+      timestamp.toLong should  (be > timeBeforeExecution and be < timeAfterExecution)
     }
 
     "set the tags to the requestHeader for User endpoint" in new Setup {

@@ -17,7 +17,6 @@
 package it.uk.gov.hmrc.apigateway.stubs
 
 import com.github.tomakehurst.wiremock.client.WireMock._
-import it.uk.gov.hmrc.apigateway.{MockHost, Stub}
 import play.api.http.Status._
 import play.api.libs.json.Json.{stringify, toJson}
 import uk.gov.hmrc.apigateway.model.ApiDefinition

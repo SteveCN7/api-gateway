@@ -57,17 +57,24 @@ class UserRestrictedEndpointFilter @Inject()
     }
 
   private def validateRequestAndSwapToken(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
-    for {
-      authority <- getAuthority(proxyRequest)
-      delegatedAuthority = authority.delegatedAuthority
-      application <- getApplicationByClientId(delegatedAuthority.clientId)
-      _ <- applicationService.validateApplicationIsSubscribedToApi(application.id.toString,
-        requestHeader.tags(X_API_GATEWAY_API_CONTEXT), requestHeader.tags(X_API_GATEWAY_API_VERSION))
-      _ <- scopeValidator.validate(delegatedAuthority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
-    } yield requestHeader
-      .withTag(AUTHORIZATION, s"Bearer ${delegatedAuthority.authBearerToken}")
-      .withTag(X_API_GATEWAY_AUTHORIZATION_TOKEN, proxyRequest.accessToken.getOrElse(""))
-      .withTag(X_API_GATEWAY_CLIENT_ID, delegatedAuthority.clientId)
+    getAuthority(proxyRequest) flatMap { authority =>
+
+      val validateSubscriptions: Future[Unit] = for {
+        application <- getApplicationByClientId(authority.delegatedAuthority.clientId)
+        _ <- applicationService.validateApplicationIsSubscribedToApi(application.id.toString,
+          requestHeader.tags(X_API_GATEWAY_API_CONTEXT), requestHeader.tags(X_API_GATEWAY_API_VERSION))
+      } yield ()
+
+      val validateScopes: Future[Unit] = scopeValidator.validate(authority.delegatedAuthority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
+
+      for {
+        _ <- validateSubscriptions
+        _ <- validateScopes
+      } yield requestHeader
+        .withTag(AUTHORIZATION, s"Bearer ${authority.delegatedAuthority.authBearerToken}")
+        .withTag(X_API_GATEWAY_AUTHORIZATION_TOKEN, proxyRequest.accessToken.getOrElse(""))
+        .withTag(X_API_GATEWAY_CLIENT_ID, authority.delegatedAuthority.clientId)
+    }
   }
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {

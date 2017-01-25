@@ -86,6 +86,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
 
     "propagate the error, when there is a failure in fetching the application" in new Setup {
       mockAuthority(authorityService, validAuthority())
+      mockScopeValidation(scopeValidator)
       mockApplicationByClientId(applicationService, clientId, ServerError())
       intercept[ServerError] {
         await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
@@ -94,6 +95,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
 
     "decline a request not matching the application API subscriptions" in new Setup {
       mockAuthority(authorityService, validAuthority())
+      mockScopeValidation(scopeValidator)
       mockApplicationByClientId(applicationService, clientId, anApplication())
       mockApiSubscriptions(applicationService, InvalidSubscription())
       intercept[InvalidSubscription] {

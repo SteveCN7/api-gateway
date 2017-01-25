@@ -134,13 +134,12 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
     }
 
     scenario("A user restricted request, that fails with a NOT_FOUND when fetching the application by authority, is not proxied") {
-
-      Given("A valid request")
+      Given("A request to an endpoint requiring 'scope1'")
       val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
         .header(ACCEPT, "application/vnd.hmrc.1.0+json")
         .header(AUTHORIZATION, s"Bearer $accessToken")
 
-      And("The access token matches an authority")
+      And("The access token matches an authority with 'scope1'")
       thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken(accessToken, authority)
 
       And("An application is not found for the delegated authority")
@@ -157,13 +156,12 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
     }
 
     scenario("A user restricted request, that fails when fetching the application by authority, is not proxied") {
-
-      Given("A valid request")
+      Given("A request to an endpoint requiring 'scope1'")
       val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
         .header(ACCEPT, "application/vnd.hmrc.1.0+json")
         .header(AUTHORIZATION, s"Bearer $accessToken")
 
-      And("The access token matches an authority")
+      And("The access token matches an authority with 'scope1'")
       thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken(accessToken, authority)
 
       And("There is an error while retrieving the application by client id")
@@ -181,12 +179,12 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
 
     scenario("A user restricted request that fails when fetching the application subscriptions is not proxied") {
 
-      Given("A valid request")
+      Given("A request to an endpoint requiring 'scope1'")
       val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
         .header(ACCEPT, "application/vnd.hmrc.1.0+json")
         .header(AUTHORIZATION, s"Bearer $accessToken")
 
-      And("The access token matches an authority")
+      And("The access token matches an authority with 'scope1'")
       thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken(accessToken, authority)
 
       And("An application exists for the delegated authority")
@@ -207,12 +205,12 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
 
     scenario("A user restricted request with invalid subscriptions is not proxied") {
 
-      Given("A valid request")
+      Given("A request to an endpoint requiring 'scope1'")
       val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
         .header(ACCEPT, "application/vnd.hmrc.1.0+json")
         .header(AUTHORIZATION, s"Bearer $accessToken")
 
-      And("The access token matches an authority")
+      And("The access token matches an authority with 'scope1'")
       thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken(accessToken, authority)
 
       And("An application exists for the delegated authority")

@@ -17,6 +17,7 @@
 package uk.gov.hmrc.apigateway.play.filter
 
 import akka.stream.Materializer
+import org.joda.time.DateTimeUtils.{setCurrentMillisFixed, setCurrentMillisSystem}
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.scalatest.BeforeAndAfterEach
@@ -28,13 +29,12 @@ import play.api.mvc.{Headers, RequestHeader, Result}
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.exception.GatewayError.MatchingResourceNotFound
 import uk.gov.hmrc.apigateway.model.AuthType._
-import uk.gov.hmrc.apigateway.model.{AuthType, ApiDefinitionMatch, ProxyRequest}
+import uk.gov.hmrc.apigateway.model.{ApiDefinitionMatch, AuthType, ProxyRequest}
 import uk.gov.hmrc.apigateway.service.EndpointService
-import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.apigateway.util.RequestTags._
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future.successful
-import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 
 class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach {
@@ -45,6 +45,14 @@ class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar with BeforeAn
   trait Setup {
     val endpointService = mock[EndpointService]
     val genericEndpointFilter = new GenericEndpointFilter(endpointService)
+  }
+
+  override def beforeEach() {
+    setCurrentMillisFixed(10000)
+  }
+
+  override def afterEach() {
+    setCurrentMillisSystem()
   }
 
   val apiDefinitionMatch = ApiDefinitionMatch("foo", "http://api.service", "1.0", NONE, None)
@@ -77,24 +85,25 @@ class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar with BeforeAn
     }
 
     "set the tags to the requestHeader" in new Setup {
-      val timeBeforeExecution = System.nanoTime()
+      val timestampNanoBeforeExecution = System.nanoTime()
       val request = fakeRequest.copyFakeRequest(
         uri = "foo/path",
-        headers = Headers("Accept" -> "application/vnd.hmrc.1.0+json"))
+        headers = Headers("Accept" -> "application/vnd.hmrc.1.0+json", "Authorization" -> "Bearer 12345"))
 
       when(endpointService.findApiDefinition(any[ProxyRequest])).thenReturn(successful(apiDefinitionMatch))
 
       val tags = jsonBodyOf(await(genericEndpointFilter(returnAllTags())(request)))
 
-      (tags \ ACCEPT).as[String] shouldBe "application/vnd.hmrc.1.0+json"
-      (tags \ X_API_GATEWAY_ENDPOINT).as[String] shouldBe "http://api.service/foo/path"
-      (tags \ X_API_GATEWAY_SCOPE).asOpt[String] shouldBe None
-      (tags \ X_API_GATEWAY_AUTH_TYPE).as[String] shouldBe "NONE"
-      (tags \ X_API_GATEWAY_API_CONTEXT).as[String] shouldBe "foo"
-      (tags \ X_API_GATEWAY_API_VERSION).as[String] shouldBe "1.0"
-      val timestamp = (tags \ X_API_GATEWAY_REQUEST_TIMESTAMP).as[String]
-      val timeAfterExecution = System.nanoTime()
-      timestamp.toLong should  (be > timeBeforeExecution and be < timeAfterExecution)
+      (tags \ API_CONTEXT).as[String] shouldBe "foo"
+      (tags \ API_VERSION).as[String] shouldBe "1.0"
+      (tags \ API_ENDPOINT).as[String] shouldBe "http://api.service/foo/path"
+      (tags \ API_SCOPE).asOpt[String] shouldBe None
+      (tags \ AUTH_TYPE).as[String] shouldBe "NONE"
+      (tags \ OAUTH_AUTHORIZATION).as[String] shouldBe "Bearer 12345"
+      (tags \ REQUEST_TIMESTAMP_MILLIS).as[String] shouldBe "10000"
+      val timestampNano = (tags \ REQUEST_TIMESTAMP_NANO).as[String]
+      val timestampNanoAfterExecution = System.nanoTime()
+      timestampNano.toLong should  (be > timestampNanoBeforeExecution and be < timestampNanoAfterExecution)
     }
 
     "set the tags to the requestHeader for User endpoint" in new Setup {
@@ -103,8 +112,8 @@ class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar with BeforeAn
 
       val tags = jsonBodyOf(await(genericEndpointFilter(returnAllTags())(fakeRequest)))
 
-      (tags \ X_API_GATEWAY_SCOPE).asOpt[String] shouldBe Some("scope1")
-      (tags \ X_API_GATEWAY_AUTH_TYPE).as[String] shouldBe "USER"
+      (tags \ API_SCOPE).asOpt[String] shouldBe Some("scope1")
+      (tags \ AUTH_TYPE).as[String] shouldBe "USER"
     }
 
     "set the tags to the requestHeader for Application endpoint" in new Setup {
@@ -113,7 +122,8 @@ class GenericEndpointFilterSpec extends UnitSpec with MockitoSugar with BeforeAn
 
       val tags = jsonBodyOf(await(genericEndpointFilter(returnAllTags())(fakeRequest)))
 
-      (tags \ X_API_GATEWAY_AUTH_TYPE).as[String] shouldBe "APPLICATION"
+      (tags \ API_SCOPE).asOpt[String] shouldBe None
+      (tags \ AUTH_TYPE).as[String] shouldBe "APPLICATION"
     }
   }
 

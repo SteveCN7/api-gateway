@@ -17,17 +17,24 @@
 package uk.gov.hmrc.apigateway.util
 
 object HttpHeaders {
-
-  val X_API_GATEWAY_ENDPOINT = "x-api-gateway-proxy-endpoint"
-  val X_API_GATEWAY_SCOPE = "x-api-gateway-scope"
-  val X_API_GATEWAY_AUTH_TYPE = "x-api-gateway-auth-type"
-  val X_API_GATEWAY_API_CONTEXT = "x-api-gateway-api-context"
-  val X_API_GATEWAY_API_VERSION = "x-api-gateway-api-version"
-  val X_API_GATEWAY_SERVER_TOKEN = "X-server-token"
-  val X_API_GATEWAY_CLIENT_ID = "X-Client-ID"
-  val X_API_GATEWAY_AUTHORIZATION_TOKEN = "X-Client-Authorization-Token"
-  val X_API_GATEWAY_REQUEST_TIMESTAMP = "X-Request-Timestamp"
-  val AUTHORIZATION = "Authorization"
   val ACCEPT = "Accept"
+  val AUTHORIZATION = "Authorization"
+  val X_CLIENT_AUTHORIZATION_TOKEN = "X-Client-Authorization-Token"
+  val X_CLIENT_ID = "X-Client-ID"
+  val X_REQUEST_TIMESTAMP = "X-Request-Timestamp"
+  val X_SERVER_TOKEN = "X-server-token"
+}
 
+object RequestTags {
+  val API_CONTEXT = "API_CONTEXT"
+  val API_ENDPOINT = "API_ENDPOINT"
+  val API_SCOPE = "API_SCOPE"
+  val API_VERSION = "API_VERSION"
+  val AUTH_TYPE = "AUTH_TYPE"
+  val CLIENT_ID = "CLIENT_ID"
+  val OAUTH_AUTHORIZATION = "OAUTH_AUTHORIZATION"
+  val AUTH_AUTHORIZATION = "AUTH_AUTHORIZATION"
+  val REQUEST_TIMESTAMP_MILLIS = "REQUEST_TIMESTAMP_MILLIS"
+  val REQUEST_TIMESTAMP_NANO = "REQUEST_TIMESTAMP_NANO"
+  val USER_OID = "USER_OID"
 }

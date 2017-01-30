@@ -23,7 +23,6 @@ import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound, MatchingResourceNotFound}
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.service.EndpointService._
-import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
 import uk.gov.hmrc.apigateway.util.ProxyRequestUtils.{validateContext, parseVersion}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -93,7 +92,7 @@ object EndpointService {
     }
 
   private def stringify(proxyRequest: ProxyRequest): String =
-    s"${proxyRequest.httpMethod} ${proxyRequest.path} ${proxyRequest.getHeader(ACCEPT).getOrElse("")}"
+    s"${proxyRequest.httpMethod} ${proxyRequest.path} ${proxyRequest.acceptHeader.getOrElse("")}"
 
   sealed trait UriPatternPart
 

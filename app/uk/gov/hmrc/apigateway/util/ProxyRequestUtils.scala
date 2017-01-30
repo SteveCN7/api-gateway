@@ -18,7 +18,6 @@ package uk.gov.hmrc.apigateway.util
 
 import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
 import uk.gov.hmrc.apigateway.model.ProxyRequest
-import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
 
 import scala.concurrent.Future
 import scala.concurrent.Future.{failed, successful}
@@ -34,7 +33,7 @@ object ProxyRequestUtils {
     validateOrElse(parseContext(proxyRequest.rawPath), NotFound())
 
   def parseVersion[T](proxyRequest: ProxyRequest): Future[String] = {
-    val acceptHeader: String = proxyRequest.getHeader(ACCEPT).getOrElse("")
+    val acceptHeader: String = proxyRequest.acceptHeader.getOrElse("")
     successful(parseVersion(acceptHeader).getOrElse(defaultVersion))
   }
 

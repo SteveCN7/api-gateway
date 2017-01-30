@@ -21,9 +21,11 @@ import javax.inject.{Inject, Singleton}
 import play.Logger
 import play.api.http.HttpEntity
 import play.api.libs.ws.{WSClient, WSResponse}
-import play.api.mvc.{AnyContent, Request, ResponseHeader, Result}
+import play.api.mvc._
 import uk.gov.hmrc.apigateway.connector.AbstractConnector
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.apigateway.util.PlayRequestUtils.bodyOf
+import uk.gov.hmrc.apigateway.util.RequestTags.{AUTH_AUTHORIZATION, CLIENT_ID, OAUTH_AUTHORIZATION, REQUEST_TIMESTAMP_NANO}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -34,21 +36,21 @@ class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsC
   def proxy(request: Request[AnyContent], destinationUrl: String): Future[Result] =
     wsClient.url(destinationUrl)
       .withMethod(request.method)
+      .withHeaders(request.headers.toSimpleMap.toSeq: _*)
       .withHeaders(Seq() ++
-        header(request, ACCEPT) ++
-        header(request, AUTHORIZATION) ++
-        header(request, X_API_GATEWAY_CLIENT_ID) ++
-        header(request, X_API_GATEWAY_AUTHORIZATION_TOKEN) ++
-        header(request, X_API_GATEWAY_REQUEST_TIMESTAMP): _*)
-      .withBody(request.body.toString) // TODO this will not work for binary content, we can tackle it when we need it
+        request.tags.get(OAUTH_AUTHORIZATION).map(value => X_CLIENT_AUTHORIZATION_TOKEN -> value.stripPrefix("Bearer ")) ++
+        headerFromTag(request, AUTHORIZATION, AUTH_AUTHORIZATION) ++
+        headerFromTag(request, X_CLIENT_ID, CLIENT_ID) ++
+        headerFromTag(request, X_REQUEST_TIMESTAMP, REQUEST_TIMESTAMP_NANO): _*)
+      .withBody(bodyOf(request).getOrElse(""))
       .execute.map { wsResponse =>
       val result = toResult(wsResponse)
       Logger.info(s"request [$request] response [$wsResponse] result [$result]")
       result
     }
 
-  private def header(request: Request[AnyContent], headerName: String): Option[(String, String)] = {
-    request.tags.get(headerName).map(value => headerName -> value)
+  private def headerFromTag(request: Request[AnyContent], headerName: String, tagName: String): Option[(String, String)] = {
+    request.tags.get(tagName).map(value => headerName -> value)
   }
 
   private def toResult(streamedResponse: WSResponse): Result =

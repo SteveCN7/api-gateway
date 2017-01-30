@@ -28,7 +28,7 @@ trait ThirdPartyApplicationStubMappings {
 
   protected def returnTheApplicationForServerToken(serverToken: String, application: Application): MappingBuilder =
     get(urlPathEqualTo("/application"))
-      .withHeader(X_API_GATEWAY_SERVER_TOKEN, equalTo(serverToken))
+      .withHeader(X_SERVER_TOKEN, equalTo(serverToken))
       .willReturn(
         aResponse()
           .withStatus(OK)
@@ -37,14 +37,14 @@ trait ThirdPartyApplicationStubMappings {
 
   protected def willNotFindAnyApplicationForServerToken(serverToken: String): MappingBuilder =
     get(urlPathEqualTo("/application"))
-      .withHeader(X_API_GATEWAY_SERVER_TOKEN, equalTo(serverToken))
+      .withHeader(X_SERVER_TOKEN, equalTo(serverToken))
       .willReturn(
         aResponse().withStatus(NOT_FOUND)
       )
 
   protected def failFindingTheApplicationForServerToken(serverToken: String): MappingBuilder =
     get(urlPathEqualTo("/application"))
-      .withHeader(X_API_GATEWAY_SERVER_TOKEN, equalTo(serverToken))
+      .withHeader(X_SERVER_TOKEN, equalTo(serverToken))
       .willReturn(
         aResponse().withStatus(BAD_GATEWAY)
       )

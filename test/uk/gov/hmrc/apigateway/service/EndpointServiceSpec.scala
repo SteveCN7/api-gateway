@@ -22,7 +22,6 @@ import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.{MatchingResourceNotFound, NotFound}
 import uk.gov.hmrc.apigateway.model.AuthType.NONE
 import uk.gov.hmrc.apigateway.model._
-import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
@@ -38,7 +37,7 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
 
   "Endpoint service" should {
 
-    val proxyRequest = ProxyRequest("GET", "/api-context/api-endpoint", headers = Map(ACCEPT -> "application/vnd.hmrc.1.0+json"))
+    val proxyRequest = ProxyRequest("GET", "/api-context/api-endpoint", headers = Map("Accept" -> "application/vnd.hmrc.1.0+json"))
     val apiDefinitionMatch = ApiDefinitionMatch("api-context", "http://host.example", "1.0", NONE, None)
 
     "invoke api definition connector with correct service name" in {

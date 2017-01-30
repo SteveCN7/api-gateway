@@ -25,6 +25,7 @@ import uk.gov.hmrc.apigateway.model.AuthType.USER
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.service.{ApplicationService, AuthorityService, ScopeValidator}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.apigateway.util.RequestTags._
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -35,10 +36,10 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
   implicit val materializer = mock[Materializer]
 
   val fakeRequest = FakeRequest("GET", "http://host.example/foo")
-    .withTag(X_API_GATEWAY_AUTH_TYPE, USER.toString)
-    .withTag(X_API_GATEWAY_SCOPE, "scopeMoo")
-    .withTag(X_API_GATEWAY_API_CONTEXT, "context")
-    .withTag(X_API_GATEWAY_API_VERSION, "version")
+    .withTag(AUTH_TYPE, USER.toString)
+    .withTag(API_SCOPE, "scopeMoo")
+    .withTag(API_CONTEXT, "context")
+    .withTag(API_VERSION, "version")
     .copy(headers = Headers("Authorization" -> "Bearer accessToken"))
 
   trait Setup {
@@ -60,7 +61,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
     }
 
     "not add additional tags in the request header if the auth-type is not `USER` " in new Setup {
-      val nonUserRequest = fakeRequest.withTag(X_API_GATEWAY_AUTH_TYPE, generateRandomAuthType(USER))
+      val nonUserRequest = fakeRequest.withTag(AUTH_TYPE, generateRandomAuthType(USER))
 
       val result = await(underTest.filter(nonUserRequest, ProxyRequest(nonUserRequest)))
       result.tags shouldBe nonUserRequest.tags
@@ -121,9 +122,8 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
 
       val result: Future[RequestHeader] = await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
 
-      result.tags(AUTHORIZATION) shouldBe "Bearer authBearerToken"
-      result.tags(X_API_GATEWAY_AUTHORIZATION_TOKEN) shouldBe "accessToken"
-      result.tags(X_API_GATEWAY_CLIENT_ID) shouldBe clientId
+      result.tags(AUTH_AUTHORIZATION) shouldBe "Bearer authBearerToken"
+      result.tags(CLIENT_ID) shouldBe clientId
     }
 
   }

@@ -23,7 +23,7 @@ import uk.gov.hmrc.apigateway.cache.CacheManager
 import uk.gov.hmrc.apigateway.connector.ServiceConnector
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
-import uk.gov.hmrc.apigateway.util.HttpHeaders.X_API_GATEWAY_SERVER_TOKEN
+import uk.gov.hmrc.apigateway.util.HttpHeaders.X_SERVER_TOKEN
 
 import scala.concurrent.Future
 
@@ -35,7 +35,7 @@ class ThirdPartyApplicationConnector @Inject() (wsClient: WSClient, cache: Cache
     get[Application](
       key = s"$serviceName-$serverToken",
       urlPath = "application",
-      headers = Seq(X_API_GATEWAY_SERVER_TOKEN -> serverToken)
+      headers = Seq(X_SERVER_TOKEN -> serverToken)
     )
 
   def getApplicationByClientId(clientId: String): Future[Application] =

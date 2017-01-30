@@ -32,6 +32,7 @@ case class ProxyRequest
 
   def accessToken = getHeader(AUTHORIZATION) map(_.stripPrefix("Bearer "))
 
+  lazy val acceptHeader = getHeader(ACCEPT)
   lazy val rawPath = new URI(path).getRawPath
 }
 

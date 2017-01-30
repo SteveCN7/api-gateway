@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.model
+package uk.gov.hmrc.apigateway.connector.impl
 
-import org.joda.time.DateTime
+import javax.inject.Singleton
 
-case class Authority(delegatedAuthority: ThirdPartyDelegatedAuthority, authExpired: Boolean = false)
+import uk.gov.hmrc.play.audit.http.config.LoadAuditingConfig
+import uk.gov.hmrc.play.audit.http.connector.AuditConnector
+import uk.gov.hmrc.play.config.RunMode
 
-case class ThirdPartyDelegatedAuthority(authBearerToken: String, clientId: String, token: Token, user: Option[UserData])
-
-case class Token(accessToken:String, scopes: Set[String], expiresAt: DateTime)
-
-case class UserData(userId: String)
+@Singleton
+class MicroserviceAuditConnector extends AuditConnector with RunMode {
+  override lazy val auditingConfig = LoadAuditingConfig(s"$env.auditing")
+}

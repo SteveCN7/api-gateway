@@ -35,7 +35,7 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
     val metrics = mock[CacheMetrics]
     val cacheManager = new CacheManager(cache, metrics)
 
-    def fallbackF = Future.successful(updatedValue)
+    def fallbackF = Future.successful((updatedValue, Map.empty[String, String]))
   }
 
   "Get cached item" should {
@@ -43,7 +43,7 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
     "return cached value when present and caching is enabled" in new Setup {
       when(cache.get[String](cacheKey)).thenReturn(Some(cachedValue))
 
-      await(cacheManager.get[String](cacheKey, serviceName, fallbackF, true, 30)) shouldBe cachedValue
+      await(cacheManager.get[String](cacheKey, serviceName, fallbackF)) shouldBe cachedValue
 
       verify(cache).get[String](cacheKey)
       verify(metrics).cacheHit(serviceName)
@@ -53,16 +53,17 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
     "return value from fallback function and update cache when caching is enabled" in new Setup {
       when(cache.get[String](cacheKey)).thenReturn(None)
 
-      await(cacheManager.get[String](cacheKey, serviceName, fallbackF, true, 30)) shouldBe updatedValue
+      await(cacheManager.get[String](cacheKey, serviceName, fallbackF)) shouldBe updatedValue
 
       verify(cache).get[String](cacheKey)
-      verify(cache).set(cacheKey, updatedValue, 30 seconds)
+//      verify(cache).set(cacheKey, updatedValue, 30 seconds)
+      verify(cache).set(cacheKey, updatedValue)
       verify(metrics).cacheMiss(serviceName)
       verifyNoMoreInteractions(cache, metrics)
     }
 
     "return value from fallback function and ignore caching when disabled" in new Setup {
-      await(cacheManager.get[String](cacheKey, serviceName, fallbackF, false)) shouldBe updatedValue
+      await(cacheManager.get[String](cacheKey, serviceName, fallbackF)) shouldBe updatedValue
       verifyZeroInteractions(cache, metrics)
     }
   }

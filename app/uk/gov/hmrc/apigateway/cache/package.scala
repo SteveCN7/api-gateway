@@ -14,17 +14,10 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.util
+package uk.gov.hmrc.apigateway
 
-import play.api.http.HeaderNames
+package object cache {
 
-object HttpHeaders extends HeaderNames {
-
-  val X_API_GATEWAY_ENDPOINT = "x-api-gateway-proxy-endpoint"
-  val X_API_GATEWAY_SCOPE = "x-api-gateway-scope"
-  val X_API_GATEWAY_AUTH_TYPE = "x-api-gateway-auth-type"
-  val X_API_GATEWAY_API_CONTEXT = "x-api-gateway-api-context"
-  val X_API_GATEWAY_API_VERSION = "x-api-gateway-api-version"
-  val X_API_GATEWAY_SERVER_TOKEN = "X-server-token"
+  type EntityWithResponseHeaders[T] = (T, Map[String, String])
 
 }

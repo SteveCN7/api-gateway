@@ -57,7 +57,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
       givenTheUrlReturns("/world", OK)
 
-      val result = await(underTest.proxy(request, s"$wireMockUrl/world"))
+      val result = underTest.proxy(request, s"$wireMockUrl/world")
 
       status(result) shouldBe OK
     }

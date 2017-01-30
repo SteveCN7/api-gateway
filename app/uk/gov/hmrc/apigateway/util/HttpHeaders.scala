@@ -16,7 +16,9 @@
 
 package uk.gov.hmrc.apigateway.util
 
-object HttpHeaders {
+import play.api.http.HeaderNames
+
+object HttpHeaders extends HeaderNames {
 
   val X_API_GATEWAY_ENDPOINT = "x-api-gateway-proxy-endpoint"
   val X_API_GATEWAY_SCOPE = "x-api-gateway-scope"
@@ -27,7 +29,5 @@ object HttpHeaders {
   val X_API_GATEWAY_CLIENT_ID = "X-Client-ID"
   val X_API_GATEWAY_AUTHORIZATION_TOKEN = "X-Client-Authorization-Token"
   val X_API_GATEWAY_REQUEST_TIMESTAMP = "X-Request-Timestamp"
-  val AUTHORIZATION = "Authorization"
-  val ACCEPT = "Accept"
 
 }

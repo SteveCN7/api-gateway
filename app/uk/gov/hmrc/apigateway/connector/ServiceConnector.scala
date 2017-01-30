@@ -28,8 +28,6 @@ abstract class ServiceConnector(wsClient: WSClient, cache: CacheManager, val ser
   extends AbstractConnector(wsClient) with ServicesConfig {
 
   lazy val serviceBaseUrl = baseUrl(serviceName)
-  lazy val caching = getConfBool(s"$serviceName.caching.enabled", defBool = false)
-  lazy val expiration = getConfInt(s"$serviceName.caching.expirationInSeconds", 120)
 
   override def get[T: ClassTag](urlPath: String)(implicit format: Format[T]): Future[T] =
     get(urlPath, urlPath, Seq.empty)
@@ -38,5 +36,5 @@ abstract class ServiceConnector(wsClient: WSClient, cache: CacheManager, val ser
     get(key, urlPath, Seq.empty)
 
   def get[T: ClassTag](key: String, urlPath: String, headers: Seq[(String, String)])(implicit format: Format[T]): Future[T] =
-    cache.get[T](key, serviceName, super.get(s"$serviceBaseUrl/$urlPath", headers), caching, expiration)
+    cache.get[T](key, serviceName, super.get(s"$serviceBaseUrl/$urlPath", headers))
 }

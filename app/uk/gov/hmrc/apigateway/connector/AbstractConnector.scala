@@ -20,6 +20,7 @@ import play.api.Logger
 import play.api.http.Status.{NOT_FOUND, OK}
 import play.api.libs.json.Format
 import play.api.libs.ws.WSClient
+import uk.gov.hmrc.apigateway.cache.EntityWithResponseHeaders
 import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound, ServerError}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -28,13 +29,15 @@ import scala.reflect.ClassTag
 
 abstract class AbstractConnector(wsClient: WSClient) {
 
-  def get[T: ClassTag](url: String)(implicit format: Format[T]): Future[T] =  get(url, Seq.empty[(String, String)])
+  def get[T: ClassTag](url: String)(implicit format: Format[T]): Future[T] = {
+    get(url, Seq.empty[(String, String)]) map (_._1)
+  }
 
-  def get[T: ClassTag](url: String, headers: Seq[(String, String)])(implicit format: Format[T]): Future[T] = {
-    wsClient.url(url).withHeaders(headers : _*).get() map {
+  def get[T: ClassTag](url: String, headers: Seq[(String, String)])(implicit format: Format[T]): Future[EntityWithResponseHeaders[T]] = {
+    wsClient.url(url).withHeaders(headers: _*).get() map {
       case wsResponse if wsResponse.status >= OK && wsResponse.status < 300 =>
         Logger.debug(s"GET $url ${wsResponse.status}")
-        wsResponse.json.as[T]
+        (wsResponse.json.as[T], wsResponse.allHeaders.mapValues(strings => strings.mkString(",")))
 
       case wsResponse if wsResponse.status == NOT_FOUND =>
         Logger.debug(s"GET $url ${wsResponse.status}")

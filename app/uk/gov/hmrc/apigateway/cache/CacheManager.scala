@@ -20,6 +20,7 @@ import javax.inject.{Inject, Singleton}
 
 import play.api.Logger
 import play.api.cache.CacheApi
+import play.api.http.HeaderNames.CACHE_CONTROL
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -31,26 +32,25 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics) {
 
   def get[T: ClassTag](key: String,
                        serviceName: String,
-                       fallbackFunction: => Future[T],
-                       caching: Boolean = true,
-                       expiration: Int = 60): Future[T] = {
+                       fallbackFunction: => Future[EntityWithResponseHeaders[T]]): Future[T] = {
 
-    def getOrUpdate() = {
-      cache.get[T](key) match {
-        case Some(value) =>
-          Logger.debug(s"Cache hit for key [$key]")
-          metrics.cacheHit(serviceName)
-          Future.successful(value)
-        case _ =>
-          Logger.debug(s"Cache miss for key [$key]. Caching flag is set to: [$caching] with expiration: [$expiration]")
-          metrics.cacheMiss(serviceName)
-          fallbackFunction map { result =>
-            cache.set(key, result, expiration seconds)
-            result
+    cache.get[T](key) match {
+      case Some(value) =>
+        Logger.debug(s"Cache hit for key [$key]")
+        metrics.cacheHit(serviceName)
+        Future.successful(value)
+      case _ =>
+        //        Logger.debug(s"Cache miss for key [$key]. Caching flag is set to: [$caching] with expiration: [$expiration]")
+        Logger.debug(s"Cache miss for key [$key]")
+        metrics.cacheMiss(serviceName)
+        fallbackFunction map { case (t, headers) =>
+          headers.get(CACHE_CONTROL) map {
+            case cacheControl if !cacheControl.toLowerCase.equals("no-cache") =>
+              Logger.debug(s"Caching1 response for key [$key] with expiration [${cacheControl.toInt.seconds}] seconds")
+              cache.set(key, t, cacheControl.toInt.seconds)
           }
-      }
+          t
+        }
     }
-
-    if (caching) getOrUpdate() else fallbackFunction
   }
 }

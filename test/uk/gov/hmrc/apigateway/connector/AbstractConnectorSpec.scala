@@ -89,7 +89,7 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
 
       val result = await(underTest.get[Foo](s"$wireMockUrl/foo/bar", Seq(("foo", "bar"))))
 
-      result shouldBe Foo("bar")
+      result._1 shouldBe Foo("bar")
     }
   }
 

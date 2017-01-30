@@ -78,7 +78,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
         givenTheUrlReturns("/world", OK)
 
-        underTest.proxy(requestWithTag, s"$wireMockUrl/world")
+        await(underTest.proxy(requestWithTag, s"$wireMockUrl/world"))
 
         verify(getRequestedFor(urlEqualTo("/world"))
           .withHeader(header, equalTo(value)))
@@ -89,7 +89,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
       val requestWithoutTags = request.copyFakeRequest(tags = Map())
 
-      underTest.proxy(requestWithoutTags, s"$wireMockUrl/world")
+      await(underTest.proxy(requestWithoutTags, s"$wireMockUrl/world"))
 
       verify(getRequestedFor(urlEqualTo("/world"))
         .withoutHeader("Authorization")

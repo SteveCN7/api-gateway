@@ -18,18 +18,17 @@ package uk.gov.hmrc.apigateway.model
 
 import play.mvc.Http.HeaderNames
 
-case class CacheControl(noCache: Boolean, maxAgeSeconds: Option[Int], vary: Option[String])
+case class CacheControl(noCache: Boolean, maxAgeSeconds: Option[Int], vary: Seq[String])
 
 object CacheControl {
-
   def fromHeaders(headers: Map[String, Seq[String]]) = {
-    val varyHeaders = headers.get(HeaderNames.VARY)
-
-    val defaults = (false, None, None)
-    val params = headers.foldLeft[(Boolean, Option[Int], Option[String])] (defaults){
-        case (acc, (HeaderNames.CACHE_CONTROL, vals)) =>
-          (acc._1 | vals.contains("no-cache"), acc._2.orElse(findMaxAge(vals)), acc._3)
-        case (acc, _) => acc
+    val defaults = (false, None, Nil)
+    val params = headers.foldLeft[(Boolean, Option[Int], Seq[String])] (defaults){
+        case (a, (HeaderNames.CACHE_CONTROL, vals)) =>
+          (a._1 | vals.contains("no-cache"), a._2.orElse(findMaxAge(vals)), a._3)
+        case (a, (HeaderNames.VARY, vals)) =>
+          (a._1, a._2, vals)
+        case (a, _) => a
       }
     CacheControl(params._1, params._2, params._3)
   }
@@ -38,7 +37,7 @@ object CacheControl {
     val maxAgePattern = "max-age=(\\d+)".r
     vals.foldLeft[Option[Int]](None) {
       case (None, maxAgePattern(age)) => Some(age.toInt)
-      case (accumulator, _) => accumulator
+      case (a, _) => a
     }
   }
 }

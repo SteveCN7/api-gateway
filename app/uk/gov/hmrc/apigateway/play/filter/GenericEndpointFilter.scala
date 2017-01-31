@@ -19,13 +19,14 @@ package uk.gov.hmrc.apigateway.play.filter
 import javax.inject.{Inject, Singleton}
 
 import akka.stream.Materializer
+import org.joda.time.DateTime
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound => _}
 import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.service.EndpointService
-import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.apigateway.util.HttpHeaders.AUTHORIZATION
+import uk.gov.hmrc.apigateway.util.RequestTags._
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -41,14 +42,17 @@ class GenericEndpointFilter @Inject()
     for {
       apiDefinitionMatch <- endpointService.findApiDefinition(proxyRequest)
     // TODO implement global rate limit filter???
-    } yield requestHeader
-      .withTag(ACCEPT, proxyRequest.getHeader(ACCEPT).orNull)
-      .withTag(X_API_GATEWAY_ENDPOINT, s"${apiDefinitionMatch.serviceBaseUrl}/${proxyRequest.path}")
-      .withTag(X_API_GATEWAY_SCOPE, apiDefinitionMatch.scope.orNull)
-      .withTag(X_API_GATEWAY_AUTH_TYPE, apiDefinitionMatch.authType.toString)
-      .withTag(X_API_GATEWAY_API_CONTEXT, apiDefinitionMatch.context)
-      .withTag(X_API_GATEWAY_API_VERSION, apiDefinitionMatch.apiVersion)
-      .withTag(X_API_GATEWAY_REQUEST_TIMESTAMP, System.nanoTime().toString)
-  }
-
+    } yield {
+      requestHeader.copy(tags = requestHeader.tags +
+          (API_CONTEXT -> apiDefinitionMatch.context) +
+          (API_VERSION -> apiDefinitionMatch.apiVersion) +
+          (API_ENDPOINT -> s"${apiDefinitionMatch.serviceBaseUrl}/${proxyRequest.path}") +
+          (AUTH_TYPE -> apiDefinitionMatch.authType.toString) +
+          (REQUEST_TIMESTAMP_MILLIS -> DateTime.now().getMillis.toString) +
+          (REQUEST_TIMESTAMP_NANO -> System.nanoTime().toString) ++
+          apiDefinitionMatch.scope.map(s => (API_SCOPE, s)) ++
+          requestHeader.headers.get(AUTHORIZATION).map(a => (OAUTH_AUTHORIZATION, a))
+        )
+      }
+    }
 }

@@ -14,14 +14,19 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.model
+package uk.gov.hmrc.apigateway.util
 
-import org.joda.time.DateTime
+import play.api.libs.json.Json
+import play.api.mvc._
 
-case class Authority(delegatedAuthority: ThirdPartyDelegatedAuthority, authExpired: Boolean = false)
+object PlayRequestUtils {
 
-case class ThirdPartyDelegatedAuthority(authBearerToken: String, clientId: String, token: Token, user: Option[UserData])
-
-case class Token(accessToken:String, scopes: Set[String], expiresAt: DateTime)
-
-case class UserData(userId: String)
+  def bodyOf(request: Request[AnyContent]): Option[String] = {
+    request.body match {
+      case AnyContentAsJson(json) => Some(Json.stringify(json))
+      case AnyContentAsText(txt) => Some(txt)
+      case AnyContentAsXml(xml) => Some(xml.toString())
+      case _ => None
+    }
+  }
+}

@@ -25,6 +25,7 @@ import uk.gov.hmrc.apigateway.model.AuthType._
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.service.{ApplicationService, AuthorityService}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.apigateway.util.RequestTags.{API_CONTEXT, API_VERSION, AUTH_TYPE, CLIENT_ID}
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.ExecutionContext
@@ -48,9 +49,9 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
       headers = Headers(),
       body = "")
     val applicationRequest = basicRequest
-      .withTag(X_API_GATEWAY_AUTH_TYPE, APPLICATION.toString)
-      .withTag(X_API_GATEWAY_API_CONTEXT, "c")
-      .withTag(X_API_GATEWAY_API_VERSION, "v")
+      .withTag(AUTH_TYPE, APPLICATION.toString)
+      .withTag(API_CONTEXT, "c")
+      .withTag(API_VERSION, "v")
     val applicationRequestWithToken = applicationRequest.copy(headers = Headers(AUTHORIZATION -> s"Bearer $serverToken"))
   }
 
@@ -108,7 +109,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
 
       val result = await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
       result.headers shouldBe applicationRequestWithToken.headers
-      result.tags(X_API_GATEWAY_CLIENT_ID) shouldBe clientId
+      result.tags(CLIENT_ID) shouldBe clientId
     }
 
     "process a request with a valid server token that meets all requirements" in new Setup {
@@ -117,7 +118,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
 
       val result = await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
       result.headers shouldBe applicationRequestWithToken.headers
-      result.tags(X_API_GATEWAY_CLIENT_ID) shouldBe clientId
+      result.tags(CLIENT_ID) shouldBe clientId
     }
 
   }

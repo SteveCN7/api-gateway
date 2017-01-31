@@ -20,14 +20,19 @@ import javax.inject.{Inject, Singleton}
 
 import play.api.mvc.{AnyContent, Request, Result}
 import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
-import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.apigateway.util.RequestTags.API_ENDPOINT
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class ProxyService @Inject()(proxyConnector: ProxyConnector) {
+class ProxyService @Inject()(proxyConnector: ProxyConnector, auditService: AuditService) {
 
-  def proxy(request: Request[AnyContent]): Future[Result] =
-    proxyConnector.proxy(request, request.tags(X_API_GATEWAY_ENDPOINT))
+  def proxy(request: Request[AnyContent]): Future[Result] = {
+    proxyConnector.proxy(request, request.tags(API_ENDPOINT)) map { response =>
+      auditService.auditSuccessfulRequest(request, response)
+      response
+    }
+  }
 
 }

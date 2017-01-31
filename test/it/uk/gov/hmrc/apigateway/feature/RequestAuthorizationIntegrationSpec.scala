@@ -52,7 +52,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
   private val clientId = "clientId"
 
   private val authority = Authority(
-    ThirdPartyDelegatedAuthority("authBearerToken", clientId, Token(accessToken, Set("scope1"), now().plusHours(3))),
+    ThirdPartyDelegatedAuthority("authBearerToken", clientId, Token(accessToken, Set("scope1"), now().plusHours(3)), Some(UserData("userOid"))),
     authExpired = false)
 
   private val applicationId = UUID.randomUUID()

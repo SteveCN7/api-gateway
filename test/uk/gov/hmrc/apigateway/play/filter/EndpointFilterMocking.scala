@@ -78,7 +78,7 @@ trait EndpointFilterMocking {
 
   protected def validAuthority(): Authority = {
     val token = Token("accessToken", Set.empty, DateTime.now.plusMinutes(5))
-    val thirdPartyDelegatedAuthority = ThirdPartyDelegatedAuthority("authBearerToken", "clientId", token)
+    val thirdPartyDelegatedAuthority = ThirdPartyDelegatedAuthority("authBearerToken", "clientId", token, Some(UserData("userOID")))
     Authority(thirdPartyDelegatedAuthority, authExpired = false)
   }
 

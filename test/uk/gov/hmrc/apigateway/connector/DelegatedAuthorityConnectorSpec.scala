@@ -25,7 +25,7 @@ import org.joda.time.DateTime
 import org.scalatest.BeforeAndAfterEach
 import uk.gov.hmrc.apigateway.connector.impl.DelegatedAuthorityConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
-import uk.gov.hmrc.apigateway.model.{Authority, ThirdPartyDelegatedAuthority, Token}
+import uk.gov.hmrc.apigateway.model.{UserData, Authority, ThirdPartyDelegatedAuthority, Token}
 import uk.gov.hmrc.play.test.{WithFakeApplication, UnitSpec}
 
 class DelegatedAuthorityConnectorSpec extends UnitSpec with BeforeAndAfterEach with WithFakeApplication with ThirdPartyDelegatedAuthorityStubMappings {
@@ -35,7 +35,7 @@ class DelegatedAuthorityConnectorSpec extends UnitSpec with BeforeAndAfterEach w
   val wireMockUrl = s"http://$stubHost:$stubPort"
   val wireMockServer = new WireMockServer(wireMockConfig().port(stubPort))
 
-  val authority = Authority(ThirdPartyDelegatedAuthority("sandbox_token", "uKQXtOfZEmW8z5UOwHsg3ANF_fwa", Token("accessToken", Set.empty, DateTime.now)))
+  val authority = Authority(ThirdPartyDelegatedAuthority("sandbox_token", "uKQXtOfZEmW8z5UOwHsg3ANF_fwa", Token("accessToken", Set.empty, DateTime.now), Some(UserData("userOID"))))
 
   trait Setup {
     val underTest = fakeApplication.injector.instanceOf[DelegatedAuthorityConnector]

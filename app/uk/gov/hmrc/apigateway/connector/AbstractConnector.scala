@@ -37,7 +37,7 @@ abstract class AbstractConnector(wsClient: WSClient) {
     wsClient.url(url).withHeaders(headers: _*).get() map {
       case wsResponse if wsResponse.status >= OK && wsResponse.status < 300 =>
         Logger.debug(s"GET $url ${wsResponse.status}")
-        (wsResponse.json.as[T], wsResponse.allHeaders.mapValues(strings => strings.mkString(",")))
+        (wsResponse.json.as[T], wsResponse.allHeaders.mapValues(strings => strings.flatMap(_.split(","))))
 
       case wsResponse if wsResponse.status == NOT_FOUND =>
         Logger.debug(s"GET $url ${wsResponse.status}")

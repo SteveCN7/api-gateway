@@ -21,6 +21,7 @@ import javax.inject.{Inject, Singleton}
 import play.api.Logger
 import play.api.cache.CacheApi
 import play.api.http.HeaderNames.CACHE_CONTROL
+import uk.gov.hmrc.apigateway.model.CacheControl
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -36,21 +37,31 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics) {
 
     cache.get[T](key) match {
       case Some(value) =>
-        Logger.debug(s"Cache hit for key [$key]")
-        metrics.cacheHit(serviceName)
-        Future.successful(value)
+        processCacheHit(key, serviceName, value)
       case _ =>
-        //        Logger.debug(s"Cache miss for key [$key]. Caching flag is set to: [$caching] with expiration: [$expiration]")
-        Logger.debug(s"Cache miss for key [$key]")
-        metrics.cacheMiss(serviceName)
-        fallbackFunction map { case (t, headers) =>
-          headers.get(CACHE_CONTROL) map {
-            case cacheControl if !cacheControl.toLowerCase.equals("no-cache") =>
-              Logger.debug(s"Caching1 response for key [$key] with expiration [${cacheControl.toInt.seconds}] seconds")
-              cache.set(key, t, cacheControl.toInt.seconds)
-          }
-          t
-        }
+        processCacheMiss(key, serviceName, fallbackFunction)
+    }
+  }
+
+  private def processCacheHit[T: ClassTag](key: String, serviceName: String, value: T): Future[T] = {
+    Logger.debug(s"Cache hit for key [$key]")
+    metrics.cacheHit(serviceName)
+    Future.successful(value)
+  }
+
+  private def processCacheMiss[T: ClassTag](key: String, serviceName: String, fallbackFunction: => Future[(T, Map[String, Seq[String]])]): Future[T] = {
+    Logger.debug(s"Cache miss for key [$key]")
+    metrics.cacheMiss(serviceName)
+    fallbackFunction map { case (t, headers) =>
+      CacheControl.fromHeaders(headers) match {
+        case CacheControl(_, _, _) => None
+      }
+      headers.get(CACHE_CONTROL) map { values =>
+        if (values.map(_.toLowerCase()).contains("no-cache")) None
+//        else if ( There is a value starting with max-age )
+        else None
+      }
+      t
     }
   }
 }

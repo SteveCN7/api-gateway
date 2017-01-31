@@ -18,16 +18,14 @@ package uk.gov.hmrc.apigateway.service
 
 import org.joda.time.DateTimeUtils._
 import org.mockito.BDDMockito.given
-import org.mockito.Mockito.{verify, timeout}
-import org.mockito.{BDDMockito, Mockito}
+import org.mockito.Mockito.{timeout, verify, verifyZeroInteractions}
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mockito.MockitoSugar
 import play.api.mvc.Results.Ok
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
-import uk.gov.hmrc.apigateway.service.AuditService
-import uk.gov.hmrc.apigateway.util.RequestTags
-import uk.gov.hmrc.apigateway.util.RequestTags.API_ENDPOINT
+import uk.gov.hmrc.apigateway.model.AuthType.NONE
+import uk.gov.hmrc.apigateway.util.RequestTags._
 import uk.gov.hmrc.play.test.UnitSpec
 
 class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach {
@@ -40,7 +38,10 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
 
   val microserviceEndpoint = "http://hello-world.service/hello/world"
   val request = FakeRequest("GET", "/hello/world").copyFakeRequest(
-    tags = Map(API_ENDPOINT -> microserviceEndpoint)
+    tags = Map(
+      API_ENDPOINT -> microserviceEndpoint,
+      AUTH_TYPE -> "USER"
+    )
   )
 
   override def beforeEach() = {
@@ -72,6 +73,16 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
       await(underTest.proxy(request))
 
       verify(auditService, timeout(2000)).auditSuccessfulRequest(request, response)
+    }
+
+    "not audit the request for open endpoint" in new Setup {
+      val openRequest = request.copyFakeRequest(tags = request.tags + (AUTH_TYPE -> NONE.toString))
+
+      given(proxyConnector.proxy(openRequest, microserviceEndpoint)).willReturn(Ok("hello"))
+
+      await(underTest.proxy(openRequest))
+
+      verifyZeroInteractions(auditService)
     }
   }
 }

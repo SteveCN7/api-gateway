@@ -20,7 +20,8 @@ import javax.inject.{Inject, Singleton}
 
 import play.api.mvc.{AnyContent, Request, Result}
 import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
-import uk.gov.hmrc.apigateway.util.RequestTags.API_ENDPOINT
+import uk.gov.hmrc.apigateway.model.AuthType.NONE
+import uk.gov.hmrc.apigateway.util.RequestTags.{AUTH_TYPE, API_ENDPOINT}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -30,7 +31,7 @@ class ProxyService @Inject()(proxyConnector: ProxyConnector, auditService: Audit
 
   def proxy(request: Request[AnyContent]): Future[Result] = {
     proxyConnector.proxy(request, request.tags(API_ENDPOINT)) map { response =>
-      auditService.auditSuccessfulRequest(request, response)
+      if(!request.tags.get(AUTH_TYPE).contains(NONE.toString)) auditService.auditSuccessfulRequest(request, response)
       response
     }
   }

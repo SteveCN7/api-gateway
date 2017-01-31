@@ -52,16 +52,12 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics) {
   private def processCacheMiss[T: ClassTag](key: String, serviceName: String, fallbackFunction: => Future[(T, Map[String, Seq[String]])]): Future[T] = {
     Logger.debug(s"Cache miss for key [$key]")
     metrics.cacheMiss(serviceName)
-    fallbackFunction map { case (t, headers) =>
+    fallbackFunction map { case (result, headers) =>
       CacheControl.fromHeaders(headers) match {
-        case CacheControl(_, _, _) => None
+        case CacheControl(false, Some(max), varyHeaders) if varyHeaders.isEmpty => cache.set(key, result, max seconds)
+        case _ => println("Nothing to do yet...")
       }
-      headers.get(CACHE_CONTROL) map { values =>
-        if (values.map(_.toLowerCase()).contains("no-cache")) None
-//        else if ( There is a value starting with max-age )
-        else None
-      }
-      t
+      result
     }
   }
 }

@@ -104,6 +104,7 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
             .withHeader(HeaderNames.CACHE_CONTROL, "no-cache,max-age=0,no-store")
             .withHeader(HeaderNames.VARY, "X-Blah")
             .withHeader(HeaderNames.VARY, "X-Bling")
+            .withHeader(HeaderNames.VARY, "X-Blit, X-Blat")
         ))
 
       val result = await(underTest.get[Foo](s"$wireMockUrl/foo/bar", Seq(("foo", "bar"))))
@@ -119,6 +120,8 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
 
       vary should contain("X-Blah")
       vary should contain("X-Bling")
+      vary should contain("X-Blit")
+      vary should contain("X-Blat")
     }
   }
 

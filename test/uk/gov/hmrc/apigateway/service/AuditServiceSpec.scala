@@ -67,7 +67,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
 
     "send an audit event" in new Setup {
 
-      val request = FakeRequest("POST", "/hello/user")
+      val request = FakeRequest("POST", "/api-gateway/hello/user")
         .withBody(AnyContentAsJson(Json.parse("""{"body":"test"}""")))
         .copyFakeRequest(
           tags = Map(

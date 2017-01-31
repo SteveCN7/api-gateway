@@ -42,14 +42,17 @@ class GenericEndpointFilter @Inject()
     for {
       apiDefinitionMatch <- endpointService.findApiDefinition(proxyRequest)
     // TODO implement global rate limit filter???
-    } yield requestHeader
-      .withTag(API_CONTEXT, apiDefinitionMatch.context)
-      .withTag(API_VERSION, apiDefinitionMatch.apiVersion)
-      .withTag(API_ENDPOINT, s"${apiDefinitionMatch.serviceBaseUrl}/${proxyRequest.path}")
-      .withTag(API_SCOPE, apiDefinitionMatch.scope.orNull)
-      .withTag(OAUTH_AUTHORIZATION, requestHeader.headers.get(AUTHORIZATION).orNull)
-      .withTag(AUTH_TYPE, apiDefinitionMatch.authType.toString)
-      .withTag(REQUEST_TIMESTAMP_MILLIS, DateTime.now().getMillis.toString)
-      .withTag(REQUEST_TIMESTAMP_NANO, System.nanoTime().toString)
-  }
+    } yield {
+      requestHeader.copy(tags = requestHeader.tags +
+          (API_CONTEXT -> apiDefinitionMatch.context) +
+          (API_VERSION -> apiDefinitionMatch.apiVersion) +
+          (API_ENDPOINT -> s"${apiDefinitionMatch.serviceBaseUrl}/${proxyRequest.path}") +
+          (AUTH_TYPE -> apiDefinitionMatch.authType.toString) +
+          (REQUEST_TIMESTAMP_MILLIS -> DateTime.now().getMillis.toString) +
+          (REQUEST_TIMESTAMP_NANO -> System.nanoTime().toString) ++
+          apiDefinitionMatch.scope.map(s => (API_SCOPE, s)) ++
+          requestHeader.headers.get(AUTHORIZATION).map(a => (OAUTH_AUTHORIZATION, a))
+        )
+      }
+    }
 }

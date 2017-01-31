@@ -51,7 +51,7 @@ class AuditService @Inject()(val configuration: Configuration, val auditConnecto
         request = DataCall(
           tags = Map(
             "X-Request-ID" -> request.headers.get("X-Request-ID").getOrElse(""),
-            "path" -> request.path,
+            "path" -> request.path.stripPrefix("/api-gateway"),
             "transactionName" -> "Request has been completed via the API Gateway",
             "clientIP" -> request.remoteAddress,
             "clientPort" -> "443",
@@ -66,7 +66,7 @@ class AuditService @Inject()(val configuration: Configuration, val auditConnecto
             addTag("apiContext", API_CONTEXT)(request) ++
             addTag("apiVersion", API_VERSION)(request) ++
             addTag("applicationProductionClientId", CLIENT_ID)(request),
-          new DateTime(request.tags.getOrElse(REQUEST_TIMESTAMP_MILLIS, DateTime.now().getMillis.toString).toLong)),
+          generatedAt = new DateTime(request.tags.getOrElse(REQUEST_TIMESTAMP_MILLIS, DateTime.now().getMillis.toString).toLong)),
         response = DataCall(
           tags = Map(),
           detail = Map(

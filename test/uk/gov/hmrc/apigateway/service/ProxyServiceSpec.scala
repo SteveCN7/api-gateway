@@ -69,7 +69,7 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
 
       given(proxyConnector.proxy(request, microserviceEndpoint)).willReturn(response)
 
-      val result = await(underTest.proxy(request))
+      await(underTest.proxy(request))
 
       verify(auditService, timeout(2000)).auditSuccessfulRequest(request, response)
     }

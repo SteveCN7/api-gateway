@@ -18,12 +18,12 @@ package uk.gov.hmrc.apigateway.model
 
 import play.mvc.Http.HeaderNames
 
-case class CacheControl(noCache: Boolean, maxAgeSeconds: Option[Int], vary: Seq[String])
+case class CacheControl(noCache: Boolean, maxAgeSeconds: Option[Int], vary: Set[String])
 
 object CacheControl {
-  def fromHeaders(headers: Map[String, Seq[String]]) = {
-    val defaults = (false, None, Nil)
-    val params = headers.foldLeft[(Boolean, Option[Int], Seq[String])] (defaults){
+  def fromHeaders(headers: Map[String, Set[String]]) = {
+    val defaults = (false, None, Set.empty[String])
+    val params = headers.foldLeft[(Boolean, Option[Int], Set[String])] (defaults){
         case (a, (HeaderNames.CACHE_CONTROL, vals)) =>
           (a._1 | vals.contains("no-cache"), a._2.orElse(findMaxAge(vals)), a._3)
         case (a, (HeaderNames.VARY, vals)) =>
@@ -33,7 +33,7 @@ object CacheControl {
     CacheControl(params._1, params._2, params._3)
   }
 
-  private def findMaxAge(vals: Seq[String]): Option[Int] = {
+  private def findMaxAge(vals: Set[String]): Option[Int] = {
     val maxAgePattern = "max-age=(\\d+)".r
     vals.foldLeft[Option[Int]](None) {
       case (None, maxAgePattern(age)) => Some(age.toInt)

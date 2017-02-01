@@ -49,6 +49,23 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
     wireMockServer.stop()
   }
 
+  "asMapOfSeq" should {
+    "convert a simple seq into a map"  in new Setup(){
+      val res = underTest.asMapOfSeq(Seq("A" -> "aaa", "B" -> "bbb"))
+      res shouldBe(Map("A" -> Set("aaa"), "B" -> Set("bbb")))
+    }
+
+    "convert a complex seq into a map"  in new Setup(){
+      val res = underTest.asMapOfSeq(Seq(
+        "A" -> "aaa",
+        "B" -> "bbb",
+        "B" -> "yyy,qqq",
+        "A" -> "xxx, zzz"
+      ))
+      res shouldBe(Map("A" -> Set("aaa", "xxx", "zzz"), "B" -> Set("bbb", "yyy", "qqq")))
+    }
+  }
+
   "Abstract connector" should {
 
     "throw a not found error when the response is '404' not found" in new Setup {
@@ -110,10 +127,11 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
       val result = await(underTest.get[Foo](s"$wireMockUrl/foo/bar", Seq(("foo", "bar"))))
 
       result._1 shouldBe Foo("bar")
-      private val cacheControl = result._2.getOrElse(HeaderNames.CACHE_CONTROL, Nil)
-      private val vary = result._2.getOrElse(HeaderNames.VARY, Nil)
 
-      cacheControl.length shouldBe 3
+      private val cacheControl = result._3.getOrElse(HeaderNames.CACHE_CONTROL, Set.empty)
+      private val vary = result._3.getOrElse(HeaderNames.VARY, Nil)
+
+      cacheControl.size shouldBe 3
       cacheControl should contain("no-cache")
       cacheControl should contain("max-age=0")
       cacheControl should contain("no-store")

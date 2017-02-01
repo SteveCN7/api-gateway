@@ -33,7 +33,9 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics) {
 
   def get[T: ClassTag](key: String,
                        serviceName: String,
-                       fallbackFunction: => Future[EntityWithResponseHeaders[T]]): Future[T] = {
+                       fallbackFunction: => Future[EntityWithResponseHeaders[T]],
+                       reqHeaders: Map[String, Set[String]]
+                      ): Future[T] = {
 
     cache.get[T](key) match {
       case Some(value) =>
@@ -49,11 +51,11 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics) {
     Future.successful(value)
   }
 
-  private def processCacheMiss[T: ClassTag](key: String, serviceName: String, fallbackFunction: => Future[(T, Map[String, Seq[String]])]): Future[T] = {
+  private def processCacheMiss[T: ClassTag](key: String, serviceName: String, fallbackFunction: => Future[(T, Map[String, Set[String]], Map[String, Set[String]])]): Future[T] = {
     Logger.debug(s"Cache miss for key [$key]")
     metrics.cacheMiss(serviceName)
-    fallbackFunction map { case (result, headers) =>
-      CacheControl.fromHeaders(headers) match {
+    fallbackFunction map { case (result, reqHeaders, respHeaders) =>
+      CacheControl.fromHeaders(respHeaders) match {
         case CacheControl(false, Some(max), varyHeaders) if varyHeaders.isEmpty => cache.set(key, result, max seconds)
         case _ => println("Nothing to do yet...")
       }

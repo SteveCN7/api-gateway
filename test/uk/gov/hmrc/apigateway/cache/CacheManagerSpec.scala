@@ -36,17 +36,17 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
     val metrics = mock[CacheMetrics]
     val cacheManager = new CacheManager(cache, metrics)
 
-    def fallbackFunction = Future.successful((updatedValue, Map.empty[String, Seq[String]]))
+    def fallbackFunction = Future.successful((updatedValue, Map.empty[String, Set[String]], Map.empty[String, Set[String]]))
     def fallbackFunctionWithCacheExpiry =
-      Future.successful((updatedValue, Map(HeaderNames.CACHE_CONTROL -> Seq("max-age=123"))))
+      Future.successful((updatedValue, Map.empty[String, Set[String]], Map(HeaderNames.CACHE_CONTROL -> Set("max-age=123"))))
     def fallbackFunctionWithNoCache =
-      Future.successful((updatedValue, Map(HeaderNames.CACHE_CONTROL -> Seq("no-cache"))))
+      Future.successful((updatedValue, Map.empty[String, Set[String]], Map(HeaderNames.CACHE_CONTROL -> Set("no-cache"))))
     def fallbackFunctionWithNoCache2 =
-      Future.successful((updatedValue, Map(HeaderNames.CACHE_CONTROL -> Seq("no-cache","no-store","max-age=0"))))
+      Future.successful((updatedValue, Map.empty[String, Set[String]], Map(HeaderNames.CACHE_CONTROL -> Set("no-cache","no-store","max-age=0"))))
     def fallbackFunctionWithCacheExpiryAndVary =
-      Future.successful((updatedValue, Map(
-          HeaderNames.CACHE_CONTROL -> Seq("max-age=123"),
-          HeaderNames.VARY -> Seq("X-Blah")
+      Future.successful((updatedValue, Map.empty[String, Set[String]], Map(
+          HeaderNames.CACHE_CONTROL -> Set("max-age=123"),
+          HeaderNames.VARY -> Set("X-Blah")
         )
       ))
  }
@@ -55,7 +55,7 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
     "return cached value when present." in new Setup {
       when(cache.get[String](cacheKey)).thenReturn(Some(cachedValue))
 
-      await(cacheManager.get[String](cacheKey, serviceName, fallbackFunctionWithCacheExpiry)) shouldBe cachedValue
+      await(cacheManager.get[String](cacheKey, serviceName, fallbackFunctionWithCacheExpiry, Map.empty)) shouldBe cachedValue
 
       verify(cache).get[String](cacheKey)
       verify(metrics).cacheHit(serviceName)
@@ -65,7 +65,7 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
     "return value from fallback function and update cache when cache header present and has a max-age value" in new Setup {
       when(cache.get[String](cacheKey)).thenReturn(None)
 
-      await(cacheManager.get[String](cacheKey, serviceName, fallbackFunctionWithCacheExpiry)) shouldBe updatedValue
+      await(cacheManager.get[String](cacheKey, serviceName, fallbackFunctionWithCacheExpiry, Map.empty)) shouldBe updatedValue
 
       verify(cache).get[String](cacheKey)
       verify(cache).set(cacheKey, updatedValue, 123 seconds)
@@ -76,7 +76,7 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
     "return value from fallback function but do not cache when cache header present and is no-cache" in new Setup {
       when(cache.get[String](cacheKey)).thenReturn(None)
 
-      await(cacheManager.get[String](cacheKey, serviceName, fallbackFunctionWithNoCache)) shouldBe updatedValue
+      await(cacheManager.get[String](cacheKey, serviceName, fallbackFunctionWithNoCache, Map.empty)) shouldBe updatedValue
 
       verify(cache).get[String](cacheKey)
       verify(metrics).cacheMiss(serviceName)
@@ -86,7 +86,7 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
     "return value from fallback function but do not cache when no cache header is present" in new Setup {
       when(cache.get[String](cacheKey)).thenReturn(None)
 
-      await(cacheManager.get[String](cacheKey, serviceName, fallbackFunction)) shouldBe updatedValue
+      await(cacheManager.get[String](cacheKey, serviceName, fallbackFunction, Map.empty)) shouldBe updatedValue
 
       verify(cache).get[String](cacheKey)
       verify(metrics).cacheMiss(serviceName)
@@ -96,7 +96,7 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
     "return value from fallback function but do not cache when cache header is present but a Vary header is present." ignore new Setup {
       when(cache.get[String](cacheKey)).thenReturn(None)
 
-      await(cacheManager.get[String](cacheKey, serviceName, fallbackFunctionWithCacheExpiryAndVary )) shouldBe updatedValue
+      await(cacheManager.get[String](cacheKey, serviceName, fallbackFunctionWithCacheExpiryAndVary, Map.empty)) shouldBe updatedValue
 
       verify(cache).get[String](cacheKey)
       verify(metrics).cacheMiss(serviceName)

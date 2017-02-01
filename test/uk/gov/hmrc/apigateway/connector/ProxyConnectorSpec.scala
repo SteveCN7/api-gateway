@@ -86,6 +86,16 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
         .withHeader("aHeader", equalTo("aHeaderValue")))
     }
 
+    "Not forward the Host header from the original request to the microservice" in new Setup {
+      val requestWithHeader = request.withHeaders("Host" -> "api-gateway.service")
+
+      givenGetReturns("/world", OK)
+
+      await(underTest.proxy(requestWithHeader, s"$wireMockUrl/world"))
+
+      verify(getRequestedFor(urlEqualTo("/world")).withHeader("Host", equalTo(s"localhost:$stubPort")))
+    }
+
     val extraHeadersToPropagate = Table(
       ( "tag",                              "header",                       "value"                         ),
       ( AUTH_AUTHORIZATION,                 "Authorization",                "Bearer 12345"                  ),

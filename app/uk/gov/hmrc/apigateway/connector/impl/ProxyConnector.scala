@@ -36,7 +36,7 @@ class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsC
   def proxy(request: Request[AnyContent], destinationUrl: String): Future[Result] =
     wsClient.url(destinationUrl)
       .withMethod(request.method)
-      .withHeaders(request.headers.toSimpleMap.toSeq: _*)
+      .withHeaders(request.headers.remove(HOST).toSimpleMap.toSeq: _*)
       .withHeaders(Seq() ++
         request.tags.get(OAUTH_AUTHORIZATION).map(value => X_CLIENT_AUTHORIZATION_TOKEN -> value.stripPrefix("Bearer ")) ++
         headerFromTag(request, AUTHORIZATION, AUTH_AUTHORIZATION) ++

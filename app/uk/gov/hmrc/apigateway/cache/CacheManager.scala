@@ -37,11 +37,13 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics) {
                        reqHeaders: Map[String, Set[String]]
                       ): Future[T] = {
 
-    cache.get[T](key) match {
+    val newKey = key //varyCache.getKey(key)
+
+    cache.get[T](newKey) match {
       case Some(value) =>
-        processCacheHit(key, serviceName, value)
+        processCacheHit(newKey, serviceName, value)
       case _ =>
-        processCacheMiss(key, serviceName, fallbackFunction)
+        processCacheMiss(newKey, serviceName, fallbackFunction)
     }
   }
 

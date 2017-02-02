@@ -1,0 +1,48 @@
+/*
+ * Copyright 2017 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package uk.gov.hmrc.apigateway.cache
+
+import javax.inject.{Inject, Singleton}
+
+import play.api.Logger
+import play.api.cache.CacheApi
+import uk.gov.hmrc.apigateway.model.{CacheControl, VaryHeaderKey}
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.reflect.ClassTag
+
+@Singleton
+class VaryHeaderCacheManager @Inject()(cache: CacheApi) {
+
+  def getKey(key: String, reqHeaders: Map[String, Set[String]]): String = {
+    cache.get[Set[String]](s"vary::$key") match {
+      case Some(varyHeaders) if varyHeaders.isEmpty => VaryHeaderKey(key).toString()
+      case Some(varyHeaders) if varyHeaders.nonEmpty => s"$key::${getHeaderString(varyHeaders, reqHeaders)}"
+      case None => key
+    }
+  }
+
+  private def getHeaderString(varyHeaders: Set[String], reqHeaders: Map[String, Set[String]]) = {
+    varyHeaders
+      .map(x => reqHeaders.get(x)
+      .map(h => (x, h.toSeq.sorted.mkString(","))))
+      .flatten.map(t => s"${t._1}=${t._2}")
+      .mkString(";")
+  }
+}

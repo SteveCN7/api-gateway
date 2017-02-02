@@ -33,24 +33,32 @@ import scala.concurrent.Future
 @Singleton
 class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsClient: WSClient) {
 
-  def proxy(request: Request[AnyContent], destinationUrl: String): Future[Result] =
+  def proxy(request: Request[AnyContent], destinationUrl: String): Future[Result] = {
+    val headers = replaceHeaders(request.headers)(
+      (HOST, None),
+      (AUTHORIZATION, request.tags.get(AUTH_AUTHORIZATION)),
+      (X_CLIENT_AUTHORIZATION_TOKEN,  request.tags.get(OAUTH_AUTHORIZATION).map(_.stripPrefix("Bearer "))),
+      (X_CLIENT_ID, request.tags.get(CLIENT_ID)),
+      (X_REQUEST_TIMESTAMP, request.tags.get(REQUEST_TIMESTAMP_NANO))
+    )
+
     wsClient.url(destinationUrl)
       .withMethod(request.method)
-      .withHeaders(request.headers.remove(HOST).toSimpleMap.toSeq: _*)
-      .withHeaders(Seq() ++
-        request.tags.get(OAUTH_AUTHORIZATION).map(value => X_CLIENT_AUTHORIZATION_TOKEN -> value.stripPrefix("Bearer ")) ++
-        headerFromTag(request, AUTHORIZATION, AUTH_AUTHORIZATION) ++
-        headerFromTag(request, X_CLIENT_ID, CLIENT_ID) ++
-        headerFromTag(request, X_REQUEST_TIMESTAMP, REQUEST_TIMESTAMP_NANO): _*)
+      .withHeaders(headers.toSimpleMap.toSeq: _*)
       .withBody(bodyOf(request).getOrElse(""))
       .execute.map { wsResponse =>
       val result = toResult(wsResponse)
       Logger.info(s"request [$request] response [$wsResponse] result [$result]")
       result
     }
+  }
 
-  private def headerFromTag(request: Request[AnyContent], headerName: String, tagName: String): Option[(String, String)] = {
-    request.tags.get(tagName).map(value => headerName -> value)
+  private def replaceHeaders(headers: Headers)(updatedHeaders: (String, Option[String])*): Headers = {
+    updatedHeaders.headOption match {
+      case Some((headerName, Some(headerValue))) => replaceHeaders(headers.replace(headerName -> headerValue))(updatedHeaders.tail:_*)
+      case Some((headerName, None)) => replaceHeaders(headers.remove(headerName))(updatedHeaders.tail:_*)
+      case None => headers
+    }
   }
 
   private def toResult(streamedResponse: WSResponse): Result =

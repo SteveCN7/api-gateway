@@ -96,7 +96,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
       verify(getRequestedFor(urlEqualTo("/world")).withHeader("Host", equalTo(s"localhost:$stubPort")))
     }
 
-    val extraHeadersToPropagate = Table(
+    val gatewayHeaders = Table(
       ( "tag",                              "header",                       "value"                         ),
       ( AUTH_AUTHORIZATION,                 "Authorization",                "Bearer 12345"                  ),
       ( CLIENT_ID,                          "X-Client-ID",                  "123456"                        ),
@@ -105,7 +105,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
     "Add extra headers in the request" in new Setup {
 
-      forAll(extraHeadersToPropagate) { (tag, header, value) =>
+      forAll(gatewayHeaders) { (tag, header, value) =>
         val requestWithTag = request.copyFakeRequest(tags = Map(tag -> value))
 
         givenGetReturns("/world", OK)
@@ -114,6 +114,18 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
         verify(getRequestedFor(urlEqualTo("/world"))
           .withHeader(header, equalTo(value)))
+      }
+    }
+
+    "Override the extra headers from the original request" in new Setup {
+      forAll(gatewayHeaders) { (tag, header, value) =>
+        val requestWithHeader = request.withHeaders(header -> "originalRequestHeader").copyFakeRequest(tags = Map(tag -> value))
+
+        givenGetReturns("/world", OK)
+
+        await(underTest.proxy(requestWithHeader, s"$wireMockUrl/world"))
+
+        verify(getRequestedFor(urlEqualTo("/world")).withHeader(header, equalTo(value)))
       }
     }
 

@@ -55,8 +55,8 @@ class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsC
 
   private def replaceHeaders(headers: Headers)(updatedHeaders: (String, Option[String])*): Headers = {
     updatedHeaders.headOption match {
-      case Some(header @ (headerName, Some(headerValue))) => replaceHeaders(headers.replace(headerName -> headerValue))(updatedHeaders.tail:_*)
-      case Some(header @ (headerName, None)) => replaceHeaders(headers.remove(headerName))(updatedHeaders.tail:_*)
+      case Some((headerName, Some(headerValue))) => replaceHeaders(headers.replace(headerName -> headerValue))(updatedHeaders.tail:_*)
+      case Some((headerName, None)) => replaceHeaders(headers.remove(headerName))(updatedHeaders.tail:_*)
       case None => headers
     }
   }

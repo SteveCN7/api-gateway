@@ -21,7 +21,7 @@ import javax.inject.{Inject, Singleton}
 import play.api.Logger
 import play.api.cache.CacheApi
 import play.api.http.HeaderNames.CACHE_CONTROL
-import uk.gov.hmrc.apigateway.model.CacheControl
+import uk.gov.hmrc.apigateway.model.{CacheControl, VaryHeaderKey, VaryKey}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -38,13 +38,13 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics, varyHeaderC
                       ): Future[T] = {
 
     val newKey = varyHeaderCache.getKey(key, reqHeaders)
-    val cachedVal = cache.get[T](newKey)
+    val varyKey = VaryKey(key)
 
-    cachedVal match {
+    cache.get[T](newKey) match {
       case Some(value) =>
         processCacheHit(newKey, serviceName, value)
       case _ =>
-        processCacheMiss(newKey, serviceName, fallbackFunction)
+        processCacheMiss(newKey, varyKey, serviceName, fallbackFunction)
     }
   }
 
@@ -54,12 +54,16 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics, varyHeaderC
     Future.successful(value)
   }
 
-  private def processCacheMiss[T: ClassTag](key: String, serviceName: String, fallbackFunction: => Future[(T, Map[String, Set[String]], Map[String, Set[String]])]): Future[T] = {
+  private def processCacheMiss[T: ClassTag](key: String, varyKey: String, serviceName: String, fallbackFunction: => Future[(T, Map[String, Set[String]], Map[String, Set[String]])]): Future[T] = {
     Logger.debug(s"Cache miss for key [$key]")
     metrics.cacheMiss(serviceName)
     fallbackFunction map { case (result, reqHeaders, respHeaders) =>
       CacheControl.fromHeaders(respHeaders) match {
         case CacheControl(false, Some(max), varyHeaders) if varyHeaders.isEmpty => cache.set(key, result, max seconds)
+        case CacheControl(false, Some(max), varyHeaders) if varyHeaders.nonEmpty => {
+          cache.set(varyKey, varyHeaders, max seconds)
+          cache.set(varyHeaderCache.getKey(key, respHeaders), result, max seconds)
+        }
         case _ => println("Nothing to do yet...")
       }
       result

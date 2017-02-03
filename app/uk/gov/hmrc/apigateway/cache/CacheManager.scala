@@ -29,7 +29,7 @@ import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
 @Singleton
-class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics) {
+class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics, varyHeaderCache: VaryHeaderCacheManager) {
 
   def get[T: ClassTag](key: String,
                        serviceName: String,
@@ -37,9 +37,10 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics) {
                        reqHeaders: Map[String, Set[String]]
                       ): Future[T] = {
 
-    val newKey = key //varyCache.getKey(key)
+    val newKey = varyHeaderCache.getKey(key, reqHeaders)
+    val cachedVal = cache.get[T](newKey)
 
-    cache.get[T](newKey) match {
+    cachedVal match {
       case Some(value) =>
         processCacheHit(newKey, serviceName, value)
       case _ =>

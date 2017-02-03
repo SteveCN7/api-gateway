@@ -22,7 +22,7 @@ import uk.gov.hmrc.play.test.UnitSpec
 
 class CacheControlSpec extends UnitSpec {
 
-  "CacheControl" should {
+  "CacheControl that has had no Vary headers cached" should {
     "have default parameters when there are no headers" in {
       val out = CacheControl.fromHeaders(Map.empty)
       out shouldBe model.CacheControl(false, None, Set.empty[String])

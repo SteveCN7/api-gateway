@@ -18,31 +18,27 @@ package uk.gov.hmrc.apigateway.cache
 
 import javax.inject.{Inject, Singleton}
 
-import play.api.Logger
 import play.api.cache.CacheApi
-import uk.gov.hmrc.apigateway.model.{CacheControl, VaryHeaderKey}
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-import scala.concurrent.duration._
-import scala.reflect.ClassTag
+import uk.gov.hmrc.apigateway.model.{VaryHeaderKey, VaryKey}
 
 @Singleton
 class VaryHeaderCacheManager @Inject()(cache: CacheApi) {
 
   def getKey(key: String, reqHeaders: Map[String, Set[String]]): String = {
-    cache.get[Set[String]](s"vary::$key") match {
+    val key1 = VaryKey(key)
+    val maybeStrings = cache.get[Set[String]](key1)
+    maybeStrings match {
       case Some(varyHeaders) if varyHeaders.isEmpty => VaryHeaderKey(key).toString()
-      case Some(varyHeaders) if varyHeaders.nonEmpty => s"$key::${getHeaderString(varyHeaders, reqHeaders)}"
-      case None => key
+      case Some(varyHeaders) => VaryHeaderKey(key, getRelevantHeaders(varyHeaders, reqHeaders):_*)
+      case _ => key
     }
   }
 
-  private def getHeaderString(varyHeaders: Set[String], reqHeaders: Map[String, Set[String]]) = {
+  private def getRelevantHeaders(varyHeaders: Set[String], reqHeaders: Map[String, Set[String]]) = {
     varyHeaders
       .map(x => reqHeaders.get(x)
       .map(h => (x, h.toSeq.sorted.mkString(","))))
-      .flatten.map(t => s"${t._1}=${t._2}")
-      .mkString(";")
+      .flatten
+      .toSeq
   }
 }

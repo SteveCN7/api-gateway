@@ -16,7 +16,13 @@
 
 package uk.gov.hmrc.apigateway.model
 
-case class VaryHeaderKey(key: String, varyHeaders: (String, String)*){
-  override def toString(): String =
+object VaryHeaderKey {
+  def apply(key: String, varyHeaders: (String, String)*) =
     s"$key::${varyHeaders.sorted.map(kv => s"${kv._1}=${kv._2}").mkString (";")}"
+}
+
+object VaryKey {
+  def apply(path: String) = {
+    s"vary::$path"
+  }
 }

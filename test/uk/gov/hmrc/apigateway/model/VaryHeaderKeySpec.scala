@@ -22,11 +22,11 @@ class VaryHeaderKeySpec extends UnitSpec {
 
   "VaryHeaderKey" should {
     "have a fixed format string representation" in {
-      VaryHeaderKey("/bob/blah", "X-Aaa" -> "aaa").toString() shouldBe "/bob/blah::X-Aaa=aaa"
+      VaryHeaderKey("/bob/blah", "X-Aaa" -> "aaa") shouldBe "/bob/blah::X-Aaa=aaa"
 
-      VaryHeaderKey("/bob/blah", "X-Bbb" -> "bbb", "X-Aaa" -> "aaa").toString() shouldBe "/bob/blah::X-Aaa=aaa;X-Bbb=bbb"
+      VaryHeaderKey("/bob/blah", "X-Bbb" -> "bbb", "X-Aaa" -> "aaa") shouldBe "/bob/blah::X-Aaa=aaa;X-Bbb=bbb"
 
-      VaryHeaderKey("/bob/blah", "X-Aaa" -> "aaa", "X-Bbb" -> "bbb").toString() shouldBe "/bob/blah::X-Aaa=aaa;X-Bbb=bbb"
+      VaryHeaderKey("/bob/blah", "X-Aaa" -> "aaa", "X-Bbb" -> "bbb") shouldBe "/bob/blah::X-Aaa=aaa;X-Bbb=bbb"
     }
   }
 }

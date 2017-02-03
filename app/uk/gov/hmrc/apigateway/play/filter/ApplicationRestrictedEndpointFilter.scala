@@ -68,6 +68,7 @@ class ApplicationRestrictedEndpointFilter @Inject()
       app <- applicationFuture
       _ <- applicationService.validateApplicationIsSubscribedToApi(app.id.toString,
         requestHeader.tags(API_CONTEXT), requestHeader.tags(API_VERSION))
+      _ <- applicationService.validateApplicationRateLimit(app)
     } yield requestHeader
       .withTag(CLIENT_ID, app.clientId)
   }

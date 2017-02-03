@@ -42,6 +42,8 @@ object GatewayError {
 
   case class InvalidSubscription() extends GatewayError("RESOURCE_FORBIDDEN", "The application is not subscribed to the API which it is attempting to invoke")
 
+  case class ThrottledOut() extends GatewayError("MESSAGE_THROTTLED_OUT", "The request for the API is throttled as you have exceeded your quota.")
+
   def recovery: PartialFunction[Throwable, Result] = {
     case e: MissingCredentials => Unauthorized(toJson(e))
     case e: InvalidCredentials => Unauthorized(toJson(e))
@@ -50,6 +52,7 @@ object GatewayError {
     case e: InvalidScope => Forbidden(toJson(e))
     case e: InvalidSubscription => Forbidden(toJson(e))
     case e: NotFound => PlayNotFound(toJson(e))
+    case e: ThrottledOut => TooManyRequests(toJson(e))
     case e =>
       Logger.error("unexpected error", e)
       InternalServerError(toJson(ServerError()))

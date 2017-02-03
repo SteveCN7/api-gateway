@@ -18,12 +18,16 @@ package uk.gov.hmrc.apigateway.service
 
 import java.util.UUID
 
+import org.mockito.BDDMockito.given
 import org.mockito.Mockito._
 import org.mockito.ArgumentMatchers._
 import org.scalatest.mockito.MockitoSugar
+import play.api.Configuration
 import uk.gov.hmrc.apigateway.connector.impl.ThirdPartyApplicationConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError._
+import uk.gov.hmrc.apigateway.model.RateLimitTier.{SILVER, BRONZE}
 import uk.gov.hmrc.apigateway.model._
+import uk.gov.hmrc.apigateway.repository.RateLimitRepository
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
@@ -35,7 +39,7 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
     val serverToken = "serverToken"
     val applicationId = UUID.randomUUID()
     val clientId = "clientId"
-    val application = Application(id = applicationId, clientId = "clientId", name = "App Name")
+    val application = Application(id = applicationId, clientId = "clientId", name = "App Name", rateLimitTier = BRONZE)
 
     val v1 = Version("1.0")
     val v2 = Version("2.0")
@@ -44,7 +48,9 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
       Api(context = "c2", versions = Seq(Subscription(v1, subscribed = false), Subscription(v2, subscribed = true))))
 
     val applicationConnector = mock[ThirdPartyApplicationConnector]
-    val underTest = new ApplicationService(applicationConnector)
+    val rateLimitRepository = mock[RateLimitRepository]
+    val configuration = mock[Configuration]
+    val underTest = new ApplicationService(applicationConnector, rateLimitRepository, configuration)
   }
 
   "Get application by server token" should {
@@ -119,6 +125,27 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
     "does not throw any exception when the version and the context of the request are correct" in new Setup {
       mockSubscriptions(applicationConnector, successful(apis))
       await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "c2", "2.0"))
+    }
+
+  }
+
+  "validateApplicationRateLimit" should {
+    "succeed when the rate limit has not been reached" in new Setup {
+      val silverApplication = application.copy(rateLimitTier = SILVER)
+
+      given(configuration.getInt("rateLimit.silver")).willReturn(Some(10))
+      given(rateLimitRepository.validateAndIncrement(silverApplication.clientId, 10)).willReturn(successful())
+
+      await(underTest.validateApplicationRateLimit(silverApplication))
+    }
+
+    "fail when the rate limit has been reached" in new Setup {
+      given(configuration.getInt("rateLimit.bronze")).willReturn(Some(5))
+      given(rateLimitRepository.validateAndIncrement(application.clientId, 5)).willReturn(failed(ThrottledOut()))
+
+      intercept[ThrottledOut] {
+        await(underTest.validateApplicationRateLimit(application))
+      }
     }
 
   }

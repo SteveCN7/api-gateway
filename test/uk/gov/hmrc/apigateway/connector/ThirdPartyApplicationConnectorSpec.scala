@@ -26,6 +26,7 @@ import it.uk.gov.hmrc.apigateway.stubs.ThirdPartyApplicationStubMappings
 import org.scalatest.BeforeAndAfterEach
 import uk.gov.hmrc.apigateway.connector.impl.ThirdPartyApplicationConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError._
+import uk.gov.hmrc.apigateway.model.RateLimitTier.BRONZE
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
@@ -37,7 +38,7 @@ class ThirdPartyApplicationConnectorSpec extends UnitSpec with BeforeAndAfterEac
   val wireMockServer = new WireMockServer(wireMockConfig().port(stubPort))
 
   val applicationId = UUID.randomUUID()
-  val application = Application(applicationId, "clientId", "App Name")
+  val application = Application(applicationId, "clientId", "App Name", BRONZE)
 
   val v1 = Version("1.0")
   val v2 = Version("2.0")

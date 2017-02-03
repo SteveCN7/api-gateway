@@ -21,6 +21,7 @@ import java.util.UUID
 import it.uk.gov.hmrc.apigateway.BaseFeatureSpec
 import org.joda.time.DateTime.now
 import play.api.http.Status._
+import uk.gov.hmrc.apigateway.model.RateLimitTier.BRONZE
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.util.HttpHeaders.{ACCEPT, AUTHORIZATION}
 
@@ -56,7 +57,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
     authExpired = false)
 
   private val applicationId = UUID.randomUUID()
-  private val application = Application(applicationId, "clientId", "appName")
+  private val application = Application(applicationId, "clientId", "appName", BRONZE)
 
   override def beforeEach() {
     super.beforeEach()

@@ -42,31 +42,39 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics, varyHeaderC
 
     cache.get[T](newKey) match {
       case Some(value) =>
-        processCacheHit(newKey, serviceName, value)
+        Logger.debug(s"Cache hit for key [$newKey]")
+        processCacheHit(serviceName, value)
       case _ =>
-        processCacheMiss(newKey, varyKey, serviceName, fallbackFunction)
+        Logger.debug(s"Cache miss for key [$newKey]")
+        processCacheMiss(key, varyKey, serviceName, reqHeaders, fallbackFunction)
     }
   }
 
-  private def processCacheHit[T: ClassTag](key: String, serviceName: String, value: T): Future[T] = {
-    Logger.debug(s"Cache hit for key [$key]")
+  private def processCacheHit[T: ClassTag](serviceName: String, value: T): Future[T] = {
     metrics.cacheHit(serviceName)
     Future.successful(value)
   }
 
-  private def processCacheMiss[T: ClassTag](key: String, varyKey: String, serviceName: String, fallbackFunction: => Future[(T, Map[String, Set[String]], Map[String, Set[String]])]): Future[T] = {
-    Logger.debug(s"Cache miss for key [$key]")
+  private def processCacheMiss[T: ClassTag](
+                                             key: String,
+                                             varyKey: String,
+                                             serviceName: String,
+                                             reqHeaders: Map[String, Set[String]],
+                                             fallbackFunction: => Future[EntityWithResponseHeaders[T]]
+                                           ): Future[T] = {
     metrics.cacheMiss(serviceName)
-    fallbackFunction map { case (result, reqHeaders, respHeaders) =>
-      CacheControl.fromHeaders(respHeaders) match {
+    fallbackFunction map { case (result, respHeaders) => {
+      val bob = CacheControl.fromHeaders(respHeaders)
+      bob match {
         case CacheControl(false, Some(max), varyHeaders) if varyHeaders.isEmpty => cache.set(key, result, max seconds)
         case CacheControl(false, Some(max), varyHeaders) if varyHeaders.nonEmpty => {
           cache.set(varyKey, varyHeaders, max seconds)
-          cache.set(varyHeaderCache.getKey(key, respHeaders), result, max seconds)
+          cache.set(VaryHeaderKey.fromVaryHeader(key, varyHeaders, reqHeaders), result, max seconds)
         }
         case _ => println("Nothing to do yet...")
       }
       result
+    }
     }
   }
 }

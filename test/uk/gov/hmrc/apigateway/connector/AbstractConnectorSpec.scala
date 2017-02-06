@@ -128,8 +128,8 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
 
       result._1 shouldBe Foo("bar")
 
-      private val cacheControl = result._3.getOrElse(HeaderNames.CACHE_CONTROL, Set.empty)
-      private val vary = result._3.getOrElse(HeaderNames.VARY, Nil)
+      private val cacheControl = result._2.getOrElse(HeaderNames.CACHE_CONTROL, Set.empty)
+      private val vary = result._2.getOrElse(HeaderNames.VARY, Nil)
 
       cacheControl.size shouldBe 3
       cacheControl should contain("no-cache")

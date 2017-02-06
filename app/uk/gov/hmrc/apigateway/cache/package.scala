@@ -18,6 +18,6 @@ package uk.gov.hmrc.apigateway
 
 package object cache {
 
-  type EntityWithResponseHeaders[T] = (T, Map[String, Set[String]], Map[String, Set[String]])
+  type EntityWithResponseHeaders[T] = (T, Map[String, Set[String]])
 
 }

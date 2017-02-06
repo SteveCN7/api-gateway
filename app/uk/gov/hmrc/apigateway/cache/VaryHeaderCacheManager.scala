@@ -23,22 +23,11 @@ import uk.gov.hmrc.apigateway.model.{VaryHeaderKey, VaryKey}
 
 @Singleton
 class VaryHeaderCacheManager @Inject()(cache: CacheApi) {
-
   def getKey(key: String, reqHeaders: Map[String, Set[String]]): String = {
-    val key1 = VaryKey(key)
-    val maybeStrings = cache.get[Set[String]](key1)
-    maybeStrings match {
+    cache.get[Set[String]](VaryKey(key)) match {
       case Some(varyHeaders) if varyHeaders.isEmpty => VaryHeaderKey(key).toString()
-      case Some(varyHeaders) => VaryHeaderKey(key, getRelevantHeaders(varyHeaders, reqHeaders):_*)
+      case Some(varyHeaders) => VaryHeaderKey.fromVaryHeader(key, varyHeaders, reqHeaders)
       case _ => key
     }
-  }
-
-  private def getRelevantHeaders(varyHeaders: Set[String], reqHeaders: Map[String, Set[String]]) = {
-    varyHeaders
-      .map(x => reqHeaders.get(x)
-      .map(h => (x, h.toSeq.sorted.mkString(","))))
-      .flatten
-      .toSeq
   }
 }

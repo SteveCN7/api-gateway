@@ -32,24 +32,30 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
   trait Setup {
     val serviceName = "api-definition"
     val cacheKey = "/endpoint/aa"
+    val varyHeader = "X-Aaa"
     val varyCacheKey = VaryKey(cacheKey)
     val cachedValue = "cachedValue"
     val updatedValue = "updatedValue"
     val metrics = mock[CacheMetrics]
+    val emptyHeaders = Map.empty[String, Set[String]]
 
-    def fallbackFunction = Future.successful((updatedValue, Map.empty[String, Set[String]], Map.empty[String, Set[String]]))
+    def fallbackFunction = Future.successful((updatedValue, emptyHeaders))
     def fallbackFunctionWithCacheExpiry =
-      Future.successful((updatedValue, Map.empty[String, Set[String]], Map(HeaderNames.CACHE_CONTROL -> Set("max-age=123"))))
+      Future.successful((updatedValue, Map(HeaderNames.CACHE_CONTROL -> Set("max-age=123"))))
     def fallbackFunctionWithNoCache =
-      Future.successful((updatedValue, Map.empty[String, Set[String]], Map(HeaderNames.CACHE_CONTROL -> Set("no-cache"))))
+      Future.successful((updatedValue, Map(HeaderNames.CACHE_CONTROL -> Set("no-cache"))))
     def fallbackFunctionWithNoCache2 =
-      Future.successful((updatedValue, Map.empty[String, Set[String]], Map(HeaderNames.CACHE_CONTROL -> Set("no-cache","no-store","max-age=0"))))
+      Future.successful((updatedValue, Map(HeaderNames.CACHE_CONTROL -> Set("no-cache","no-store","max-age=0"))))
     def fallbackFunctionWithCacheExpiryAndVary =
-      Future.successful((updatedValue, Map.empty[String, Set[String]], Map(
-          HeaderNames.CACHE_CONTROL -> Set("max-age=123"),
-          HeaderNames.VARY -> Set("X-Aaa")
+      Future.successful(
+        (
+          updatedValue,
+          Map(
+            HeaderNames.CACHE_CONTROL -> Set("max-age=123"),
+            HeaderNames.VARY -> Set(varyHeader)
+          )
         )
-      ))
+      )
     def cacheMan(cache: CacheApi = new FakeCacheApi()): CacheManager = {
       val vcm = new VaryHeaderCacheManager(cache)
       new CacheManager(cache, metrics, vcm)
@@ -103,9 +109,27 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
     }
   }
 
-  "Get cached item with Vary header" should {
+  "Caching of responses with a Vary header" should {
+    "fetch fresh value and cache it when the Vary header is not in the cache" in new Setup {
+      val newHeaderValue = "aaa"
+      val newCacheKey = VaryHeaderKey(cacheKey, varyHeader -> newHeaderValue)
+
+      val fakeCache = new FakeCacheApi()
+      val cm = cacheMan(fakeCache)
+
+      val reqHeaders = Map(varyHeader -> Set(newHeaderValue))
+      await(cm.get[String](cacheKey, serviceName, fallbackFunctionWithCacheExpiryAndVary, reqHeaders)) shouldBe updatedValue
+
+      verify(metrics).cacheMiss(serviceName)
+      verifyNoMoreInteractions(metrics)
+
+      fakeCache.get(newCacheKey) shouldBe Some(updatedValue)
+      fakeCache.get(VaryKey(cacheKey)) shouldBe Some(Set(varyHeader))
+    }
+  }
+
+  "Caching of responses with a Vary header" should {
     "return cached value when present." in new Setup {
-      val varyHeader = "X-Aaa"
       val varyHeaderValue = "aaa"
       val key1 = VaryHeaderKey(cacheKey, varyHeader -> varyHeaderValue)
 
@@ -123,7 +147,6 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
     }
 
     "fetch fresh value and cache it when the header is different from a previous cached response" in new Setup {
-      val varyHeader = "X-Aaa"
       val previousHeaderValue = "aaa"
       val newHeaderValue = "bbb"
       val previousCacheKey = VaryHeaderKey(cacheKey, varyHeader -> previousHeaderValue)
@@ -135,7 +158,6 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
       )
       val cm = cacheMan(fakeCache)
 
-
       val reqHeaders = Map(varyHeader -> Set(newHeaderValue))
       await(cm.get[String](cacheKey, serviceName, fallbackFunctionWithCacheExpiryAndVary, reqHeaders)) shouldBe updatedValue
 
@@ -143,6 +165,10 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
       verifyNoMoreInteractions(metrics)
 
       fakeCache.get(newCacheKey) shouldBe Some(updatedValue)
+    }
+
+    "manage a series of requests with different values for the X-Aaa header, and fetching/pulling from cache where appropriate" in {
+
     }
   }
 }

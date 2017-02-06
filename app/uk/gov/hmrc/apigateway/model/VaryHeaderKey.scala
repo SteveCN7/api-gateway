@@ -19,6 +19,16 @@ package uk.gov.hmrc.apigateway.model
 object VaryHeaderKey {
   def apply(key: String, varyHeaders: (String, String)*) =
     s"$key::${varyHeaders.sorted.map(kv => s"${kv._1}=${kv._2}").mkString (";")}"
+
+  def fromVaryHeader(key: String, requiredHeaders: Set[String], actualHeaders: Map[String, Set[String]]) = {
+    val out = apply(key, requiredHeaders
+      .map(x => actualHeaders.get(x)
+        .map(h => (x, h.toSeq.sorted.mkString(","))))
+      .flatten
+      .toSeq:_*
+    )
+    out
+  }
 }
 
 object VaryKey {

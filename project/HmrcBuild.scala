@@ -66,9 +66,10 @@ object HmrcBuild extends Build {
     .settings(Defaults.itSettings: _*)
     .settings(
       testOptions in Test := Seq(Filter(_ startsWith "uk.gov.hmrc")),
+      testGrouping in Test := oneForkedJvmPerTest((definedTests in Test).value),
+      parallelExecution in Test := false,
       testOptions in IntegrationTest := Seq(Filter(_ startsWith "it.uk.gov.hmrc")),
       unmanagedSourceDirectories in IntegrationTest <<= (baseDirectory in IntegrationTest) (base => Seq(base / "test")),
-      unmanagedResourceDirectories in IntegrationTest <<= (baseDirectory in IntegrationTest) (base => Seq(base / "test/resources")),
       testGrouping in IntegrationTest := oneForkedJvmPerTest((definedTests in IntegrationTest).value),
       parallelExecution in IntegrationTest := false
     )

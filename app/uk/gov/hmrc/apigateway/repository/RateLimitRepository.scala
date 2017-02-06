@@ -29,18 +29,17 @@ import play.api.libs.json.Json
 import play.modules.reactivemongo.json._
 import uk.gov.hmrc.apigateway.exception.GatewayError.ThrottledOut
 import uk.gov.hmrc.apigateway.util.Time
-import uk.gov.hmrc.mongo.json.ReactiveMongoFormats.localDateTimeFormats
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future.sequence
+import uk.gov.hmrc.mongo.json.ReactiveMongoFormats._
 
 case class RateLimitCounter(clientId: String, minutesSinceEpoch: Long, createdAt: LocalDateTime = now(), count: Int = 1)
 
 @Singleton
 class RateLimitRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) {
 
-  implicit val dateTimeFormat = localDateTimeFormats
   implicit val format = Json.format[RateLimitCounter]
 
   val databaseFuture = reactiveMongoApi.database.map(_.collection[JSONCollection]("rateLimitCounter"))

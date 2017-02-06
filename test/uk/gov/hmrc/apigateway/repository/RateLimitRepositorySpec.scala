@@ -70,7 +70,9 @@ class RateLimitRepositorySpec extends UnitSpec with GuiceFakeApplicationFactory 
       await(underTest.validateAndIncrement("clientId", 2))
       setCurrentMillisFixed(now().plusMinutes(1).getMillis)
 
-      await(underTest.validateAndIncrement("clientId", 2))
+      val result = await(underTest.validateAndIncrement("clientId", 2))
+
+      result shouldBe ()
     }
   }
 }

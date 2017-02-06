@@ -48,7 +48,7 @@ object HmrcBuild extends Build {
     "com.github.tomakehurst" % "wiremock" % "2.1.12" % "test,it",
     "org.scalatestplus.play" %% "scalatestplus-play" % "2.0.0-M1" %  "test,it",
     "org.scalaj" %% "scalaj-http" % "2.3.0" % "test,it",
-     "uk.gov.hmrc" %% "reactivemongo-test" % "2.0.0"
+    "uk.gov.hmrc" %% "reactivemongo-test" % "2.0.0"
   )
   val appName = "api-gateway"
 

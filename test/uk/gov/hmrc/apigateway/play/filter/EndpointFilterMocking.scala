@@ -67,16 +67,8 @@ trait EndpointFilterMocking {
   protected def mockApplicationByServerToken(applicationService: ApplicationService, serverToken: String, application: Application) =
     when(applicationService.getByServerToken(serverToken)).thenReturn(successful(application))
 
-  protected def mockApiSubscriptions(applicationService: ApplicationService, gatewayError: GatewayError) =
-    when(applicationService.validateApplicationIsSubscribedToApi(anyString(), anyString(), anyString()))
-      .thenReturn(failed(gatewayError))
-
-  protected def mockApiSubscriptions(applicationService: ApplicationService) =
-    when(applicationService.validateApplicationIsSubscribedToApi(anyString(), anyString(), anyString()))
-      .thenReturn(successful(()))
-
-  protected def mockValidateRateLimit(applicationService: ApplicationService, application: Application, result: Future[Unit]) =
-    when(applicationService.validateApplicationRateLimit(application)).thenReturn(result)
+  protected def mockValidateSubscriptionAndRateLimit(applicationService: ApplicationService, application: Application, result: Future[Unit]) =
+    when(applicationService.validateSubscriptionAndRateLimit(refEq(application), any[ApiIdentifier]())).thenReturn(result)
 
   protected def anApplication(): Application =
     Application(id = UUID.randomUUID(), clientId = "clientId", name = "appName", rateLimitTier = BRONZE)

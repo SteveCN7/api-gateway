@@ -29,29 +29,30 @@ import play.api.libs.json.Json
 import play.modules.reactivemongo.json._
 import uk.gov.hmrc.apigateway.exception.GatewayError.ThrottledOut
 import uk.gov.hmrc.apigateway.util.Time
+import uk.gov.hmrc.mongo.json.ReactiveMongoFormats.localDateTimeFormats
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future.sequence
 
-case class RateLimitCounter(clientId: String, minutesSinceEpoch: Int, createdAt: LocalDateTime = now(), count: Int = 1)
+case class RateLimitCounter(clientId: String, minutesSinceEpoch: Long, createdAt: LocalDateTime = now(), count: Int = 1)
 
 @Singleton
 class RateLimitRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) {
 
-  implicit val dateTimeFormat = uk.gov.hmrc.mongo.json.ReactiveMongoFormats.localDateTimeFormats
+  implicit val dateTimeFormat = localDateTimeFormats
   implicit val format = Json.format[RateLimitCounter]
 
   val databaseFuture = reactiveMongoApi.database.map(_.collection[JSONCollection]("rateLimitCounter"))
   val indexes = Seq(
     Index(
       Seq("clientId" -> IndexType.Ascending, "minutesSinceEpoch" -> IndexType.Ascending),
-      name = Some("rate-limit-index"),
+      name = Some("rateLimitCounterIndex"),
       unique = true,
       background = true),
     Index(
       Seq("createdAt" -> IndexType.Ascending),
-      name = Some("sessionTTLIndex"),
+      name = Some("rateLimitCounterTTLIndex"),
       options = BSONDocument("expireAfterSeconds" -> 60))
   )
 
@@ -68,20 +69,16 @@ class RateLimitRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) {
     def incrementRateLimitCounter(rateLimitCounterDb: JSONCollection) = {
       rateLimitCounterDb.update(
         Json.obj("clientId" -> clientId, "minutesSinceEpoch" -> minutesSinceEpoch),
-        Json.obj("$inc" -> Json.obj("count" -> 1)))
-    }
-
-    def insertRateLimitCounter(rateLimitCounterDb: JSONCollection) = {
-      rateLimitCounterDb.insert(RateLimitCounter(clientId, minutesSinceEpoch))
+        Json.obj("$inc" -> Json.obj("count" -> 1), "$setOnInsert" -> Json.obj("createdAt" -> now())),
+        upsert = true)
     }
 
     for {
       db <- databaseFuture
       counter <- findRateLimitCounter(db)
       result <- counter match {
-        case Some(r) if r.count < threshold => incrementRateLimitCounter(db)
-        case Some(r) => Future.failed(new ThrottledOut)
-        case _ => insertRateLimitCounter(db)
+        case Some(r) if r.count >= threshold => Future.failed(new ThrottledOut)
+        case _ => incrementRateLimitCounter(db)
       }
     } yield ()
   }

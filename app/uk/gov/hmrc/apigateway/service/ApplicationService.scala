@@ -42,12 +42,22 @@ class ApplicationService @Inject()(applicationConnector: ThirdPartyApplicationCo
     applicationConnector.getApplicationByClientId(clientId)
   }
 
-  def validateApplicationIsSubscribedToApi(applicationId: String, requestApiContext: String, requestApiVersion: String): Future[Unit] = {
+  def validateSubscriptionAndRateLimit(application: Application, requestedApi: ApiIdentifier): Future[Unit] = {
+    val validateSubscription = validateApplicationIsSubscribedToApi(application.id.toString, requestedApi)
+    val validateRateLimit = validateApplicationRateLimit(application)
+
+    for {
+      _ <- validateSubscription
+      _ <- validateRateLimit
+    } yield ()
+  }
+
+  private def validateApplicationIsSubscribedToApi(applicationId: String, requestedApi: ApiIdentifier): Future[Unit] = {
 
     def subscribed(appSubscriptions: Seq[Api]): Boolean = {
       appSubscriptions.exists { api: Api =>
-        api.context == requestApiContext && api.versions.exists { sub: Subscription =>
-          sub.subscribed && sub.version.version == requestApiVersion
+        api.context == requestedApi.context && api.versions.exists { sub: Subscription =>
+          sub.subscribed && sub.version.version == requestedApi.version
         }
       }
     }
@@ -58,7 +68,7 @@ class ApplicationService @Inject()(applicationConnector: ThirdPartyApplicationCo
     }
   }
 
-  def validateApplicationRateLimit(application: Application): Future[Unit] = {
+  private def validateApplicationRateLimit(application: Application): Future[Unit] = {
     rateLimitRepository.validateAndIncrement(application.clientId, rateLimit(application))
   }
 

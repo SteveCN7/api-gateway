@@ -55,8 +55,6 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
       .withTag(API_CONTEXT, "c")
       .withTag(API_VERSION, "v")
     val applicationRequestWithToken = applicationRequest.copy(headers = Headers(AUTHORIZATION -> s"Bearer $serverToken"))
-
-    mockValidateRateLimit(applicationService, application, successful(()))
   }
 
   "Application restricted endpoint filter" should {
@@ -98,7 +96,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
       mockApplicationByServerToken(applicationService, serverToken, NotFound())
       mockAuthority(authorityService, validAuthority())
       mockApplicationByClientId(applicationService, clientId, application)
-      mockApiSubscriptions(applicationService, ServerError())
+      mockValidateSubscriptionAndRateLimit(applicationService, application, failed(ServerError()))
 
       intercept[ServerError] {
         await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
@@ -109,8 +107,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
       mockApplicationByServerToken(applicationService, serverToken, NotFound())
       mockAuthority(authorityService, validAuthority())
       mockApplicationByClientId(applicationService, clientId, application)
-      mockApiSubscriptions(applicationService)
-      mockValidateRateLimit(applicationService, application, failed(ThrottledOut()))
+      mockValidateSubscriptionAndRateLimit(applicationService, application, failed(ThrottledOut()))
 
       intercept[ThrottledOut] {
         await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
@@ -121,7 +118,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
       mockApplicationByServerToken(applicationService, serverToken, NotFound())
       mockAuthority(authorityService, validAuthority())
       mockApplicationByClientId(applicationService, clientId, application)
-      mockApiSubscriptions(applicationService)
+      mockValidateSubscriptionAndRateLimit(applicationService, application, successful())
 
       val result = await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
       result.headers shouldBe applicationRequestWithToken.headers
@@ -130,7 +127,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
 
     "process a request with a valid server token that meets all requirements" in new Setup {
       mockApplicationByServerToken(applicationService, serverToken, application)
-      mockApiSubscriptions(applicationService)
+      mockValidateSubscriptionAndRateLimit(applicationService, application, successful())
 
       val result = await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
       result.headers shouldBe applicationRequestWithToken.headers

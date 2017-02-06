@@ -16,8 +16,10 @@
 
 package uk.gov.hmrc.apigateway.util
 
+import java.util.concurrent.TimeUnit
+
 import org.joda.time.DateTime
 
 object Time {
-  def minutesSinceEpoch(): Int = (DateTime.now().getMillis / 1000 / 60).toInt
+  def minutesSinceEpoch(): Long = TimeUnit.MILLISECONDS.toMinutes(DateTime.now().getMillis)
 }

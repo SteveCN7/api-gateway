@@ -51,8 +51,6 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
 
     val clientId = "clientId"
     val application = anApplication()
-
-    mockValidateRateLimit(applicationService, application, successful(()))
   }
 
   "User restricted endpoint filter" should {
@@ -102,7 +100,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
       mockAuthority(authorityService, validAuthority())
       mockScopeValidation(scopeValidator)
       mockApplicationByClientId(applicationService, clientId, application)
-      mockApiSubscriptions(applicationService, InvalidSubscription())
+      mockValidateSubscriptionAndRateLimit(applicationService, application, failed(InvalidSubscription()))
       intercept[InvalidSubscription] {
         await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
       }
@@ -111,7 +109,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
     "decline a request not matching scopes" in new Setup {
       mockAuthority(authorityService, validAuthority())
       mockApplicationByClientId(applicationService, clientId, application)
-      mockApiSubscriptions(applicationService)
+      mockValidateSubscriptionAndRateLimit(applicationService, application, successful())
       mockScopeValidation(scopeValidator, InvalidScope())
       intercept[InvalidScope] {
         await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
@@ -122,8 +120,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
       mockAuthority(authorityService, validAuthority())
       mockScopeValidation(scopeValidator)
       mockApplicationByClientId(applicationService, clientId, application)
-      mockApiSubscriptions(applicationService)
-      mockValidateRateLimit(applicationService, application, failed(ThrottledOut()))
+      mockValidateSubscriptionAndRateLimit(applicationService, application, failed(ThrottledOut()))
 
       intercept[ThrottledOut] {
         await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
@@ -134,7 +131,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
       mockAuthority(authorityService, validAuthority())
       mockScopeValidation(scopeValidator)
       mockApplicationByClientId(applicationService, clientId, application)
-      mockApiSubscriptions(applicationService)
+      mockValidateSubscriptionAndRateLimit(applicationService, application, successful())
 
       val result: Future[RequestHeader] = await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
 

@@ -58,18 +58,12 @@ class UserRestrictedEndpointFilter @Inject()
 
   private def validateRequestAndSwapToken(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
     getAuthority(proxyRequest) flatMap { authority =>
-
-      val validateSubscriptionsAndRateLimit: Future[Unit] = for {
-        application <- getApplicationByClientId(authority.delegatedAuthority.clientId)
-        _ <- applicationService.validateApplicationIsSubscribedToApi(application.id.toString,
-          requestHeader.tags(API_CONTEXT), requestHeader.tags(API_VERSION))
-        _ <- applicationService.validateApplicationRateLimit(application)
-      } yield ()
-
       val validateScopes: Future[Unit] = scopeValidator.validate(authority.delegatedAuthority, requestHeader.tags.get(API_SCOPE))
+      val requestedApi = ApiIdentifier(requestHeader.tags(API_CONTEXT), requestHeader.tags(API_VERSION))
 
       for {
-        _ <- validateSubscriptionsAndRateLimit
+        application <- getApplicationByClientId(authority.delegatedAuthority.clientId)
+        _ <- applicationService.validateSubscriptionAndRateLimit(application, requestedApi)
         _ <- validateScopes
       } yield requestHeader
         .withTag(AUTH_AUTHORIZATION, s"Bearer ${authority.delegatedAuthority.authBearerToken}")

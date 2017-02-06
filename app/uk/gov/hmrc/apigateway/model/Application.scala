@@ -24,6 +24,8 @@ case class Version(version: String)
 case class Subscription(version: Version, subscribed: Boolean)
 case class Api(context: String, versions: Seq[Subscription])
 
+case class ApiIdentifier(context: String, version: String)
+
 object RateLimitTier extends Enumeration {
   type RateLimitTier = Value
   val GOLD, SILVER, BRONZE = Value

@@ -18,6 +18,7 @@ package uk.gov.hmrc.apigateway.cache
 
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
+import play.api.Logger
 import play.api.cache.CacheApi
 import play.mvc.Http.HeaderNames
 import uk.gov.hmrc.apigateway.model.{VaryHeaderKey, VaryKey}
@@ -39,15 +40,17 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
     val metrics = mock[CacheMetrics]
     val emptyHeaders = Map.empty[String, Set[String]]
 
-    def fallbackFunction = Future.successful((updatedValue, emptyHeaders))
+    def customFallBack(resp: EntityWithResponseHeaders[String]) = Future.successful(resp)
+
+    def fallbackFunction = customFallBack((updatedValue, emptyHeaders))
     def fallbackFunctionWithCacheExpiry =
-      Future.successful((updatedValue, Map(HeaderNames.CACHE_CONTROL -> Set("max-age=123"))))
+      customFallBack((updatedValue, Map(HeaderNames.CACHE_CONTROL -> Set("max-age=123"))))
     def fallbackFunctionWithNoCache =
-      Future.successful((updatedValue, Map(HeaderNames.CACHE_CONTROL -> Set("no-cache"))))
+      customFallBack((updatedValue, Map(HeaderNames.CACHE_CONTROL -> Set("no-cache"))))
     def fallbackFunctionWithNoCache2 =
-      Future.successful((updatedValue, Map(HeaderNames.CACHE_CONTROL -> Set("no-cache","no-store","max-age=0"))))
+      customFallBack((updatedValue, Map(HeaderNames.CACHE_CONTROL -> Set("no-cache","no-store","max-age=0"))))
     def fallbackFunctionWithCacheExpiryAndVary =
-      Future.successful(
+      customFallBack(
         (
           updatedValue,
           Map(
@@ -167,8 +170,42 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
       fakeCache.get(newCacheKey) shouldBe Some(updatedValue)
     }
 
-    "manage a series of requests with different values for the X-Aaa header, and fetching/pulling from cache where appropriate" in {
+    "manage a series of requests with different values for the X-Aaa header, and fetching/pulling from cache where appropriate" in new Setup {
+      val fakeCache = new FakeCacheApi()
+      val cm = cacheMan(fakeCache)
 
+      val respA = customFallBack(("A Response", Map( HeaderNames.CACHE_CONTROL -> Set("max-age=123"), HeaderNames.VARY -> Set("X-Aaa"))))
+      val respA2 = customFallBack(("A2 Response", Map( HeaderNames.CACHE_CONTROL -> Set("max-age=123"), HeaderNames.VARY -> Set("X-Aaa"))))
+      val respB = customFallBack(("B Response", Map( HeaderNames.CACHE_CONTROL -> Set("max-age=123"), HeaderNames.VARY -> Set("X-Aaa"))))
+      val respB2 = customFallBack(("B2 Response", Map( HeaderNames.CACHE_CONTROL -> Set("max-age=123"), HeaderNames.VARY -> Set("X-Aaa"))))
+      val respC = customFallBack(("C Response", Map( HeaderNames.CACHE_CONTROL -> Set("max-age=123"), HeaderNames.VARY -> Set("X-Aaa"))))
+      val respC2 = customFallBack(("C2 Response", Map( HeaderNames.CACHE_CONTROL -> Set("max-age=123"), HeaderNames.VARY -> Set("X-Aaa"))))
+      val shouldUseCacheResp = customFallBack(("NOTHING TO RETURN", Map.empty))
+
+      val reqHeadersA = Map(varyHeader -> Set("123AAA"))
+      val reqHeadersB = Map(varyHeader -> Set("123BBB"))
+      val reqHeadersC = Map(varyHeader -> Set("123CCC"))
+
+      fakeCache.isEmpty shouldBe true
+
+      await(cm.get[String](cacheKey, serviceName, respA, reqHeadersA)) shouldBe "A Response"
+      await(cm.get[String](cacheKey, serviceName, respB, reqHeadersB)) shouldBe "B Response"
+      await(cm.get[String](cacheKey, serviceName, shouldUseCacheResp, reqHeadersB)) shouldBe "B Response"
+      await(cm.get[String](cacheKey, serviceName, shouldUseCacheResp, reqHeadersA)) shouldBe "A Response"
+      await(cm.get[String](cacheKey, serviceName, respC, reqHeadersC)) shouldBe "C Response"
+      await(cm.get[String](cacheKey, serviceName, shouldUseCacheResp, reqHeadersC)) shouldBe "C Response"
+
+      fakeCache.addTime(123 seconds)
+
+      await(cm.get[String](cacheKey, serviceName, shouldUseCacheResp, reqHeadersA)) shouldBe "A Response"
+      await(cm.get[String](cacheKey, serviceName, shouldUseCacheResp, reqHeadersB)) shouldBe "B Response"
+      await(cm.get[String](cacheKey, serviceName, shouldUseCacheResp, reqHeadersC)) shouldBe "C Response"
+
+      fakeCache.addTime(1 seconds)
+
+      await(cm.get[String](cacheKey, serviceName, respA2, reqHeadersA)) shouldBe "A2 Response"
+      await(cm.get[String](cacheKey, serviceName, respB2, reqHeadersB)) shouldBe "B2 Response"
+      await(cm.get[String](cacheKey, serviceName, respC2, reqHeadersC)) shouldBe "C2 Response"
     }
   }
 }
@@ -177,24 +214,42 @@ class FakeCacheApi(initialState: (String, Any)*) extends CacheApi {
 
   val cache = new mutable.HashMap[String, Any]()
   val ttlCache = new mutable.HashMap[String, Duration]()
+  var currentTimeSecs: Duration = 0 seconds
+
   initialState.foreach { kv =>
     cache.update(kv._1, kv._2)
     ttlCache.update(kv._1, 30 seconds)
   }
 
   def isEmpty = cache.isEmpty
+
   def getTtl(key: String) = ttlCache.get(key)
 
+  def addTime(secs: Duration): Unit = {
+    currentTimeSecs = currentTimeSecs + secs
+  }
+
   override def set(key: String, value: Any, expiration: Duration): Unit = {
+    Logger.debug(s"Setting $key to $value")
     cache.put(key, value)
     ttlCache.put(key, expiration)
   }
 
-  override def get[T](key: String)(implicit evidence$2: ClassManifest[T]): Option[T] =
-    cache.get(key).asInstanceOf[Option[T]]
+  def expireCache(key: String) = {
+    ttlCache.get(key).map { expiry =>
+      if (expiry < currentTimeSecs) remove(key)
+    }
+  }
 
-  override def getOrElse[A](key: String, expiration: Duration)(orElse: => A)(implicit evidence$1: ClassManifest[A]): A =
+  override def get[T](key: String)(implicit evidence$2: ClassManifest[T]): Option[T] = {
+    expireCache(key)
+    cache.get(key).asInstanceOf[Option[T]]
+  }
+
+  override def getOrElse[A](key: String, expiration: Duration)(orElse: => A)(implicit evidence$1: ClassManifest[A]): A = {
+    expireCache(key)
     cache.getOrElse(key, orElse).asInstanceOf[A]
+  }
 
   override def remove(key: String): Unit = {
     cache.remove(key)

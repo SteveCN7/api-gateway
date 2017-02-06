@@ -61,13 +61,14 @@ class ApplicationRestrictedEndpointFilter @Inject()
   }
 
   private def validateRequest(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
+    val requestedApi = ApiIdentifier(requestHeader.tags(API_CONTEXT), requestHeader.tags(API_VERSION))
     val applicationFuture = applicationService.getByServerToken(accessToken(proxyRequest)) recoverWith {
       case e: NotFound => getAppByAuthority(proxyRequest)
     }
+
     for {
       app <- applicationFuture
-      _ <- applicationService.validateApplicationIsSubscribedToApi(app.id.toString,
-        requestHeader.tags(API_CONTEXT), requestHeader.tags(API_VERSION))
+      _ <- applicationService.validateSubscriptionAndRateLimit(app, requestedApi)
     } yield requestHeader
       .withTag(CLIENT_ID, app.clientId)
   }

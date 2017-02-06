@@ -28,6 +28,7 @@ import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.apigateway.util.RequestTags.{API_CONTEXT, API_VERSION, AUTH_TYPE, CLIENT_ID}
 import uk.gov.hmrc.play.test.UnitSpec
 
+import scala.concurrent.Future.{failed, successful}
 import scala.concurrent.ExecutionContext
 
 class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with EndpointFilterMocking {
@@ -42,6 +43,7 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
 
     val serverToken = "accessToken"
     val clientId = "clientId"
+    val application = anApplication()
 
     val basicRequest = new FakeRequest(
       method = "GET",
@@ -93,10 +95,21 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
     "propagate the error, when there is a failure in finding the application subscriptions" in new Setup {
       mockApplicationByServerToken(applicationService, serverToken, NotFound())
       mockAuthority(authorityService, validAuthority())
-      mockApplicationByClientId(applicationService, clientId, anApplication())
-      mockApiSubscriptions(applicationService, ServerError())
+      mockApplicationByClientId(applicationService, clientId, application)
+      mockValidateSubscriptionAndRateLimit(applicationService, application, failed(ServerError()))
 
       intercept[ServerError] {
+        await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
+      }
+    }
+
+    "fail with ThrottledOut when the application rate limit has been reached" in new Setup {
+      mockApplicationByServerToken(applicationService, serverToken, NotFound())
+      mockAuthority(authorityService, validAuthority())
+      mockApplicationByClientId(applicationService, clientId, application)
+      mockValidateSubscriptionAndRateLimit(applicationService, application, failed(ThrottledOut()))
+
+      intercept[ThrottledOut] {
         await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
       }
     }
@@ -104,8 +117,8 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
     "process a request with a valid access token that meets all requirements" in new Setup {
       mockApplicationByServerToken(applicationService, serverToken, NotFound())
       mockAuthority(authorityService, validAuthority())
-      mockApplicationByClientId(applicationService, clientId, anApplication())
-      mockApiSubscriptions(applicationService)
+      mockApplicationByClientId(applicationService, clientId, application)
+      mockValidateSubscriptionAndRateLimit(applicationService, application, successful())
 
       val result = await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
       result.headers shouldBe applicationRequestWithToken.headers
@@ -113,8 +126,8 @@ class ApplicationRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar
     }
 
     "process a request with a valid server token that meets all requirements" in new Setup {
-      mockApplicationByServerToken(applicationService, serverToken, anApplication())
-      mockApiSubscriptions(applicationService)
+      mockApplicationByServerToken(applicationService, serverToken, application)
+      mockValidateSubscriptionAndRateLimit(applicationService, application, successful())
 
       val result = await(underTest.filter(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken)))
       result.headers shouldBe applicationRequestWithToken.headers

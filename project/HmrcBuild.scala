@@ -37,7 +37,8 @@ object HmrcBuild extends Build {
     "uk.gov.hmrc" %% "play-config" % "3.0.0",
     "uk.gov.hmrc" %% "play-filters" % "5.6.0",
     "uk.gov.hmrc" %% "logback-json-logger" % "3.1.0",
-    "com.kenshoo" %% "metrics-play" % "2.4.0_0.4.1"
+    "com.kenshoo" %% "metrics-play" % "2.4.0_0.4.1",
+    "org.reactivemongo" %% "play2-reactivemongo" % "0.12.0"
   )
   private val testDependencies = Seq(
     "uk.gov.hmrc" %% "hmrctest" % "2.2.0" % "test,it",
@@ -46,7 +47,8 @@ object HmrcBuild extends Build {
     "org.mockito" % "mockito-core" % "2.3.0" % "test,it",
     "com.github.tomakehurst" % "wiremock" % "2.1.12" % "test,it",
     "org.scalatestplus.play" %% "scalatestplus-play" % "2.0.0-M1" %  "test,it",
-    "org.scalaj" %% "scalaj-http" % "2.3.0" % "test,it"
+    "org.scalaj" %% "scalaj-http" % "2.3.0" % "test,it",
+    "uk.gov.hmrc" %% "reactivemongo-test" % "2.0.0"
   )
   val appName = "api-gateway"
 

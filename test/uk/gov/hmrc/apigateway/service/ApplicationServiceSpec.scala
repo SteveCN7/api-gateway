@@ -18,12 +18,16 @@ package uk.gov.hmrc.apigateway.service
 
 import java.util.UUID
 
+import org.mockito.BDDMockito.given
 import org.mockito.Mockito._
 import org.mockito.ArgumentMatchers._
 import org.scalatest.mockito.MockitoSugar
+import play.api.Configuration
 import uk.gov.hmrc.apigateway.connector.impl.ThirdPartyApplicationConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError._
+import uk.gov.hmrc.apigateway.model.RateLimitTier.{SILVER, BRONZE}
 import uk.gov.hmrc.apigateway.model._
+import uk.gov.hmrc.apigateway.repository.RateLimitRepository
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
@@ -35,16 +39,24 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
     val serverToken = "serverToken"
     val applicationId = UUID.randomUUID()
     val clientId = "clientId"
-    val application = Application(id = applicationId, clientId = "clientId", name = "App Name")
+    val application = Application(id = applicationId, clientId = "clientId", name = "App Name", rateLimitTier = BRONZE)
+    val bronzeRateLimit = 5
+    val silverRateLimit = 10
 
     val v1 = Version("1.0")
     val v2 = Version("2.0")
     val apis = Seq(
       Api(context = "c1", versions = Seq(Subscription(v1, subscribed = true), Subscription(v2, subscribed = false))),
       Api(context = "c2", versions = Seq(Subscription(v1, subscribed = false), Subscription(v2, subscribed = true))))
+    val subscribedApi = ApiIdentifier("c1", "1.0")
 
     val applicationConnector = mock[ThirdPartyApplicationConnector]
-    val underTest = new ApplicationService(applicationConnector)
+    val rateLimitRepository = mock[RateLimitRepository]
+    val configuration = mock[Configuration]
+    val underTest = new ApplicationService(applicationConnector, rateLimitRepository, configuration)
+
+    given(configuration.getInt("rateLimit.bronze")).willReturn(Some(bronzeRateLimit))
+    given(configuration.getInt("rateLimit.silver")).willReturn(Some(silverRateLimit))
   }
 
   "Get application by server token" should {
@@ -79,46 +91,59 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
     }
   }
 
-  "Validate application is subscribed to api" should {
+  "validateSubscriptionAndRateLimit" should {
 
-    "propagate the exception when getSubscriptions() fails" in new Setup {
+    "propagate the NotFound error when getSubscriptions() fails" in new Setup {
       when(applicationConnector.getSubscriptionsByApplicationId(applicationId.toString)).thenReturn(failed(NotFound()))
       intercept[NotFound] {
-        await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "ccc", "vvv"))
+        await(underTest.validateSubscriptionAndRateLimit(application, ApiIdentifier("ccc", "vvv")))
       }
     }
 
     "throw an exception when the application has no subscriptions" in new Setup {
       mockSubscriptions(applicationConnector, successful(Seq.empty))
       intercept[InvalidSubscription] {
-        await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "c2", "2.0"))
+        await(underTest.validateSubscriptionAndRateLimit(application, ApiIdentifier("c2", "2.0")))
       }
     }
 
     "throw an exception when the application is not subscribed to any API with the same context of the request" in new Setup {
       mockSubscriptions(applicationConnector, successful(apis))
       intercept[InvalidSubscription] {
-        await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "c3", "1.0"))
+        await(underTest.validateSubscriptionAndRateLimit(application, ApiIdentifier("c3", "1.0")))
       }
     }
 
     "throw an exception when the application is not subscribed to any API with the same version of the request" in new Setup {
       mockSubscriptions(applicationConnector, successful(apis))
       intercept[InvalidSubscription] {
-        await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "c1", "3.0"))
+        await(underTest.validateSubscriptionAndRateLimit(application, ApiIdentifier("c1", "3.0")))
       }
     }
 
     "throw an exception when the application is not subscribed to the specific version used in the request" in new Setup {
       mockSubscriptions(applicationConnector, successful(apis))
       intercept[InvalidSubscription] {
-        await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "c2", "1.0"))
+        await(underTest.validateSubscriptionAndRateLimit(application, ApiIdentifier("c2", "1.0")))
       }
     }
 
-    "does not throw any exception when the version and the context of the request are correct" in new Setup {
+    "propagate the ThrottledOut error when the rate limit is reached" in new Setup {
+      val silverApplication = application.copy(rateLimitTier = SILVER)
+
       mockSubscriptions(applicationConnector, successful(apis))
-      await(underTest.validateApplicationIsSubscribedToApi(applicationId.toString, "c2", "2.0"))
+      given(rateLimitRepository.validateAndIncrement(silverApplication.clientId, silverRateLimit)).willReturn(failed(ThrottledOut()))
+
+      intercept[ThrottledOut] {
+        await(underTest.validateSubscriptionAndRateLimit(silverApplication, subscribedApi))
+      }
+    }
+
+    "return successfully when the application is subscribed and the rate limit is not reached" in new Setup {
+      mockSubscriptions(applicationConnector, successful(apis))
+      given(rateLimitRepository.validateAndIncrement(application.clientId, bronzeRateLimit)).willReturn(successful())
+
+      await(underTest.validateSubscriptionAndRateLimit(application, subscribedApi))
     }
 
   }

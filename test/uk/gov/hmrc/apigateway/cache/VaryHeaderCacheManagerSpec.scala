@@ -63,12 +63,12 @@ class VaryHeaderCacheManagerSpec extends UnitSpec with MockitoSugar {
       verifyNoMoreInteractions(cache)
     }
 
-    "return the representation of the key if the request the matching header" in new Setup {
+    "return the representation of the key if the request has the matching header" in new Setup {
       val cachedValue = Set("X-Aaa")
       val reqHeaders = Map("X-Aaa" -> Set("aaa"))
       when(cache.get[Set[String]](varyCacheKey)).thenReturn(Some(cachedValue))
 
-      await(varyCacheManager.getKey(cacheKey, reqHeaders)) shouldBe VaryHeaderKey(cacheKey, "X-Aaa" -> "aaa").toString
+      await(varyCacheManager.getKey(cacheKey, reqHeaders)) shouldBe VaryHeaderKey(cacheKey, Set("X-Aaa"), reqHeaders)
 
       verify(cache).get[Set[String]](varyCacheKey)
       verifyNoMoreInteractions(cache)
@@ -79,7 +79,7 @@ class VaryHeaderCacheManagerSpec extends UnitSpec with MockitoSugar {
       val reqHeaders = Map("X-Aaa" -> Set("aaa"), "X-Bbb" -> Set("bbb"))
       when(cache.get[Set[String]](varyCacheKey)).thenReturn(Some(cachedValue))
 
-      await(varyCacheManager.getKey(cacheKey, reqHeaders)) shouldBe VaryHeaderKey(cacheKey, "X-Aaa" -> "aaa", "X-Bbb" -> "bbb").toString
+      await(varyCacheManager.getKey(cacheKey, reqHeaders)) shouldBe VaryHeaderKey(cacheKey, Set("X-Aaa", "X-Bbb"), reqHeaders)
 
       verify(cache).get[Set[String]](varyCacheKey)
       verifyNoMoreInteractions(cache)

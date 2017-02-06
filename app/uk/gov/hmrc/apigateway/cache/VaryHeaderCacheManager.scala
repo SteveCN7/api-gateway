@@ -25,8 +25,8 @@ import uk.gov.hmrc.apigateway.model.{VaryHeaderKey, VaryKey}
 class VaryHeaderCacheManager @Inject()(cache: CacheApi) {
   def getKey(key: String, reqHeaders: Map[String, Set[String]]): String = {
     cache.get[Set[String]](VaryKey(key)) match {
-      case Some(varyHeaders) if varyHeaders.isEmpty => VaryHeaderKey(key).toString()
-      case Some(varyHeaders) => VaryHeaderKey.fromVaryHeader(key, varyHeaders, reqHeaders)
+//      case Some(varyHeaders) if varyHeaders.isEmpty => VaryHeaderKey(key)
+      case Some(varyHeaders) if varyHeaders.nonEmpty => VaryHeaderKey(key, varyHeaders, reqHeaders)
       case _ => key
     }
   }

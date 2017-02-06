@@ -115,7 +115,7 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
   "Caching of responses with a Vary header" should {
     "fetch fresh value and cache it when the Vary header is not in the cache" in new Setup {
       val newHeaderValue = "aaa"
-      val newCacheKey = VaryHeaderKey(cacheKey, varyHeader -> newHeaderValue)
+      val newCacheKey = VaryHeaderKey(cacheKey, Set(varyHeader), Map(varyHeader -> Set(newHeaderValue)))
 
       val fakeCache = new FakeCacheApi()
       val cm = cacheMan(fakeCache)
@@ -134,7 +134,7 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
   "Caching of responses with a Vary header" should {
     "return cached value when present." in new Setup {
       val varyHeaderValue = "aaa"
-      val key1 = VaryHeaderKey(cacheKey, varyHeader -> varyHeaderValue)
+      val key1 = VaryHeaderKey(cacheKey, Set(varyHeader), Map(varyHeader -> Set(varyHeaderValue)))
 
       val fakeCache = new FakeCacheApi(
         VaryKey(cacheKey) -> Set(varyHeader),
@@ -152,8 +152,8 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
     "fetch fresh value and cache it when the header is different from a previous cached response" in new Setup {
       val previousHeaderValue = "aaa"
       val newHeaderValue = "bbb"
-      val previousCacheKey = VaryHeaderKey(cacheKey, varyHeader -> previousHeaderValue)
-      val newCacheKey = VaryHeaderKey(cacheKey, varyHeader -> newHeaderValue)
+      val previousCacheKey = VaryHeaderKey(cacheKey, Set(varyHeader), Map(varyHeader -> Set(previousHeaderValue)))
+      val newCacheKey = VaryHeaderKey(cacheKey, Set(varyHeader), Map(varyHeader -> Set(newHeaderValue)))
 
       val fakeCache = new FakeCacheApi(
         VaryKey(cacheKey) -> Set(varyHeader),

@@ -61,7 +61,7 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics, varyHeaderC
           cache.set(key, result, max seconds)
         case CacheControl(false, Some(max), varyHeaders) =>
           cache.set(VaryKey(key), varyHeaders, max seconds)
-          cache.set(VaryHeaderKey.fromVaryHeader(key, varyHeaders, reqHeaders), result, max seconds)
+          cache.set(VaryHeaderKey(key, varyHeaders, reqHeaders), result, max seconds)
         case _ => // Anything else we do not cache.
       }
       result

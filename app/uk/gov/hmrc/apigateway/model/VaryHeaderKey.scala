@@ -17,16 +17,19 @@
 package uk.gov.hmrc.apigateway.model
 
 object VaryHeaderKey {
-  def apply(key: String, varyHeaders: (String, String)*) =
-    s"$key::${varyHeaders.sorted.map(kv => s"${kv._1}=${kv._2}").mkString (";")}"
+  def apply(key: String, requiredHeaders: Set[String] = Set.empty, actualHeaders: Map[String, Set[String]] = Map.empty) = {
+    if (requiredHeaders.isEmpty) key
+    else if (! requiredHeaders.subsetOf(actualHeaders.keySet)){
+      s"$key::"
+    }
+    else {
+      val relevantHeaders = for {
+        r <- requiredHeaders
+        h <- actualHeaders.get(r)
+      } yield (r, h.toSeq.sorted.mkString(","))
 
-  def fromVaryHeader(key: String, requiredHeaders: Set[String], actualHeaders: Map[String, Set[String]]) = {
-    apply(key, requiredHeaders
-      .map(x => actualHeaders.get(x)
-        .map(h => (x, h.toSeq.sorted.mkString(","))))
-      .flatten
-      .toSeq: _*
-    )
+      s"$key::${relevantHeaders.toSeq.sorted.map{ case(k,v) => s"$k=$v"}.mkString(";")}"
+    }
   }
 }
 

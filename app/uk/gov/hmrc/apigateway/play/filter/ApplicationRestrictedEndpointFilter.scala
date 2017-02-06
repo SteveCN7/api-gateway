@@ -25,7 +25,7 @@ import uk.gov.hmrc.apigateway.exception.GatewayError._
 import uk.gov.hmrc.apigateway.model.AuthType.{APPLICATION, authType}
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.service._
-import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.apigateway.util.RequestTags._
 
 import scala.concurrent.Future.successful
 import scala.concurrent.{ExecutionContext, Future}
@@ -61,18 +61,20 @@ class ApplicationRestrictedEndpointFilter @Inject()
   }
 
   private def validateRequest(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
+    val requestedApi = ApiIdentifier(requestHeader.tags(API_CONTEXT), requestHeader.tags(API_VERSION))
     val applicationFuture = applicationService.getByServerToken(accessToken(proxyRequest)) recoverWith {
       case e: NotFound => getAppByAuthority(proxyRequest)
     }
+
     for {
       app <- applicationFuture
-      _ <- applicationService.validateApplicationIsSubscribedToApi(app.id.toString,
-        requestHeader.tags(X_API_GATEWAY_API_CONTEXT), requestHeader.tags(X_API_GATEWAY_API_VERSION))
-    } yield requestHeader.withTag(X_API_GATEWAY_CLIENT_ID, app.clientId)
+      _ <- applicationService.validateSubscriptionAndRateLimit(app, requestedApi)
+    } yield requestHeader
+      .withTag(CLIENT_ID, app.clientId)
   }
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] =
-    requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) flatMap authType match {
+    requestHeader.tags.get(AUTH_TYPE) flatMap authType match {
       case Some(APPLICATION) => validateRequest(requestHeader, proxyRequest)
       case _ => successful(requestHeader)
     }

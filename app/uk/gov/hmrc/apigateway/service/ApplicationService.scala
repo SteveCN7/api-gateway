@@ -18,16 +18,21 @@ package uk.gov.hmrc.apigateway.service
 
 import javax.inject.{Inject, Singleton}
 
+import play.api.Configuration
 import uk.gov.hmrc.apigateway.connector.impl.ThirdPartyApplicationConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError._
+import uk.gov.hmrc.apigateway.model.RateLimitTier.{SILVER, GOLD}
 import uk.gov.hmrc.apigateway.model._
+import uk.gov.hmrc.apigateway.repository.RateLimitRepository
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.Future.{failed, successful}
 
 @Singleton
-class ApplicationService @Inject()(applicationConnector: ThirdPartyApplicationConnector) {
+class ApplicationService @Inject()(applicationConnector: ThirdPartyApplicationConnector,
+                                   rateLimitRepository: RateLimitRepository,
+                                   configuration: Configuration) {
 
   def getByServerToken(serverToken: String): Future[Application] = {
     applicationConnector.getApplicationByServerToken(serverToken)
@@ -37,12 +42,22 @@ class ApplicationService @Inject()(applicationConnector: ThirdPartyApplicationCo
     applicationConnector.getApplicationByClientId(clientId)
   }
 
-  def validateApplicationIsSubscribedToApi(applicationId: String, requestApiContext: String, requestApiVersion: String): Future[Unit] = {
+  def validateSubscriptionAndRateLimit(application: Application, requestedApi: ApiIdentifier): Future[Unit] = {
+    val validateSubscription = validateApplicationIsSubscribedToApi(application.id.toString, requestedApi)
+    val validateRateLimit = validateApplicationRateLimit(application)
+
+    for {
+      _ <- validateSubscription
+      _ <- validateRateLimit
+    } yield ()
+  }
+
+  private def validateApplicationIsSubscribedToApi(applicationId: String, requestedApi: ApiIdentifier): Future[Unit] = {
 
     def subscribed(appSubscriptions: Seq[Api]): Boolean = {
       appSubscriptions.exists { api: Api =>
-        api.context == requestApiContext && api.versions.exists { sub: Subscription =>
-          sub.subscribed && sub.version.version == requestApiVersion
+        api.context == requestedApi.context && api.versions.exists { sub: Subscription =>
+          sub.subscribed && sub.version.version == requestedApi.version
         }
       }
     }
@@ -53,4 +68,16 @@ class ApplicationService @Inject()(applicationConnector: ThirdPartyApplicationCo
     }
   }
 
+  private def validateApplicationRateLimit(application: Application): Future[Unit] = {
+    rateLimitRepository.validateAndIncrement(application.clientId, rateLimit(application))
+  }
+
+  private def rateLimit(application: Application): Int = {
+    val rateLimitProperty = application.rateLimitTier match {
+      case GOLD => "rateLimit.gold"
+      case SILVER => "rateLimit.silver"
+      case _ => "rateLimit.bronze"
+    }
+    configuration.getInt(rateLimitProperty).getOrElse(throw new RuntimeException(s"$rateLimitProperty is not configured"))
+  }
 }

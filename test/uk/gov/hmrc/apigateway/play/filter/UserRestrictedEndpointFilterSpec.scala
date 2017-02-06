@@ -25,8 +25,10 @@ import uk.gov.hmrc.apigateway.model.AuthType.USER
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.service.{ApplicationService, AuthorityService, ScopeValidator}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.apigateway.util.RequestTags._
 import uk.gov.hmrc.play.test.UnitSpec
 
+import scala.concurrent.Future._
 import scala.concurrent.{ExecutionContext, Future}
 
 class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with EndpointFilterMocking {
@@ -35,10 +37,10 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
   implicit val materializer = mock[Materializer]
 
   val fakeRequest = FakeRequest("GET", "http://host.example/foo")
-    .withTag(X_API_GATEWAY_AUTH_TYPE, USER.toString)
-    .withTag(X_API_GATEWAY_SCOPE, "scopeMoo")
-    .withTag(X_API_GATEWAY_API_CONTEXT, "context")
-    .withTag(X_API_GATEWAY_API_VERSION, "version")
+    .withTag(AUTH_TYPE, USER.toString)
+    .withTag(API_SCOPE, "scopeMoo")
+    .withTag(API_CONTEXT, "context")
+    .withTag(API_VERSION, "version")
     .copy(headers = Headers("Authorization" -> "Bearer accessToken"))
 
   trait Setup {
@@ -48,6 +50,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
     val underTest = new UserRestrictedEndpointFilter(authorityService, applicationService, scopeValidator)
 
     val clientId = "clientId"
+    val application = anApplication()
   }
 
   "User restricted endpoint filter" should {
@@ -60,7 +63,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
     }
 
     "not add additional tags in the request header if the auth-type is not `USER` " in new Setup {
-      val nonUserRequest = fakeRequest.withTag(X_API_GATEWAY_AUTH_TYPE, generateRandomAuthType(USER))
+      val nonUserRequest = fakeRequest.withTag(AUTH_TYPE, generateRandomAuthType(USER))
 
       val result = await(underTest.filter(nonUserRequest, ProxyRequest(nonUserRequest)))
       result.tags shouldBe nonUserRequest.tags
@@ -78,7 +81,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
       val request = fakeRequest.copy(headers = Headers(AUTHORIZATION -> serverToken))
 
       mockAuthority(authorityService, NotFound())
-      mockApplicationByServerToken(applicationService, serverToken, anApplication())
+      mockApplicationByServerToken(applicationService, serverToken, application)
       intercept[IncorrectAccessTokenType] {
         await(underTest.filter(request, ProxyRequest(request)))
       }
@@ -96,8 +99,8 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
     "decline a request not matching the application API subscriptions" in new Setup {
       mockAuthority(authorityService, validAuthority())
       mockScopeValidation(scopeValidator)
-      mockApplicationByClientId(applicationService, clientId, anApplication())
-      mockApiSubscriptions(applicationService, InvalidSubscription())
+      mockApplicationByClientId(applicationService, clientId, application)
+      mockValidateSubscriptionAndRateLimit(applicationService, application, failed(InvalidSubscription()))
       intercept[InvalidSubscription] {
         await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
       }
@@ -105,10 +108,21 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
 
     "decline a request not matching scopes" in new Setup {
       mockAuthority(authorityService, validAuthority())
-      mockApplicationByClientId(applicationService, clientId, anApplication())
-      mockApiSubscriptions(applicationService)
+      mockApplicationByClientId(applicationService, clientId, application)
+      mockValidateSubscriptionAndRateLimit(applicationService, application, successful())
       mockScopeValidation(scopeValidator, InvalidScope())
       intercept[InvalidScope] {
+        await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
+      }
+    }
+
+    "propagate the error, when the application has reached its rate limit" in new Setup {
+      mockAuthority(authorityService, validAuthority())
+      mockScopeValidation(scopeValidator)
+      mockApplicationByClientId(applicationService, clientId, application)
+      mockValidateSubscriptionAndRateLimit(applicationService, application, failed(ThrottledOut()))
+
+      intercept[ThrottledOut] {
         await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
       }
     }
@@ -116,14 +130,13 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
     "process a request which meets all requirements" in new Setup {
       mockAuthority(authorityService, validAuthority())
       mockScopeValidation(scopeValidator)
-      mockApplicationByClientId(applicationService, clientId, anApplication())
-      mockApiSubscriptions(applicationService)
+      mockApplicationByClientId(applicationService, clientId, application)
+      mockValidateSubscriptionAndRateLimit(applicationService, application, successful())
 
       val result: Future[RequestHeader] = await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
 
-      result.tags(AUTHORIZATION) shouldBe "Bearer authBearerToken"
-      result.tags(X_API_GATEWAY_AUTHORIZATION_TOKEN) shouldBe "accessToken"
-      result.tags(X_API_GATEWAY_CLIENT_ID) shouldBe clientId
+      result.tags(AUTH_AUTHORIZATION) shouldBe "Bearer authBearerToken"
+      result.tags(CLIENT_ID) shouldBe clientId
     }
 
   }

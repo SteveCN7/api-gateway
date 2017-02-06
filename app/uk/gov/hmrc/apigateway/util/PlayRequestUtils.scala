@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.model
+package uk.gov.hmrc.apigateway.util
 
-import java.util.UUID
+import play.api.libs.json.Json
+import play.api.mvc._
 
-case class Application(id: UUID, clientId: String, name: String, rateLimitTier: RateLimitTier.Value)
+object PlayRequestUtils {
 
-case class Version(version: String)
-case class Subscription(version: Version, subscribed: Boolean)
-case class Api(context: String, versions: Seq[Subscription])
-
-case class ApiIdentifier(context: String, version: String)
-
-object RateLimitTier extends Enumeration {
-  type RateLimitTier = Value
-  val GOLD, SILVER, BRONZE = Value
+  def bodyOf(request: Request[AnyContent]): Option[String] = {
+    request.body match {
+      case AnyContentAsJson(json) => Some(Json.stringify(json))
+      case AnyContentAsText(txt) => Some(txt)
+      case AnyContentAsXml(xml) => Some(xml.toString())
+      case _ => None
+    }
+  }
 }

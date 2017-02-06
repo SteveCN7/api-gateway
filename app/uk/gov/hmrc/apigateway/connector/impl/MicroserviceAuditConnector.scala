@@ -14,19 +14,15 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.model
+package uk.gov.hmrc.apigateway.connector.impl
 
-import java.util.UUID
+import javax.inject.Singleton
 
-case class Application(id: UUID, clientId: String, name: String, rateLimitTier: RateLimitTier.Value)
+import uk.gov.hmrc.play.audit.http.config.LoadAuditingConfig
+import uk.gov.hmrc.play.audit.http.connector.AuditConnector
+import uk.gov.hmrc.play.config.RunMode
 
-case class Version(version: String)
-case class Subscription(version: Version, subscribed: Boolean)
-case class Api(context: String, versions: Seq[Subscription])
-
-case class ApiIdentifier(context: String, version: String)
-
-object RateLimitTier extends Enumeration {
-  type RateLimitTier = Value
-  val GOLD, SILVER, BRONZE = Value
+@Singleton
+class MicroserviceAuditConnector extends AuditConnector with RunMode {
+  override lazy val auditingConfig = LoadAuditingConfig(s"$env.auditing")
 }

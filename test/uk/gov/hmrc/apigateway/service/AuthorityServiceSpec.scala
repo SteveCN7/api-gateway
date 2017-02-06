@@ -66,6 +66,6 @@ class AuthorityServiceSpec extends UnitSpec with MockitoSugar {
     when(delegatedAuthorityConnector.getByAccessToken(anyString)).thenReturn(successful(authority))
 
   private def authorityWithExpiration(expirationDateTime: DateTime) =
-    Authority(ThirdPartyDelegatedAuthority("authBearerToken", "clientId", Token("accessToken", Set.empty, expirationDateTime)))
+    Authority(ThirdPartyDelegatedAuthority("authBearerToken", "clientId", Token("accessToken", Set.empty, expirationDateTime), Some(UserData("userOID"))))
 
 }

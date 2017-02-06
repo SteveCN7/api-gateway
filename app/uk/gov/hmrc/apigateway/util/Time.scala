@@ -14,19 +14,12 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.model
+package uk.gov.hmrc.apigateway.util
 
-import java.util.UUID
+import java.util.concurrent.TimeUnit
 
-case class Application(id: UUID, clientId: String, name: String, rateLimitTier: RateLimitTier.Value)
+import org.joda.time.DateTime
 
-case class Version(version: String)
-case class Subscription(version: Version, subscribed: Boolean)
-case class Api(context: String, versions: Seq[Subscription])
-
-case class ApiIdentifier(context: String, version: String)
-
-object RateLimitTier extends Enumeration {
-  type RateLimitTier = Value
-  val GOLD, SILVER, BRONZE = Value
+object Time {
+  def minutesSinceEpoch(): Long = TimeUnit.MILLISECONDS.toMinutes(DateTime.now().getMillis)
 }

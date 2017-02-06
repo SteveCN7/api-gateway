@@ -21,9 +21,11 @@ import javax.inject.{Inject, Singleton}
 import play.Logger
 import play.api.http.HttpEntity
 import play.api.libs.ws.{WSClient, WSResponse}
-import play.api.mvc.{AnyContent, Request, ResponseHeader, Result}
+import play.api.mvc._
 import uk.gov.hmrc.apigateway.connector.AbstractConnector
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.apigateway.util.PlayRequestUtils.bodyOf
+import uk.gov.hmrc.apigateway.util.RequestTags.{AUTH_AUTHORIZATION, CLIENT_ID, OAUTH_AUTHORIZATION, REQUEST_TIMESTAMP_NANO}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -31,24 +33,32 @@ import scala.concurrent.Future
 @Singleton
 class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsClient: WSClient) {
 
-  def proxy(request: Request[AnyContent], destinationUrl: String): Future[Result] =
+  def proxy(request: Request[AnyContent], destinationUrl: String): Future[Result] = {
+    val headers = replaceHeaders(request.headers)(
+      (HOST, None),
+      (AUTHORIZATION, request.tags.get(AUTH_AUTHORIZATION)),
+      (X_CLIENT_AUTHORIZATION_TOKEN,  request.tags.get(OAUTH_AUTHORIZATION).map(_.stripPrefix("Bearer "))),
+      (X_CLIENT_ID, request.tags.get(CLIENT_ID)),
+      (X_REQUEST_TIMESTAMP, request.tags.get(REQUEST_TIMESTAMP_NANO))
+    )
+
     wsClient.url(destinationUrl)
       .withMethod(request.method)
-      .withHeaders(Seq() ++
-        header(request, ACCEPT) ++
-        header(request, AUTHORIZATION) ++
-        header(request, X_API_GATEWAY_CLIENT_ID) ++
-        header(request, X_API_GATEWAY_AUTHORIZATION_TOKEN) ++
-        header(request, X_API_GATEWAY_REQUEST_TIMESTAMP): _*)
-      .withBody(request.body.toString) // TODO this will not work for binary content, we can tackle it when we need it
+      .withHeaders(headers.toSimpleMap.toSeq: _*)
+      .withBody(bodyOf(request).getOrElse(""))
       .execute.map { wsResponse =>
       val result = toResult(wsResponse)
       Logger.info(s"request [$request] response [$wsResponse] result [$result]")
       result
     }
+  }
 
-  private def header(request: Request[AnyContent], headerName: String): Option[(String, String)] = {
-    request.tags.get(headerName).map(value => headerName -> value)
+  private def replaceHeaders(headers: Headers)(updatedHeaders: (String, Option[String])*): Headers = {
+    updatedHeaders.headOption match {
+      case Some((headerName, Some(headerValue))) => replaceHeaders(headers.replace(headerName -> headerValue))(updatedHeaders.tail:_*)
+      case Some((headerName, None)) => replaceHeaders(headers.remove(headerName))(updatedHeaders.tail:_*)
+      case None => headers
+    }
   }
 
   private def toResult(streamedResponse: WSResponse): Result =

@@ -23,7 +23,7 @@ import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound, MatchingResourceNotFound}
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.service.EndpointService._
-import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
+import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.apigateway.util.ProxyRequestUtils.{validateContext, parseVersion}
 
 import scala.concurrent.ExecutionContext.Implicits.global

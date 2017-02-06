@@ -23,9 +23,11 @@ import org.mockito.ArgumentMatchers._
 import org.mockito.Mockito._
 import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.model.AuthType.AuthType
+import uk.gov.hmrc.apigateway.model.RateLimitTier.BRONZE
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.service.{ApplicationService, AuthorityService, ScopeValidator}
 
+import scala.concurrent.Future
 import scala.concurrent.Future._
 import scala.util.Random
 
@@ -57,28 +59,23 @@ trait EndpointFilterMocking {
     when(applicationService.getByClientId(clientId)).thenReturn(failed(gatewayError))
 
   protected def mockApplicationByClientId(applicationService: ApplicationService, clientId: String, application: Application) =
-    when(applicationService.getByClientId(clientId)).thenReturn(successful(anApplication()))
+    when(applicationService.getByClientId(clientId)).thenReturn(successful(application))
 
   protected def mockApplicationByServerToken(applicationService: ApplicationService,  serverToken: String, gatewayError: GatewayError) =
     when(applicationService.getByServerToken(serverToken)).thenReturn(failed(gatewayError))
 
   protected def mockApplicationByServerToken(applicationService: ApplicationService, serverToken: String, application: Application) =
-    when(applicationService.getByServerToken(serverToken)).thenReturn(successful(anApplication()))
+    when(applicationService.getByServerToken(serverToken)).thenReturn(successful(application))
 
-  protected def mockApiSubscriptions(applicationService: ApplicationService, gatewayError: GatewayError) =
-    when(applicationService.validateApplicationIsSubscribedToApi(anyString(), anyString(), anyString()))
-      .thenReturn(failed(gatewayError))
-
-  protected def mockApiSubscriptions(applicationService: ApplicationService) =
-    when(applicationService.validateApplicationIsSubscribedToApi(anyString(), anyString(), anyString()))
-      .thenReturn(successful(()))
+  protected def mockValidateSubscriptionAndRateLimit(applicationService: ApplicationService, application: Application, result: Future[Unit]) =
+    when(applicationService.validateSubscriptionAndRateLimit(refEq(application), any[ApiIdentifier]())).thenReturn(result)
 
   protected def anApplication(): Application =
-    Application(id = UUID.randomUUID(), clientId = "clientId", name = "appName")
+    Application(id = UUID.randomUUID(), clientId = "clientId", name = "appName", rateLimitTier = BRONZE)
 
   protected def validAuthority(): Authority = {
     val token = Token("accessToken", Set.empty, DateTime.now.plusMinutes(5))
-    val thirdPartyDelegatedAuthority = ThirdPartyDelegatedAuthority("authBearerToken", "clientId", token)
+    val thirdPartyDelegatedAuthority = ThirdPartyDelegatedAuthority("authBearerToken", "clientId", token, Some(UserData("userOID")))
     Authority(thirdPartyDelegatedAuthority, authExpired = false)
   }
 

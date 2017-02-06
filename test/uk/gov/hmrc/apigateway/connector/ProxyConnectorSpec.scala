@@ -21,13 +21,16 @@ import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration._
 import org.scalatest.BeforeAndAfterEach
+import org.scalatest.prop.TableDrivenPropertyChecks.forAll
 import org.scalatest.prop.Tables.Table
 import play.api.http.Status._
+import play.api.libs.json.Json
+import play.api.mvc.AnyContentAsJson
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
-import uk.gov.hmrc.play.test.{WithFakeApplication, UnitSpec}
-import org.scalatest.prop.TableDrivenPropertyChecks.forAll
+import uk.gov.hmrc.apigateway.util.RequestTags._
+import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
 class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAndAfterEach {
 
@@ -54,29 +57,58 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
     val request = FakeRequest("GET", "/hello/world")
 
     "Proxy the request" in new Setup {
+      givenGetReturns("/world", OK)
 
-      givenTheUrlReturns("/world", OK)
-
-      val result = underTest.proxy(request, s"$wireMockUrl/world")
+      val result = await(underTest.proxy(request, s"$wireMockUrl/world"))
 
       status(result) shouldBe OK
     }
 
-    val headersToPropagate = Table(
+    "Proxy the body" in new Setup {
+      val body = """{"content":"body"}"""
+      val requestWithBody = FakeRequest("POST", "/hello/world").withBody(AnyContentAsJson(Json.parse(body)))
+
+      givenPostReturns("/world", OK)
+
+      val result = await(underTest.proxy(requestWithBody, s"$wireMockUrl/world"))
+
+      verify(postRequestedFor(urlEqualTo("/world")).withRequestBody(equalTo(body)))
+    }
+
+    "Forward the headers to the microservice" in new Setup {
+      val requestWithHeader = request.withHeaders("aHeader" -> "aHeaderValue")
+
+      givenGetReturns("/world", OK)
+
+      await(underTest.proxy(requestWithHeader, s"$wireMockUrl/world"))
+
+      verify(getRequestedFor(urlEqualTo("/world"))
+        .withHeader("aHeader", equalTo("aHeaderValue")))
+    }
+
+    "Not forward the Host header from the original request to the microservice" in new Setup {
+      val requestWithHeader = request.withHeaders("Host" -> "api-gateway.service")
+
+      givenGetReturns("/world", OK)
+
+      await(underTest.proxy(requestWithHeader, s"$wireMockUrl/world"))
+
+      verify(getRequestedFor(urlEqualTo("/world")).withHeader("Host", equalTo(s"localhost:$stubPort")))
+    }
+
+    val gatewayHeaders = Table(
       ( "tag",                              "header",                       "value"                         ),
-      ( ACCEPT,                             "Accept",                       "application/vnd.hmrc.1.0+json" ),
-      ( AUTHORIZATION,                      "Authorization",                "Bearer 12345"                  ),
-      ( X_API_GATEWAY_CLIENT_ID,            "X-Client-ID",                  "123456"                        ),
-      ( X_API_GATEWAY_AUTHORIZATION_TOKEN,  "X-Client-Authorization-Token", "78910"                         ),
-      ( X_API_GATEWAY_REQUEST_TIMESTAMP,    "X-Request-Timestamp",          "1232356"                       )
+      ( AUTH_AUTHORIZATION,                 "Authorization",                "Bearer 12345"                  ),
+      ( CLIENT_ID,                          "X-Client-ID",                  "123456"                        ),
+      ( REQUEST_TIMESTAMP_NANO,             "X-Request-Timestamp",          "1232356"                       )
     )
 
-    "Add headers in the request" in new Setup {
+    "Add extra headers in the request" in new Setup {
 
-      forAll(headersToPropagate) { (tag, header, value) =>
+      forAll(gatewayHeaders) { (tag, header, value) =>
         val requestWithTag = request.copyFakeRequest(tags = Map(tag -> value))
 
-        givenTheUrlReturns("/world", OK)
+        givenGetReturns("/world", OK)
 
         await(underTest.proxy(requestWithTag, s"$wireMockUrl/world"))
 
@@ -85,7 +117,30 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
       }
     }
 
-    "Not include headers when there is no tag in the request" in new Setup {
+    "Override the extra headers from the original request" in new Setup {
+      forAll(gatewayHeaders) { (tag, header, value) =>
+        val requestWithHeader = request.withHeaders(header -> "originalRequestHeader").copyFakeRequest(tags = Map(tag -> value))
+
+        givenGetReturns("/world", OK)
+
+        await(underTest.proxy(requestWithHeader, s"$wireMockUrl/world"))
+
+        verify(getRequestedFor(urlEqualTo("/world")).withHeader(header, equalTo(value)))
+      }
+    }
+
+    "Add Oauth token header in the request" in new Setup {
+      val requestWithTag = request.copyFakeRequest(tags = Map(OAUTH_AUTHORIZATION -> "Bearer 1234567"))
+
+      givenGetReturns("/world", OK)
+
+      await(underTest.proxy(requestWithTag, s"$wireMockUrl/world"))
+
+      verify(getRequestedFor(urlEqualTo("/world"))
+        .withHeader(X_CLIENT_AUTHORIZATION_TOKEN, equalTo("1234567")))
+    }
+
+    "Not include extra headers when there is no tag in the request" in new Setup {
 
       val requestWithoutTags = request.copyFakeRequest(tags = Map())
 
@@ -99,8 +154,14 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
     }
   }
 
-  def givenTheUrlReturns(endpoint: String, status: Int) = {
+  def givenGetReturns(endpoint: String, status: Int) = {
     stubFor(get(urlEqualTo(endpoint))
       .willReturn(aResponse().withStatus(status)))
   }
+
+  def givenPostReturns(endpoint: String, status: Int) = {
+    stubFor(get(urlEqualTo(endpoint))
+      .willReturn(aResponse().withStatus(status)))
+  }
+
 }

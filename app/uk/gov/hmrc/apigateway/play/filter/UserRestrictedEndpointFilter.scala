@@ -25,7 +25,7 @@ import uk.gov.hmrc.apigateway.exception.GatewayError._
 import uk.gov.hmrc.apigateway.model.AuthType._
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.service._
-import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.apigateway.util.RequestTags._
 
 import scala.concurrent.Future.successful
 import scala.concurrent.{ExecutionContext, Future}
@@ -58,27 +58,22 @@ class UserRestrictedEndpointFilter @Inject()
 
   private def validateRequestAndSwapToken(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
     getAuthority(proxyRequest) flatMap { authority =>
-
-      val validateSubscriptions: Future[Unit] = for {
-        application <- getApplicationByClientId(authority.delegatedAuthority.clientId)
-        _ <- applicationService.validateApplicationIsSubscribedToApi(application.id.toString,
-          requestHeader.tags(X_API_GATEWAY_API_CONTEXT), requestHeader.tags(X_API_GATEWAY_API_VERSION))
-      } yield ()
-
-      val validateScopes: Future[Unit] = scopeValidator.validate(authority.delegatedAuthority, requestHeader.tags.get(X_API_GATEWAY_SCOPE))
+      val validateScopes: Future[Unit] = scopeValidator.validate(authority.delegatedAuthority, requestHeader.tags.get(API_SCOPE))
+      val requestedApi = ApiIdentifier(requestHeader.tags(API_CONTEXT), requestHeader.tags(API_VERSION))
 
       for {
-        _ <- validateSubscriptions
+        application <- getApplicationByClientId(authority.delegatedAuthority.clientId)
+        _ <- applicationService.validateSubscriptionAndRateLimit(application, requestedApi)
         _ <- validateScopes
       } yield requestHeader
-        .withTag(AUTHORIZATION, s"Bearer ${authority.delegatedAuthority.authBearerToken}")
-        .withTag(X_API_GATEWAY_AUTHORIZATION_TOKEN, proxyRequest.accessToken.getOrElse(""))
-        .withTag(X_API_GATEWAY_CLIENT_ID, authority.delegatedAuthority.clientId)
+        .withTag(AUTH_AUTHORIZATION, s"Bearer ${authority.delegatedAuthority.authBearerToken}")
+        .withTag(USER_OID, authority.delegatedAuthority.user.map(_.userId).getOrElse(""))
+        .withTag(CLIENT_ID, authority.delegatedAuthority.clientId)
     }
   }
 
   override def filter(requestHeader: RequestHeader, proxyRequest: ProxyRequest): Future[RequestHeader] = {
-    requestHeader.tags.get(X_API_GATEWAY_AUTH_TYPE) flatMap authType match {
+    requestHeader.tags.get(AUTH_TYPE) flatMap authType match {
       case Some(USER) => validateRequestAndSwapToken(requestHeader, proxyRequest)
       case _ => successful(requestHeader)
     }

@@ -20,6 +20,8 @@ import org.joda.time.DateTime
 
 case class Authority(delegatedAuthority: ThirdPartyDelegatedAuthority, authExpired: Boolean = false)
 
-case class ThirdPartyDelegatedAuthority(authBearerToken: String, clientId: String, token: Token)
+case class ThirdPartyDelegatedAuthority(authBearerToken: String, clientId: String, token: Token, user: Option[UserData])
 
 case class Token(accessToken:String, scopes: Set[String], expiresAt: DateTime)
+
+case class UserData(userId: String)

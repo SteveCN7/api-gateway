@@ -18,7 +18,7 @@ package uk.gov.hmrc.apigateway.util
 
 import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
 import uk.gov.hmrc.apigateway.model.ProxyRequest
-import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
+import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
 import scala.concurrent.Future
 import scala.concurrent.Future.{failed, successful}

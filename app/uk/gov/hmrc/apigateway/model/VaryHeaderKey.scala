@@ -21,13 +21,12 @@ object VaryHeaderKey {
     s"$key::${varyHeaders.sorted.map(kv => s"${kv._1}=${kv._2}").mkString (";")}"
 
   def fromVaryHeader(key: String, requiredHeaders: Set[String], actualHeaders: Map[String, Set[String]]) = {
-    val out = apply(key, requiredHeaders
+    apply(key, requiredHeaders
       .map(x => actualHeaders.get(x)
         .map(h => (x, h.toSeq.sorted.mkString(","))))
       .flatten
-      .toSeq:_*
+      .toSeq: _*
     )
-    out
   }
 }
 

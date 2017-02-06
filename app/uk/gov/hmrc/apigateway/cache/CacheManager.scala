@@ -20,7 +20,6 @@ import javax.inject.{Inject, Singleton}
 
 import play.api.Logger
 import play.api.cache.CacheApi
-import play.api.http.HeaderNames.CACHE_CONTROL
 import uk.gov.hmrc.apigateway.model.{CacheControl, VaryHeaderKey, VaryKey}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -37,44 +36,35 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics, varyHeaderC
                        reqHeaders: Map[String, Set[String]]
                       ): Future[T] = {
 
-    val newKey = varyHeaderCache.getKey(key, reqHeaders)
-    val varyKey = VaryKey(key)
+    val keyWithRelevantVaryHeaders = varyHeaderCache.getKey(key, reqHeaders)
 
-    cache.get[T](newKey) match {
+    cache.get[T](keyWithRelevantVaryHeaders) match {
       case Some(value) =>
-        Logger.debug(s"Cache hit for key [$newKey]")
-        processCacheHit(serviceName, value)
+        Logger.debug(s"Cache hit for key [$keyWithRelevantVaryHeaders]")
+        metrics.cacheHit(serviceName)
+        Future.successful(value)
       case _ =>
-        Logger.debug(s"Cache miss for key [$newKey]")
-        processCacheMiss(key, varyKey, serviceName, reqHeaders, fallbackFunction)
+        Logger.debug(s"Cache miss for key [$keyWithRelevantVaryHeaders]")
+        metrics.cacheMiss(serviceName)
+        fetchFromService(key, reqHeaders, fallbackFunction)
     }
   }
 
-  private def processCacheHit[T: ClassTag](serviceName: String, value: T): Future[T] = {
-    metrics.cacheHit(serviceName)
-    Future.successful(value)
-  }
-
-  private def processCacheMiss[T: ClassTag](
+  private def fetchFromService[T: ClassTag](
                                              key: String,
-                                             varyKey: String,
-                                             serviceName: String,
                                              reqHeaders: Map[String, Set[String]],
                                              fallbackFunction: => Future[EntityWithResponseHeaders[T]]
                                            ): Future[T] = {
-    metrics.cacheMiss(serviceName)
     fallbackFunction map { case (result, respHeaders) => {
-      val bob = CacheControl.fromHeaders(respHeaders)
-      bob match {
-        case CacheControl(false, Some(max), varyHeaders) if varyHeaders.isEmpty => cache.set(key, result, max seconds)
-        case CacheControl(false, Some(max), varyHeaders) if varyHeaders.nonEmpty => {
-          cache.set(varyKey, varyHeaders, max seconds)
+      CacheControl.fromHeaders(respHeaders) match {
+        case CacheControl(false, Some(max), varyHeaders) if varyHeaders.isEmpty =>
+          cache.set(key, result, max seconds)
+        case CacheControl(false, Some(max), varyHeaders) =>
+          cache.set(VaryKey(key), varyHeaders, max seconds)
           cache.set(VaryHeaderKey.fromVaryHeader(key, varyHeaders, reqHeaders), result, max seconds)
-        }
-        case _ => println("Nothing to do yet...")
+        case _ => // Anything else we do not cache.
       }
       result
-    }
-    }
+    }}
   }
 }

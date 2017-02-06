@@ -30,7 +30,12 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class RateLimitRepositorySpec extends UnitSpec with GuiceFakeApplicationFactory with MongoSpecSupport with BeforeAndAfterEach {
 
-  private val application = new GuiceApplicationBuilder().configure("mongodb.uri" -> mongoUri).build()
+  private val application = new GuiceApplicationBuilder()
+    .configure(
+      "mongodb.uri" -> mongoUri,
+      "mongodb.w" -> 1,
+      "mongodb.j" -> false
+    ).build()
   val reactiveMongo = application.injector.instanceOf[ReactiveMongoApi]
   val underTest = application.injector.instanceOf[RateLimitRepository]
 

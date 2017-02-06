@@ -51,7 +51,7 @@ class RateLimitRepositorySpec extends UnitSpec with GuiceFakeApplicationFactory 
 
       val result = await(underTest.validateAndIncrement("clientId", 10))
 
-      result shouldBe ()
+      result shouldBe ((): Unit)
     }
 
     "fail when the threshold is reached" in {
@@ -72,7 +72,7 @@ class RateLimitRepositorySpec extends UnitSpec with GuiceFakeApplicationFactory 
 
       val result = await(underTest.validateAndIncrement("clientId", 2))
 
-      result shouldBe ()
+      result shouldBe ((): Unit)
     }
   }
 }

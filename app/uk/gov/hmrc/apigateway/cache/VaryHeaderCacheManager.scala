@@ -19,14 +19,14 @@ package uk.gov.hmrc.apigateway.cache
 import javax.inject.{Inject, Singleton}
 
 import play.api.cache.CacheApi
-import uk.gov.hmrc.apigateway.model.{VaryHeaderKey, VaryKey}
+import uk.gov.hmrc.apigateway.model.{PrimaryCacheKey, VaryCacheKey}
 
 @Singleton
 class VaryHeaderCacheManager @Inject()(cache: CacheApi) {
   def getKey(key: String, reqHeaders: Map[String, Set[String]]): String = {
-    cache.get[Set[String]](VaryKey(key)) match {
+    cache.get[Set[String]](VaryCacheKey(key)) match {
 //      case Some(varyHeaders) if varyHeaders.isEmpty => VaryHeaderKey(key)
-      case Some(varyHeaders) if varyHeaders.nonEmpty => VaryHeaderKey(key, varyHeaders, reqHeaders)
+      case Some(varyHeaders) if varyHeaders.nonEmpty => PrimaryCacheKey(key, varyHeaders, reqHeaders)
       case _ => key
     }
   }

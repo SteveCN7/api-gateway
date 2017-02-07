@@ -22,23 +22,27 @@ class VaryHeaderKeySpec extends UnitSpec {
 
   "VaryHeaderKey" should {
     "have a fixed format string representation" in {
-      VaryHeaderKey("/bob/blah", Set("X-Aaa"), Map("X-Aaa" -> Set("aaa"))) shouldBe "/bob/blah::X-Aaa=aaa"
+      PrimaryCacheKey("/bob/blah", Set("X-Aaa"), Map("X-Aaa" -> Set("aaa"))) shouldBe "/bob/blah::X-Aaa=aaa"
     }
 
     "have a fixed format string representation with multiple keys" in {
-      VaryHeaderKey("/bob/blah", Set("X-Bbb", "X-Aaa"), Map("X-Bbb" -> Set("bbb"), "X-Aaa" -> Set("aaa"))) shouldBe "/bob/blah::X-Aaa=aaa;X-Bbb=bbb"
+      PrimaryCacheKey("/bob/blah", Set("X-Bbb", "X-Aaa"), Map("X-Bbb" -> Set("bbb"), "X-Aaa" -> Set("aaa"))) shouldBe "/bob/blah::X-Aaa=aaa;X-Bbb=bbb"
+    }
+
+    "have a fixed format string representation with multiple keys, where some are missing" in {
+      PrimaryCacheKey("/bob/blah", Set("X-Bbb", "X-Aaa"), Map("X-Bbb" -> Set("bbb"))) shouldBe "/bob/blah::X-Aaa=;X-Bbb=bbb"
     }
 
     "return the original key if there are no required vary headers" in {
-      VaryHeaderKey("/bob/blah", Set.empty, Map("X-Bbb" -> Set("bbb"), "X-Aaa" -> Set("aaa"))) shouldBe "/bob/blah"
+      PrimaryCacheKey("/bob/blah", Set.empty, Map("X-Bbb" -> Set("bbb"), "X-Aaa" -> Set("aaa"))) shouldBe "/bob/blah"
     }
 
     "return the original key suffixed :: if there are no headers matching the vary headers" in {
-      VaryHeaderKey("/bob/blah", Set("X-Aaa"), Map("X-Bbb" -> Set("bbb"))) shouldBe "/bob/blah::"
+      PrimaryCacheKey("/bob/blah", Set("X-Aaa"), Map("X-Bbb" -> Set("bbb"))) shouldBe "/bob/blah::X-Aaa="
     }
 
     "return the original key suffixed :: if headers match only some vary headers" in {
-      VaryHeaderKey("/bob/blah", Set("X-Aaa", "X-Bbb"), Map("X-Bbb" -> Set("bbb"), "X-Ccc" -> Set("ccc"))) shouldBe "/bob/blah::"
+      PrimaryCacheKey("/bob/blah", Set("X-Aaa", "X-Bbb"), Map("X-Bbb" -> Set("bbb"), "X-Ccc" -> Set("ccc"))) shouldBe "/bob/blah::X-Aaa=;X-Bbb=bbb"
     }
   }
 }

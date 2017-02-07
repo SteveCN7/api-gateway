@@ -19,7 +19,7 @@ package uk.gov.hmrc.apigateway.cache
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import play.api.cache.CacheApi
-import uk.gov.hmrc.apigateway.model.VaryHeaderKey
+import uk.gov.hmrc.apigateway.model.PrimaryCacheKey
 import uk.gov.hmrc.play.test.UnitSpec
 
 class VaryHeaderCacheManagerSpec extends UnitSpec with MockitoSugar {
@@ -43,21 +43,21 @@ class VaryHeaderCacheManagerSpec extends UnitSpec with MockitoSugar {
       verifyNoMoreInteractions(cache)
     }
 
-    "return the key suffixed :: if the request does not have any request headers" in new Setup {
+    "return the key with an empty header value if the request does not have any request headers" in new Setup {
       val cachedValue = Set("X-Aaa")
       when(cache.get[Set[String]](varyCacheKey)).thenReturn(Some(cachedValue))
 
-      await(varyCacheManager.getKey(cacheKey, Map.empty)) shouldBe s"$cacheKey::"
+      await(varyCacheManager.getKey(cacheKey, Map.empty)) shouldBe s"$cacheKey::X-Aaa="
 
       verify(cache).get[Set[String]](varyCacheKey)
       verifyNoMoreInteractions(cache)
     }
 
-    "return the key suffixed :: if the request does not have any matching headers" in new Setup {
+    "return the key with an empty header value if the request does not have any matching headers" in new Setup {
       val cachedValue = Set("X-Aaa")
       when(cache.get[Set[String]](varyCacheKey)).thenReturn(Some(cachedValue))
 
-      await(varyCacheManager.getKey(cacheKey, Map("Bob" -> Set("Blah")))) shouldBe s"$cacheKey::"
+      await(varyCacheManager.getKey(cacheKey, Map("Bob" -> Set("Blah")))) shouldBe s"$cacheKey::X-Aaa="
 
       verify(cache).get[Set[String]](varyCacheKey)
       verifyNoMoreInteractions(cache)
@@ -68,7 +68,7 @@ class VaryHeaderCacheManagerSpec extends UnitSpec with MockitoSugar {
       val reqHeaders = Map("X-Aaa" -> Set("aaa"))
       when(cache.get[Set[String]](varyCacheKey)).thenReturn(Some(cachedValue))
 
-      await(varyCacheManager.getKey(cacheKey, reqHeaders)) shouldBe VaryHeaderKey(cacheKey, Set("X-Aaa"), reqHeaders)
+      await(varyCacheManager.getKey(cacheKey, reqHeaders)) shouldBe PrimaryCacheKey(cacheKey, Set("X-Aaa"), reqHeaders)
 
       verify(cache).get[Set[String]](varyCacheKey)
       verifyNoMoreInteractions(cache)
@@ -79,7 +79,7 @@ class VaryHeaderCacheManagerSpec extends UnitSpec with MockitoSugar {
       val reqHeaders = Map("X-Aaa" -> Set("aaa"), "X-Bbb" -> Set("bbb"))
       when(cache.get[Set[String]](varyCacheKey)).thenReturn(Some(cachedValue))
 
-      await(varyCacheManager.getKey(cacheKey, reqHeaders)) shouldBe VaryHeaderKey(cacheKey, Set("X-Aaa", "X-Bbb"), reqHeaders)
+      await(varyCacheManager.getKey(cacheKey, reqHeaders)) shouldBe PrimaryCacheKey(cacheKey, Set("X-Aaa", "X-Bbb"), reqHeaders)
 
       verify(cache).get[Set[String]](varyCacheKey)
       verifyNoMoreInteractions(cache)

@@ -20,7 +20,7 @@ import javax.inject.{Inject, Singleton}
 
 import play.api.Logger
 import play.api.cache.CacheApi
-import uk.gov.hmrc.apigateway.model.{CacheControl, VaryHeaderKey, VaryKey}
+import uk.gov.hmrc.apigateway.model.{CacheControl, PrimaryCacheKey, VaryCacheKey}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -60,8 +60,8 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics, varyHeaderC
         case CacheControl(false, Some(max), varyHeaders) if varyHeaders.isEmpty =>
           cache.set(key, result, max seconds)
         case CacheControl(false, Some(max), varyHeaders) =>
-          cache.set(VaryKey(key), varyHeaders, max seconds)
-          cache.set(VaryHeaderKey(key, varyHeaders, reqHeaders), result, max seconds)
+          cache.set(VaryCacheKey(key), varyHeaders, max seconds)
+          cache.set(PrimaryCacheKey(key, varyHeaders, reqHeaders), result, max seconds)
         case _ => // Anything else we do not cache.
       }
       result

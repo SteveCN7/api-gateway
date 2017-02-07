@@ -16,24 +16,20 @@
 
 package uk.gov.hmrc.apigateway.model
 
-object VaryHeaderKey {
+object PrimaryCacheKey {
   def apply(key: String, requiredHeaders: Set[String] = Set.empty, actualHeaders: Map[String, Set[String]] = Map.empty) = {
     if (requiredHeaders.isEmpty) key
-    else if (! requiredHeaders.subsetOf(actualHeaders.keySet)){
-      s"$key::"
-    }
     else {
       val relevantHeaders = for {
         r <- requiredHeaders
-        h <- actualHeaders.get(r)
-      } yield (r, h.toSeq.sorted.mkString(","))
+      } yield (r, actualHeaders.get(r).map(_.toSeq.sorted.mkString(",")).getOrElse(""))
 
       s"$key::${relevantHeaders.toSeq.sorted.map{ case(k,v) => s"$k=$v"}.mkString(";")}"
     }
   }
 }
 
-object VaryKey {
+object VaryCacheKey {
   def apply(path: String) = {
     s"vary::$path"
   }

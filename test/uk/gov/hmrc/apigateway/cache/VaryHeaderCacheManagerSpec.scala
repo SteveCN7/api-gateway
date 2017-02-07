@@ -35,53 +35,42 @@ class VaryHeaderCacheManagerSpec extends UnitSpec with MockitoSugar {
 
   "Get cached item" should {
     "return original key if there are no vary headers stored" in new Setup {
-      when(cache.get[Set[String]](varyCacheKey)).thenReturn(None)
+      when(cache.get[String](varyCacheKey)).thenReturn(None)
 
       await(varyCacheManager.getKey(cacheKey, Map.empty)) shouldBe cacheKey
 
-      verify(cache).get[Set[String]](varyCacheKey)
+      verify(cache).get[String](varyCacheKey)
       verifyNoMoreInteractions(cache)
     }
 
     "return the key with an empty header value if the request does not have any request headers" in new Setup {
-      val cachedValue = Set("X-Aaa")
-      when(cache.get[Set[String]](varyCacheKey)).thenReturn(Some(cachedValue))
+      val cachedValue = "X-Aaa"
+      when(cache.get[String](varyCacheKey)).thenReturn(Some(cachedValue))
 
       await(varyCacheManager.getKey(cacheKey, Map.empty)) shouldBe s"$cacheKey::X-Aaa="
 
-      verify(cache).get[Set[String]](varyCacheKey)
+      verify(cache).get[String](varyCacheKey)
       verifyNoMoreInteractions(cache)
     }
 
     "return the key with an empty header value if the request does not have any matching headers" in new Setup {
-      val cachedValue = Set("X-Aaa")
-      when(cache.get[Set[String]](varyCacheKey)).thenReturn(Some(cachedValue))
+      val cachedValue = "X-Aaa"
+      when(cache.get[String](varyCacheKey)).thenReturn(Some(cachedValue))
 
       await(varyCacheManager.getKey(cacheKey, Map("Bob" -> Set("Blah")))) shouldBe s"$cacheKey::X-Aaa="
 
-      verify(cache).get[Set[String]](varyCacheKey)
+      verify(cache).get[String](varyCacheKey)
       verifyNoMoreInteractions(cache)
     }
 
     "return the representation of the key if the request has the matching header" in new Setup {
-      val cachedValue = Set("X-Aaa")
+      val cachedValue = "X-Aaa"
       val reqHeaders = Map("X-Aaa" -> Set("aaa"))
-      when(cache.get[Set[String]](varyCacheKey)).thenReturn(Some(cachedValue))
+      when(cache.get[String](varyCacheKey)).thenReturn(Some(cachedValue))
 
-      await(varyCacheManager.getKey(cacheKey, reqHeaders)) shouldBe PrimaryCacheKey(cacheKey, Set("X-Aaa"), reqHeaders)
+      await(varyCacheManager.getKey(cacheKey, reqHeaders)) shouldBe PrimaryCacheKey(cacheKey, Some("X-Aaa"), reqHeaders)
 
-      verify(cache).get[Set[String]](varyCacheKey)
-      verifyNoMoreInteractions(cache)
-    }
-
-    "return the representation of the key if the request has all matching headers" in new Setup {
-      val cachedValue = Set("X-Aaa", "X-Bbb")
-      val reqHeaders = Map("X-Aaa" -> Set("aaa"), "X-Bbb" -> Set("bbb"))
-      when(cache.get[Set[String]](varyCacheKey)).thenReturn(Some(cachedValue))
-
-      await(varyCacheManager.getKey(cacheKey, reqHeaders)) shouldBe PrimaryCacheKey(cacheKey, Set("X-Aaa", "X-Bbb"), reqHeaders)
-
-      verify(cache).get[Set[String]](varyCacheKey)
+      verify(cache).get[String](varyCacheKey)
       verifyNoMoreInteractions(cache)
     }
   }

@@ -25,32 +25,32 @@ class CacheControlSpec extends UnitSpec {
   "CacheControl that has had no Vary headers cached" should {
     "have default parameters when there are no headers" in {
       val out = CacheControl.fromHeaders(Map.empty)
-      out shouldBe model.CacheControl(false, None, Set.empty[String])
+      out shouldBe model.CacheControl(false, None, None)
     }
 
     "have noCache set to true when a no-cache header is provided" in {
       CacheControl.fromHeaders(Map(HeaderNames.CACHE_CONTROL -> Set("no-cache")))
-        .shouldBe(model.CacheControl(true, None, Set.empty[String]))
+        .shouldBe(model.CacheControl(true, None, None))
 
       CacheControl.fromHeaders(Map(HeaderNames.CACHE_CONTROL -> Set("no-cache", "no-store")))
-        .shouldBe(model.CacheControl(true, None, Set.empty[String]))
+        .shouldBe(model.CacheControl(true, None, None))
 
       CacheControl.fromHeaders(Map(HeaderNames.CACHE_CONTROL -> Set("no-store", "no-cache")))
-        .shouldBe(model.CacheControl(true, None, Set.empty[String]))
+        .shouldBe(model.CacheControl(true, None, None))
 
       CacheControl.fromHeaders(Map(HeaderNames.CACHE_CONTROL -> Set("no-store, no-cache")))
-        .shouldBe(model.CacheControl(true, None, Set.empty[String]))
+        .shouldBe(model.CacheControl(true, None, None))
 
       CacheControl.fromHeaders(Map(HeaderNames.CACHE_CONTROL -> Set("no-cache,no-store")))
-        .shouldBe(model.CacheControl(true, None, Set.empty[String]))
+        .shouldBe(model.CacheControl(true, None, None))
     }
 
     "have maxAge set to the appropriate value when a cache header with max-age is provided" in {
       CacheControl.fromHeaders(Map(HeaderNames.CACHE_CONTROL -> Set("max-age=123")))
-        .shouldBe(model.CacheControl(false, Some(123), Set.empty[String]))
+        .shouldBe(model.CacheControl(false, Some(123), None))
 
       CacheControl.fromHeaders(Map(HeaderNames.CACHE_CONTROL -> Set("no-transform", "max-age=234", "min-fresh=77")))
-        .shouldBe(model.CacheControl(false, Some(234), Set.empty[String]))
+        .shouldBe(model.CacheControl(false, Some(234), None))
     }
 
     "set both no-cache and max-age values when appropriate headers are provided" in {
@@ -58,7 +58,7 @@ class CacheControlSpec extends UnitSpec {
         HeaderNames.CACHE_CONTROL -> Set("no-transform", "max-age=0", "no-cache"),
         HeaderNames.CONTENT_LENGTH -> Set("700")
       ))
-        .shouldBe(model.CacheControl(true, Some(0), Set.empty[String]))
+        .shouldBe(model.CacheControl(true, Some(0), None))
     }
 
     "set both no-cache and max-age values when appropriate headers are provided - checking that header values are split properly" in {
@@ -66,44 +66,28 @@ class CacheControlSpec extends UnitSpec {
         HeaderNames.CACHE_CONTROL -> Set("no-transform,max-age=0, no-cache"),
         HeaderNames.CONTENT_LENGTH -> Set("700")
       ))
-        .shouldBe(model.CacheControl(true, Some(0), Set.empty[String]))
+        .shouldBe(model.CacheControl(true, Some(0), None))
     }
 
     "set the Vary property when a Vary header is provided" in {
       CacheControl.fromHeaders(Map(HeaderNames.VARY -> Set("X-Blah")))
-        .shouldBe(model.CacheControl(false, None, Set("X-Blah")))
+        .shouldBe(model.CacheControl(false, None, Some("X-Blah")))
     }
 
-    "set the Vary property when multiple Vary headers are provided" in {
-      val output = CacheControl.fromHeaders(Map(HeaderNames.VARY -> Set("X-Blah", "X-Blob")))
-      output.noCache shouldBe false
-      output.maxAgeSeconds shouldBe None
-      output.vary should contain("X-Blah")
-      output.vary should contain("X-Blob")
+    "When multiple Vary headers are provided, throw an exception" in {
+      assertThrows[CacheControlException] {
+        CacheControl.fromHeaders(Map(HeaderNames.VARY -> Set("X-Blah", "X-Blob")))
+      }
     }
 
     "set the all the properties when multiple headers are provided - 1" in {
-      val output = CacheControl.fromHeaders(Map(
-        HeaderNames.CACHE_CONTROL -> Set("no-transform", "max-age=0", "no-cache"),
-        HeaderNames.CONTENT_LENGTH -> Set("700"),
-        HeaderNames.VARY -> Set("X-Blah", "X-Blob")
-      ))
-      output.noCache shouldBe true
-      output.maxAgeSeconds shouldBe Some(0)
-      output.vary should contain("X-Blah")
-      output.vary should contain("X-Blob")
-    }
-
-    "set the all the properties when multiple headers are provided - 2" in {
-      val output = CacheControl.fromHeaders(Map(
-        HeaderNames.CACHE_CONTROL -> Set("max-age=77"),
-        HeaderNames.CONTENT_LENGTH -> Set("700"),
-        HeaderNames.VARY -> Set("X-Blah", "X-Blob")
-      ))
-      output.noCache shouldBe false
-      output.maxAgeSeconds shouldBe Some(77)
-      output.vary should contain("X-Blah")
-      output.vary should contain("X-Blob")
+      assertThrows[CacheControlException] {
+        CacheControl.fromHeaders(Map(
+          HeaderNames.CACHE_CONTROL -> Set("no-transform", "max-age=0", "no-cache"),
+          HeaderNames.CONTENT_LENGTH -> Set("700"),
+          HeaderNames.VARY -> Set("X-Blah", "X-Blob")
+        ))
+      }
     }
   }
 }

@@ -24,10 +24,7 @@ import uk.gov.hmrc.apigateway.model.{PrimaryCacheKey, VaryCacheKey}
 @Singleton
 class VaryHeaderCacheManager @Inject()(cache: CacheApi) {
   def getKey(key: String, reqHeaders: Map[String, Set[String]]): String = {
-    cache.get[Set[String]](VaryCacheKey(key)) match {
-//      case Some(varyHeaders) if varyHeaders.isEmpty => VaryHeaderKey(key)
-      case Some(varyHeaders) if varyHeaders.nonEmpty => PrimaryCacheKey(key, varyHeaders, reqHeaders)
-      case _ => key
-    }
+    val requiredHeader = cache.get[String](VaryCacheKey(key))
+    PrimaryCacheKey(key, requiredHeader, reqHeaders)
   }
 }

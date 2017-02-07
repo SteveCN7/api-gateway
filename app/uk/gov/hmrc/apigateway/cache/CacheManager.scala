@@ -26,6 +26,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
+import scala.util.{Failure, Success, Try}
 
 @Singleton
 class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics, varyHeaderCache: VaryHeaderCacheManager) {
@@ -40,28 +41,35 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics, varyHeaderC
 
     cache.get[T](keyWithRelevantVaryHeaders) match {
       case Some(value) =>
-        Logger.debug(s"Cache hit for key [$keyWithRelevantVaryHeaders]")
+        Logger.debug(s"Cache hit for key [$keyWithRelevantVaryHeaders], service: $serviceName")
         metrics.cacheHit(serviceName)
         Future.successful(value)
       case _ =>
-        Logger.debug(s"Cache miss for key [$keyWithRelevantVaryHeaders]")
+        Logger.debug(s"Cache miss for key [$keyWithRelevantVaryHeaders], service: $serviceName")
         metrics.cacheMiss(serviceName)
-        fetchFromService(key, reqHeaders, fallbackFunction)
+        fetchFromService(key, reqHeaders, serviceName, fallbackFunction)
     }
   }
 
   private def fetchFromService[T: ClassTag](
                                              key: String,
                                              reqHeaders: Map[String, Set[String]],
+                                             serviceName: String,
                                              fallbackFunction: => Future[EntityWithResponseHeaders[T]]
                                            ): Future[T] = {
     fallbackFunction map { case (result, respHeaders) => {
-      CacheControl.fromHeaders(respHeaders) match {
-        case CacheControl(false, Some(max), varyHeaders) if varyHeaders.isEmpty =>
+      val out = Try(CacheControl.fromHeaders(respHeaders)) match {
+        case Success(cachecontrol: CacheControl) =>  cachecontrol
+        case Failure(ex) => {
+          Logger.warn(s"${ex.getMessage} for service ${serviceName}. Response will not be cached.")
+          CacheControl(true, None, None)
+      }}
+      out match {
+        case CacheControl(false, Some(max), None) =>
           cache.set(key, result, max seconds)
-        case CacheControl(false, Some(max), varyHeaders) =>
-          cache.set(VaryCacheKey(key), varyHeaders, max seconds)
-          cache.set(PrimaryCacheKey(key, varyHeaders, reqHeaders), result, max seconds)
+        case CacheControl(false, Some(max), Some(varyHeader)) =>
+          cache.set(VaryCacheKey(key), varyHeader, max seconds)
+          cache.set(PrimaryCacheKey(key, Some(varyHeader), reqHeaders), result, max seconds)
         case _ => // Anything else we do not cache.
       }
       result

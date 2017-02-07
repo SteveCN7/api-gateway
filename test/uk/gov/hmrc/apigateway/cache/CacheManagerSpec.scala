@@ -115,7 +115,7 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
   "Caching of responses with a Vary header" should {
     "fetch fresh value and cache it when the Vary header is not in the cache" in new Setup {
       val newHeaderValue = "aaa"
-      val newCacheKey = PrimaryCacheKey(cacheKey, Set(varyHeader), Map(varyHeader -> Set(newHeaderValue)))
+      val newCacheKey = PrimaryCacheKey(cacheKey, Some(varyHeader), Map(varyHeader -> Set(newHeaderValue)))
 
       val fakeCache = new FakeCacheApi()
       val cm = cacheMan(fakeCache)
@@ -127,17 +127,17 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
       verifyNoMoreInteractions(metrics)
 
       fakeCache.get(newCacheKey) shouldBe Some(updatedValue)
-      fakeCache.get(VaryCacheKey(cacheKey)) shouldBe Some(Set(varyHeader))
+      fakeCache.get(VaryCacheKey(cacheKey)) shouldBe Some(varyHeader)
     }
   }
 
   "Caching of responses with a Vary header" should {
     "return cached value when present." in new Setup {
       val varyHeaderValue = "aaa"
-      val key1 = PrimaryCacheKey(cacheKey, Set(varyHeader), Map(varyHeader -> Set(varyHeaderValue)))
+      val key1 = PrimaryCacheKey(cacheKey, Some(varyHeader), Map(varyHeader -> Set(varyHeaderValue)))
 
       val fakeCache = new FakeCacheApi(
-        VaryCacheKey(cacheKey) -> Set(varyHeader),
+        VaryCacheKey(cacheKey) -> varyHeader,
         key1 -> cachedValue
       )
       val cm = cacheMan(fakeCache)
@@ -152,11 +152,11 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
     "fetch fresh value and cache it when the header is different from a previous cached response" in new Setup {
       val previousHeaderValue = "aaa"
       val newHeaderValue = "bbb"
-      val previousCacheKey = PrimaryCacheKey(cacheKey, Set(varyHeader), Map(varyHeader -> Set(previousHeaderValue)))
-      val newCacheKey = PrimaryCacheKey(cacheKey, Set(varyHeader), Map(varyHeader -> Set(newHeaderValue)))
+      val previousCacheKey = PrimaryCacheKey(cacheKey, Some(varyHeader), Map(varyHeader -> Set(previousHeaderValue)))
+      val newCacheKey = PrimaryCacheKey(cacheKey, Some(varyHeader), Map(varyHeader -> Set(newHeaderValue)))
 
       val fakeCache = new FakeCacheApi(
-        VaryCacheKey(cacheKey) -> Set(varyHeader),
+        VaryCacheKey(cacheKey) -> varyHeader,
         previousCacheKey -> cachedValue
       )
       val cm = cacheMan(fakeCache)
@@ -176,23 +176,33 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
 
       val reqHeadersA1 = Map("X-Aaa" -> Set("aaa", "AAA"))
       val respA1 = customFallBack(("A Response", Map( HeaderNames.CACHE_CONTROL -> Set("max-age=123"), HeaderNames.VARY -> Set("X-Aaa"))))
+      // Fetch result from fallback fn
       await(cm.get[String](cacheKey, serviceName, respA1, reqHeadersA1)) shouldBe "A Response"
 
       val reqHeadersA2 = Map("X-Aaa" -> Set("aaa", "AAA"))
       val respA2 = customFallBack(("SHOULD NEVER GET THIS", Map( HeaderNames.CACHE_CONTROL -> Set("max-age=123"), HeaderNames.VARY -> Set("X-Aaa"))))
+      // Bring back cached result
       await(cm.get[String](cacheKey, serviceName, respA2, reqHeadersA2)) shouldBe "A Response"
 
       val reqHeadersB1 = Map("X-Aaa" -> Set("bbb"))
-      val respB1 = customFallBack(("B Response", Map( HeaderNames.CACHE_CONTROL -> Set("max-age=123"), HeaderNames.VARY -> Set("X-Aaa", "X-Bbb"))))
+      val respB1 = customFallBack(("B Response", Map( HeaderNames.CACHE_CONTROL -> Set("max-age=123"), HeaderNames.VARY -> Set("X-Bbb"))))
+      // different header value, so fetch from fallback fn
       await(cm.get[String](cacheKey, serviceName, respB1, reqHeadersB1)) shouldBe "B Response"
 
       val reqHeadersB2 = Map("X-Aaa" -> Set("bbb"))
-      val respB2 = customFallBack(("NOR THIS", Map( HeaderNames.CACHE_CONTROL -> Set("max-age=123"), HeaderNames.VARY -> Set("X-Aaa", "X-Bbb"))))
+      val respB2 = customFallBack(("NOR THIS", Map( HeaderNames.CACHE_CONTROL -> Set("max-age=123"), HeaderNames.VARY -> Set("X-Bbb"))))
+      // Vary header changed in previous call, and neither that call or this had a X-Bbb header, so return cached value.
       await(cm.get[String](cacheKey, serviceName, respB2, reqHeadersB2)) shouldBe "B Response"
 
       val reqHeadersC = Map("X-Aaa" -> Set("aaa", "AAA"))
-      val respC = customFallBack(("A New Response", Map( HeaderNames.CACHE_CONTROL -> Set("max-age=123"), HeaderNames.VARY -> Set("X-Aaa", "X-Bbb"))))
-      await(cm.get[String](cacheKey, serviceName, respC, reqHeadersC)) shouldBe "A New Response"
+      val respC = customFallBack(("THIS NEITHER", Map( HeaderNames.CACHE_CONTROL -> Set("max-age=123"), HeaderNames.VARY -> Set("X-Bbb"))))
+      // As above.
+      await(cm.get[String](cacheKey, serviceName, respC, reqHeadersC)) shouldBe "B Response"
+
+      val reqHeadersD = Map("X-Bbb" -> Set("otherval"))
+      val respD = customFallBack(("A New Response", Map( HeaderNames.CACHE_CONTROL -> Set("max-age=123"), HeaderNames.VARY -> Set("X-Bbb"))))
+      // This has the header, so is different from previous cached resp. Get new val from fallback fn
+      await(cm.get[String](cacheKey, serviceName, respD, reqHeadersD)) shouldBe "A New Response"
     }
 
     "manage a series of requests with different values for the X-Aaa header, and fetching/pulling from cache where appropriate" in new Setup {

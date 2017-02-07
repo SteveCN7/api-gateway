@@ -31,7 +31,7 @@ import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
 class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAndAfterEach {
 
-  val stubPort = sys.env.getOrElse("WIREMOCK", "22222").toInt
+  val stubPort = sys.env.getOrElse("WIREMOCK", "22224").toInt
   val stubHost = "localhost"
   val wireMockUrl = s"http://$stubHost:$stubPort"
   val wireMockServer = new WireMockServer(wireMockConfig().port(stubPort))

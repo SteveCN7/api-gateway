@@ -20,7 +20,10 @@ import javax.inject.{Singleton, Inject}
 
 import org.joda.time.LocalDateTime.now
 import org.joda.time.LocalDateTime
+import play.api.Configuration
 import reactivemongo.api.ReadPreference
+import reactivemongo.api.commands.GetLastError
+import reactivemongo.api.commands.GetLastError.WaitForAknowledgments
 import reactivemongo.api.indexes.{IndexType, Index}
 import reactivemongo.bson.BSONDocument
 import reactivemongo.play.json.collection.JSONCollection
@@ -38,11 +41,15 @@ import uk.gov.hmrc.mongo.json.ReactiveMongoFormats._
 case class RateLimitCounter(clientId: String, minutesSinceEpoch: Long, createdAt: LocalDateTime = now(), count: Int = 1)
 
 @Singleton
-class RateLimitRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) {
+class RateLimitRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi,
+                                    val configuration: Configuration) {
 
   implicit val format = Json.format[RateLimitCounter]
 
   val databaseFuture = reactiveMongoApi.database.map(_.collection[JSONCollection]("rateLimitCounter"))
+  lazy val mongoWrite = configuration.getInt("mongodb.w").getOrElse(throw new RuntimeException("mongodb.w not set"))
+  lazy val mongoJournal = configuration.getBoolean("mongodb.j").getOrElse(throw new RuntimeException("mongodb.j not set"))
+
   val indexes = Seq(
     Index(
       Seq("clientId" -> IndexType.Ascending, "minutesSinceEpoch" -> IndexType.Ascending),
@@ -69,7 +76,8 @@ class RateLimitRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) {
       rateLimitCounterDb.update(
         Json.obj("clientId" -> clientId, "minutesSinceEpoch" -> minutesSinceEpoch),
         Json.obj("$inc" -> Json.obj("count" -> 1), "$setOnInsert" -> Json.obj("createdAt" -> now())),
-        upsert = true)
+        upsert = true,
+        writeConcern = GetLastError(WaitForAknowledgments(mongoWrite), mongoJournal, fsync = false))
     }
 
     for {

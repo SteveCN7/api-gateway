@@ -37,6 +37,12 @@ class CacheControlSpec extends UnitSpec {
 
       CacheControl.fromHeaders(Map(HeaderNames.CACHE_CONTROL -> Set("no-store", "no-cache")))
         .shouldBe(model.CacheControl(true, None, Set.empty[String]))
+
+      CacheControl.fromHeaders(Map(HeaderNames.CACHE_CONTROL -> Set("no-store, no-cache")))
+        .shouldBe(model.CacheControl(true, None, Set.empty[String]))
+
+      CacheControl.fromHeaders(Map(HeaderNames.CACHE_CONTROL -> Set("no-cache,no-store")))
+        .shouldBe(model.CacheControl(true, None, Set.empty[String]))
     }
 
     "have maxAge set to the appropriate value when a cache header with max-age is provided" in {
@@ -50,6 +56,14 @@ class CacheControlSpec extends UnitSpec {
     "set both no-cache and max-age values when appropriate headers are provided" in {
       CacheControl.fromHeaders(Map(
         HeaderNames.CACHE_CONTROL -> Set("no-transform", "max-age=0", "no-cache"),
+        HeaderNames.CONTENT_LENGTH -> Set("700")
+      ))
+        .shouldBe(model.CacheControl(true, Some(0), Set.empty[String]))
+    }
+
+    "set both no-cache and max-age values when appropriate headers are provided - checking that header values are split properly" in {
+      CacheControl.fromHeaders(Map(
+        HeaderNames.CACHE_CONTROL -> Set("no-transform,max-age=0, no-cache"),
         HeaderNames.CONTENT_LENGTH -> Set("700")
       ))
         .shouldBe(model.CacheControl(true, Some(0), Set.empty[String]))

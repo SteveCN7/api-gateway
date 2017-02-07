@@ -21,7 +21,8 @@ import play.mvc.Http.HeaderNames
 case class CacheControl(noCache: Boolean, maxAgeSeconds: Option[Int], vary: Set[String])
 
 object CacheControl {
-  def fromHeaders(headers: Map[String, Set[String]]) = {
+  def fromHeaders(originalHeaders: Map[String, Set[String]]) = {
+    val headers = originalHeaders.mapValues(_.flatMap(_.split(",\\s*")).toSet)
     val defaults = (false, None, Set.empty[String])
     val params = headers.foldLeft[(Boolean, Option[Int], Set[String])] (defaults){
         case (a, (HeaderNames.CACHE_CONTROL, vals)) =>

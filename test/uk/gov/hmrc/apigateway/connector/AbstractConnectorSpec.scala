@@ -62,7 +62,7 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
         "B" -> "yyy,qqq",
         "A" -> "xxx, zzz"
       ))
-      res shouldBe(Map("A" -> Set("aaa", "xxx", "zzz"), "B" -> Set("bbb", "yyy", "qqq")))
+      res shouldBe(Map("A" -> Set("aaa", "xxx, zzz"), "B" -> Set("bbb", "yyy,qqq")))
     }
   }
 
@@ -110,7 +110,7 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
       result._1 shouldBe Foo("bar")
     }
 
-    "split out comma delimited headers from the response when provided" in new Setup {
+    "handle comma delimited headers from the response when provided" in new Setup {
       implicit val apiDefinitionFormat = Json.format[Foo]
 
       stubFor(get(urlPathEqualTo("/foo/bar")).withHeader("foo", equalTo("bar"))
@@ -131,15 +131,12 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
       private val cacheControl = result._2.getOrElse(HeaderNames.CACHE_CONTROL, Set.empty)
       private val vary = result._2.getOrElse(HeaderNames.VARY, Nil)
 
-      cacheControl.size shouldBe 3
-      cacheControl should contain("no-cache")
-      cacheControl should contain("max-age=0")
-      cacheControl should contain("no-store")
+      cacheControl.size shouldBe 1
+      cacheControl should contain("no-cache,max-age=0,no-store")
 
       vary should contain("X-Blah")
       vary should contain("X-Bling")
-      vary should contain("X-Blit")
-      vary should contain("X-Blat")
+      vary should contain("X-Blit, X-Blat")
     }
   }
 

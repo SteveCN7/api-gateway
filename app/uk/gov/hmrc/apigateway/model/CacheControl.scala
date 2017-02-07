@@ -31,7 +31,7 @@ object CacheControl {
           (vals.contains("no-cache"), findMaxAge(vals), a._3)
         case (a, (HeaderNames.VARY, Seq(header))) =>
           (a._1, a._2, Some(header))
-        case (a, (HeaderNames.VARY, seq)) if seq.isEmpty =>
+        case (a, (HeaderNames.VARY, Nil)) =>
           (a._1, a._2, None)
         case (a, (HeaderNames.VARY, headers)) =>
           throw CacheControlException(s"Multiple Vary headers are not supported for caching. (Headers: ${headers.mkString(", ")})")

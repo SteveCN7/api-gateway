@@ -25,7 +25,7 @@ class CacheControlSpec extends UnitSpec {
   "CacheControl that has had no Vary headers cached" should {
     "have default parameters when there are no headers" in {
       val out = CacheControl.fromHeaders(Map.empty)
-      out shouldBe model.CacheControl(false, None, None)
+      out shouldBe model.CacheControl(true, None, None)
     }
 
     "have noCache set to true when a no-cache header is provided" in {
@@ -71,23 +71,19 @@ class CacheControlSpec extends UnitSpec {
 
     "set the Vary property when a Vary header is provided" in {
       CacheControl.fromHeaders(Map(HeaderNames.VARY -> Set("X-Blah")))
-        .shouldBe(model.CacheControl(false, None, Some("X-Blah")))
+        .shouldBe(model.CacheControl(true, None, Some("X-Blah")))
     }
 
-    "When multiple Vary headers are provided, throw an exception" in {
-      assertThrows[CacheControlException] {
-        CacheControl.fromHeaders(Map(HeaderNames.VARY -> Set("X-Blah", "X-Blob")))
-      }
+    "When multiple Vary headers are provided, log a warning and return no-cache" in {
+        CacheControl.fromHeaders(Map(HeaderNames.VARY -> Set("X-Blah", "X-Blob"))) shouldBe model.CacheControl(true, None, None)
     }
 
     "set the all the properties when multiple headers are provided - 1" in {
-      assertThrows[CacheControlException] {
         CacheControl.fromHeaders(Map(
           HeaderNames.CACHE_CONTROL -> Set("no-transform", "max-age=0", "no-cache"),
           HeaderNames.CONTENT_LENGTH -> Set("700"),
           HeaderNames.VARY -> Set("X-Blah", "X-Blob")
-        ))
-      }
+        )) shouldBe CacheControl(true, None, None)
     }
   }
 }

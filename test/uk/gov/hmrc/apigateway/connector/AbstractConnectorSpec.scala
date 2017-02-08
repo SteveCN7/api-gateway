@@ -51,12 +51,12 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
 
   "asMapOfSeq" should {
     "convert a simple seq into a map"  in new Setup(){
-      val res = underTest.asMapOfSeq(Seq("A" -> "aaa", "B" -> "bbb"))
+      val res = underTest.asMapOfSets(Seq("A" -> "aaa", "B" -> "bbb"))
       res shouldBe(Map("A" -> Set("aaa"), "B" -> Set("bbb")))
     }
 
     "convert a complex seq into a map"  in new Setup(){
-      val res = underTest.asMapOfSeq(Seq(
+      val res = underTest.asMapOfSets(Seq(
         "A" -> "aaa",
         "B" -> "bbb",
         "B" -> "yyy,qqq",

@@ -12,3 +12,14 @@ This is a placeholder README.md for a new repository
 
 This code is open source software licensed under the [Apache 2.0 License]("http://www.apache.org/licenses/LICENSE-2.0.html").
     
+# Testing API Gateway
+
+There are a number of inter-operating components that are required to be running in order to test the platform locally. Most of these can be started with the Service Manager.
+
+sm --start 
+
+In addition, the following need starting from the commandline:
+
+## third-party-application
+
+``sbt run -Dhttp.port=9607 -DDev.skipWso2=true

@@ -37,7 +37,7 @@ abstract class AbstractConnector(wsClient: WSClient) {
     wsClient.url(url).withHeaders(reqHeaders: _*).get() map {
       case wsResponse if wsResponse.status >= OK && wsResponse.status < 300 =>
         Logger.debug(s"GET $url ${wsResponse.status}")
-        (wsResponse.json.as[T], asMapOfSets(wsResponse.allHeaders))
+        (wsResponse.json.as[T], wsResponse.allHeaders.mapValues(_.toSet))
 
       case wsResponse if wsResponse.status == NOT_FOUND =>
         Logger.debug(s"GET $url ${wsResponse.status}")
@@ -49,14 +49,8 @@ abstract class AbstractConnector(wsClient: WSClient) {
     }
   }
 
-  def asMapOfSeq(seqOfPairs: Seq[(String, String)]) =
-    asMapOfSets(
-      seqOfPairs.foldLeft(Map.empty[String, Seq[String]]) {
-        case (out, (k, v)) =>
-          out + (k -> out.getOrElse(k, Nil).:+(v))
-      }
-    )
-
-  private def asMapOfSets(headers:  Map[String, Seq[String]]): Map[String, Set[String]] =
-    headers.mapValues(strings => strings.toSet)
+  def asMapOfSets(seqOfPairs: Seq[(String, String)]): Map[String, Set[String]] =
+    seqOfPairs
+      .groupBy(_._1)
+      .mapValues(_.map(_._2).toSet)
 }

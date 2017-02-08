@@ -16,28 +16,30 @@
 
 package uk.gov.hmrc.apigateway.model
 
+import play.api.Logger
 import play.mvc.Http.HeaderNames
+
+import scala.util.Try
 
 case class CacheControlException(message: String, cause: Throwable = null) extends Exception(message, cause)
 
 case class CacheControl(noCache: Boolean, maxAgeSeconds: Option[Int], vary: Option[String])
 
 object CacheControl {
-  def fromHeaders(originalHeaders: Map[String, Set[String]]) = {
-    val headers = originalHeaders.mapValues(_.flatMap(_.split(",\\s*")).toSeq)
-    val defaults = (false, None, None)
-    val params: (Boolean, Option[Int], Option[String]) = headers.foldLeft[(Boolean, Option[Int], Option[String])] (defaults){
+  def fromHeaders(originalHeaders: Map[String, Set[String]], context: String = "") = {
+      val headers = originalHeaders.mapValues(_.flatMap(_.split(",\\s*")).toSeq)
+      headers.foldLeft[CacheControl](CacheControl(true, None, None)) {
         case (a, (HeaderNames.CACHE_CONTROL, vals)) =>
-          (vals.contains("no-cache"), findMaxAge(vals), a._3)
+          a.copy(noCache = a.noCache && vals.contains("no-cache"), maxAgeSeconds = findMaxAge(vals))
         case (a, (HeaderNames.VARY, Seq(header))) =>
-          (a._1, a._2, Some(header))
-        case (a, (HeaderNames.VARY, Nil)) =>
-          (a._1, a._2, None)
+          a.copy(vary = Some(header))
+        case (a, (HeaderNames.VARY, Seq())) =>
+          a.copy(vary = None)
         case (a, (HeaderNames.VARY, headers)) =>
-          throw CacheControlException(s"Multiple Vary headers are not supported for caching. (Headers: ${headers.mkString(", ")})")
+          Logger.warn(s"($context) Multiple Vary headers are not supported for caching. (Headers: ${headers.mkString(", ")})")
+          CacheControl(true, None, None)
         case (a, _) => a
       }
-    CacheControl(params._1, params._2, params._3)
   }
 
   private def findMaxAge(vals: Seq[String]): Option[Int] = {

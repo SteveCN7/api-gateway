@@ -20,7 +20,7 @@ import javax.inject.{Inject, Singleton}
 
 import play.api.Logger
 import play.api.cache.CacheApi
-import uk.gov.hmrc.apigateway.model.{CacheControl, PrimaryCacheKey, VaryCacheKey}
+import uk.gov.hmrc.apigateway.model.{CacheControl, CacheControlException, PrimaryCacheKey, VaryCacheKey}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -58,19 +58,13 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics, varyHeaderC
                                              fallbackFunction: => Future[EntityWithResponseHeaders[T]]
                                            ): Future[T] = {
     fallbackFunction map { case (result, respHeaders) => {
-      val out = Try(CacheControl.fromHeaders(respHeaders)) match {
-        case Success(cachecontrol: CacheControl) =>  cachecontrol
-        case Failure(ex) => {
-          Logger.warn(s"${ex.getMessage} for service ${serviceName}. Response will not be cached.")
-          CacheControl(true, None, None)
-      }}
-      out match {
-        case CacheControl(false, Some(max), None) =>
-          cache.set(key, result, max seconds)
-        case CacheControl(false, Some(max), Some(varyHeader)) =>
-          cache.set(VaryCacheKey(key), varyHeader, max seconds)
-          cache.set(PrimaryCacheKey(key, Some(varyHeader), reqHeaders), result, max seconds)
-        case _ => // Anything else we do not cache.
+      CacheControl.fromHeaders(respHeaders, serviceName) match {
+          case CacheControl(false, Some(max), None) =>
+            cache.set(key, result, max seconds)
+          case CacheControl(false, Some(max), Some(varyHeader)) =>
+            cache.set(VaryCacheKey(key), varyHeader, max seconds)
+            cache.set(PrimaryCacheKey(key, Some(varyHeader), reqHeaders), result, max seconds)
+          case _ => // Anything else we do not cache.
       }
       result
     }}

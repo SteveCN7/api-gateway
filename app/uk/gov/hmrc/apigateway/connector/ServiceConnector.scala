@@ -36,5 +36,5 @@ abstract class ServiceConnector(wsClient: WSClient, cache: CacheManager, val ser
     get(key, urlPath, Seq.empty)
 
   def get[T: ClassTag](key: String, urlPath: String, headers: Seq[(String, String)])(implicit format: Format[T]): Future[T] =
-    cache.get[T](key, serviceName, super.get(s"$serviceBaseUrl/$urlPath", headers), asMapOfSeq(headers))
+    cache.get[T](key, serviceName, super.get(s"$serviceBaseUrl/$urlPath", headers), asMapOfSets(headers))
 }

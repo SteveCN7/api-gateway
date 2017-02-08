@@ -23,21 +23,16 @@ import scala.util.Try
 
 case class CacheControlException(message: String, cause: Throwable = null) extends Exception(message, cause)
 
-case class CacheControl(noCache: Boolean, maxAgeSeconds: Option[Int], vary: Option[String])
+case class CacheControl(noCache: Boolean, maxAgeSeconds: Option[Int], vary: Set[String])
 
 object CacheControl {
   def fromHeaders(originalHeaders: Map[String, Set[String]], context: String = "") = {
       val headers = originalHeaders.mapValues(_.flatMap(_.split(",\\s*")).toSeq)
-      headers.foldLeft[CacheControl](CacheControl(true, None, None)) {
+      headers.foldLeft[CacheControl](CacheControl(false, None, Set.empty)) {
         case (a, (HeaderNames.CACHE_CONTROL, vals)) =>
-          a.copy(noCache = a.noCache && vals.contains("no-cache"), maxAgeSeconds = findMaxAge(vals))
-        case (a, (HeaderNames.VARY, Seq(header))) =>
-          a.copy(vary = Some(header))
-        case (a, (HeaderNames.VARY, Seq())) =>
-          a.copy(vary = None)
+          a.copy(noCache = vals.contains("no-cache"), maxAgeSeconds = findMaxAge(vals))
         case (a, (HeaderNames.VARY, headers)) =>
-          Logger.warn(s"($context) Multiple Vary headers are not supported for caching. (Headers: ${headers.mkString(", ")})")
-          CacheControl(true, None, None)
+          a.copy(vary = headers.toSet)
         case (a, _) => a
       }
   }

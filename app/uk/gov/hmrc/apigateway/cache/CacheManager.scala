@@ -59,11 +59,13 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics, varyHeaderC
                                            ): Future[T] = {
     fallbackFunction map { case (result, respHeaders) => {
       CacheControl.fromHeaders(respHeaders, serviceName) match {
-          case CacheControl(false, Some(max), None) =>
+          case CacheControl(false, Some(max), varyHeaders) if varyHeaders.isEmpty =>
             cache.set(key, result, max seconds)
-          case CacheControl(false, Some(max), Some(varyHeader)) =>
-            cache.set(VaryCacheKey(key), varyHeader, max seconds)
-            cache.set(PrimaryCacheKey(key, Some(varyHeader), reqHeaders), result, max seconds)
+          case CacheControl(false, Some(max), varyHeaders) if varyHeaders.size == 1 =>
+            cache.set(VaryCacheKey(key), varyHeaders.head, max seconds)
+            cache.set(PrimaryCacheKey(key, varyHeaders.headOption, reqHeaders), result, max seconds)
+          case CacheControl(_, _, varyHeaders) if varyHeaders.size > 1 =>
+              Logger.warn(s"($serviceName) Multiple Vary headers are not supported for caching. (Headers: ${varyHeaders.mkString(", ")})")
           case _ => // Anything else we do not cache.
       }
       result

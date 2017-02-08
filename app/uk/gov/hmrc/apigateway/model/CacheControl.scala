@@ -27,14 +27,23 @@ case class CacheControl(noCache: Boolean, maxAgeSeconds: Option[Int], vary: Set[
 
 object CacheControl {
   def fromHeaders(originalHeaders: Map[String, Set[String]], context: String = "") = {
-      val headers = originalHeaders.mapValues(_.flatMap(_.split(",\\s*")).toSeq)
-      headers.foldLeft[CacheControl](CacheControl(false, None, Set.empty)) {
-        case (a, (HeaderNames.CACHE_CONTROL, vals)) =>
-          a.copy(noCache = vals.contains("no-cache"), maxAgeSeconds = findMaxAge(vals))
-        case (a, (HeaderNames.VARY, headers)) =>
-          a.copy(vary = headers.toSet)
-        case (a, _) => a
-      }
+    val headers = originalHeaders.mapValues(_.flatMap(_.split(",\\s*")).toSeq)
+    val cacheControlHeader = headers.get(HeaderNames.CACHE_CONTROL)
+    val varyHeader = headers.get(HeaderNames.VARY)
+
+    CacheControl(
+      noCache = cacheControlHeader.exists(_.contains("no-cache")),
+      maxAgeSeconds = cacheControlHeader.flatMap(findMaxAge),
+      vary = varyHeader.map(_.toSet).getOrElse(Set.empty)
+    )
+
+    headers.foldLeft[CacheControl](CacheControl(false, None, Set.empty)) {
+      case (a, (HeaderNames.CACHE_CONTROL, vals)) =>
+        a.copy(noCache = vals.contains("no-cache"), maxAgeSeconds = findMaxAge(vals))
+      case (a, (HeaderNames.VARY, headers)) =>
+        a.copy(vary = headers.toSet)
+      case (a, _) => a
+    }
   }
 
   private def findMaxAge(vals: Seq[String]): Option[Int] = {

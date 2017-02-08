@@ -29,7 +29,7 @@ class CacheKeysSpec extends UnitSpec {
       PrimaryCacheKey("/bob/blah", None, Map("X-Bbb" -> Set("bbb"), "X-Aaa" -> Set("aaa"))) shouldBe "/bob/blah"
     }
 
-    "return the original key suffixed :: if there are no headers matching the vary headers" in {
+    "return the original key suffixed ::X-Aaa if there are no headers matching the vary headers" in {
       PrimaryCacheKey("/bob/blah", Some("X-Aaa"), Map("X-Bbb" -> Set("bbb"))) shouldBe "/bob/blah::X-Aaa="
     }
   }

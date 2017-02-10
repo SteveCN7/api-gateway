@@ -109,7 +109,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
     "decline a request not matching scopes" in new Setup {
       mockAuthority(authorityService, validAuthority())
       mockApplicationByClientId(applicationService, clientId, application)
-      mockValidateSubscriptionAndRateLimit(applicationService, application, successful())
+      mockValidateSubscriptionAndRateLimit(applicationService, application, successful(()))
       mockScopeValidation(scopeValidator, InvalidScope())
       intercept[InvalidScope] {
         await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
@@ -131,7 +131,7 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
       mockAuthority(authorityService, validAuthority())
       mockScopeValidation(scopeValidator)
       mockApplicationByClientId(applicationService, clientId, application)
-      mockValidateSubscriptionAndRateLimit(applicationService, application, successful())
+      mockValidateSubscriptionAndRateLimit(applicationService, application, successful(()))
 
       val result: Future[RequestHeader] = await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
 

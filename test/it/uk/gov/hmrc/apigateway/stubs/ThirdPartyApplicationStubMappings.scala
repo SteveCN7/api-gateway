@@ -75,7 +75,7 @@ trait ThirdPartyApplicationStubMappings {
 
 
   protected def findTheSubscriptionFor(applicationId: String, api: ApiIdentifier): MappingBuilder = {
-    get(urlEqualTo(s"/application/$applicationId/subscription/${api.context}/${api.version}"))
+    get(urlPathEqualTo(s"/application/$applicationId/subscription/${api.context}/${api.version}"))
       .willReturn(
         aResponse()
           .withStatus(OK)
@@ -85,14 +85,14 @@ trait ThirdPartyApplicationStubMappings {
 
 
   protected def willNotFindTheSubscriptionFor(applicationId: String, api: ApiIdentifier): MappingBuilder = {
-    get(urlEqualTo(s"/application/$applicationId/subscription/${api.context}/${api.version}"))
+    get(urlPathEqualTo(s"/application/$applicationId/subscription/${api.context}/${api.version}"))
       .willReturn(
         aResponse().withStatus(NOT_FOUND)
       )
   }
 
   protected def failWhenFetchingTheSubscription(applicationId: String, api: ApiIdentifier): MappingBuilder = {
-    get(urlEqualTo(s"/application/$applicationId/subscription/${api.context}/${api.version}"))
+    get(urlPathEqualTo(s"/application/$applicationId/subscription/${api.context}/${api.version}"))
       .willReturn(
         aResponse().withStatus(INTERNAL_SERVER_ERROR)
       )

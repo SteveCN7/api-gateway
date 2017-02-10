@@ -195,7 +195,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       assertBodyIs(httpResponse, """ {"code":"SERVER_ERROR","message":"Internal server error"} """)
     }
 
-    scenario("A user restricted request with invalid subscriptions is not proxied") {
+    scenario("A user restricted request with an application not subscribed to the API is not proxied") {
 
       Given("A request to an endpoint requiring 'scope1'")
       val httpRequest = Http(s"$serviceUrl/api-simulator/userScope1")
@@ -208,7 +208,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       And("An application exists for the delegated authority")
       thirdPartyApplication.willReturnTheApplicationForClientId(clientId, application)
 
-      And("The application subscriptions are invalid")
+      And("The application is not subscribed")
       thirdPartyApplication.willNotFindASubscriptionFor(applicationId.toString, apiIdentifier)
 
       When("The request is sent to the gateway")
@@ -411,7 +411,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       assertBodyIs(httpResponse, """ {"code":"SERVER_ERROR","message":"Internal server error"} """)
     }
 
-    scenario("An application restricted request with invalid API subscriptions is not proxied") {
+    scenario("An application restricted request with an application not subscribed to the API is not proxied") {
 
       Given("A request with valid headers")
       val httpRequest = Http(s"$serviceUrl/api-simulator/application")
@@ -421,7 +421,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       And("The server token matches an application")
       thirdPartyApplication.willReturnTheApplicationForServerToken(serverToken = accessToken, application)
 
-      And("The application subscriptions are invalid")
+      And("The application is not subscribed")
       thirdPartyApplication.willNotFindASubscriptionFor(applicationId.toString, apiIdentifier)
 
       When("The request is sent to the gateway")

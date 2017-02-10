@@ -17,7 +17,7 @@
 package it.uk.gov.hmrc.apigateway.stubs
 
 import it.uk.gov.hmrc.apigateway.{MockHost, Stub}
-import uk.gov.hmrc.apigateway.model.{Api, Application}
+import uk.gov.hmrc.apigateway.model.{ApiIdentifier, Application}
 
 object ThirdPartyApplicationStub extends Stub with ThirdPartyApplicationStubMappings {
 
@@ -43,12 +43,12 @@ object ThirdPartyApplicationStub extends Stub with ThirdPartyApplicationStubMapp
     stub.mock.register(failFindingTheApplicationForClientId(clientId))
 
 
-  def willReturnTheSubscriptionsForApplicationId(applicationId: String, subscriptions: Seq[Api]) =
-    stub.mock.register(returnTheSubscriptionsForApplicationId(applicationId, subscriptions))
+  def willFindTheSubscriptionFor(applicationId: String, api: ApiIdentifier) =
+    stub.mock.register(findTheSubscriptionFor(applicationId, api))
 
-  def willNotFindSubscriptionsForApplicationId(applicationId: String) =
-    stub.mock.register(willNotFindAnySubscriptionForApplicationId(applicationId))
+  def willNotFindASubscriptionFor(applicationId: String, api: ApiIdentifier) =
+    stub.mock.register(willNotFindTheSubscriptionFor(applicationId, api))
 
-  def willFailFindingTheSubscriptionsForApplicationId(applicationId: String) =
-    stub.mock.register(failFindingTheSubscriptionsForApplicationId(applicationId))
+  def willFailWhenFetchingTheSubscription(applicationId: String, api: ApiIdentifier) =
+    stub.mock.register(failWhenFetchingTheSubscription(applicationId, api))
 }

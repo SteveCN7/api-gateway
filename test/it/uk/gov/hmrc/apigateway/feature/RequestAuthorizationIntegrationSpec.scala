@@ -29,16 +29,6 @@ import scalaj.http.Http
 
 class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
 
-  private val wrongApis = Seq(Api(
-    context = "context",
-    versions = Seq(Subscription(Version("4.0"), subscribed = true)))
-  )
-
-  private val correctApis = Seq(Api(
-    context = "api-simulator",
-    versions = Seq(Subscription(Version("1.0"), subscribed = true)))
-  )
-
   private val anApiDefinition = ApiDefinition("api-simulator", api.url,
     Seq(
       ApiVersion("1.0", Seq(
@@ -58,6 +48,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
 
   private val applicationId = UUID.randomUUID()
   private val application = Application(applicationId, "clientId", "appName", BRONZE)
+  private val apiIdentifier = ApiIdentifier(anApiDefinition.context, anApiDefinition.versions.head.version)
 
   override def beforeEach() {
     super.beforeEach()
@@ -192,7 +183,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       thirdPartyApplication.willReturnTheApplicationForClientId(clientId, application)
 
       And("There is a failure while finding the application subscriptions")
-      thirdPartyApplication.willFailFindingTheSubscriptionsForApplicationId(applicationId.toString)
+      thirdPartyApplication.willFailWhenFetchingTheSubscription(applicationId.toString, apiIdentifier)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -218,7 +209,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       thirdPartyApplication.willReturnTheApplicationForClientId(clientId, application)
 
       And("The application subscriptions are invalid")
-      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, wrongApis)
+      thirdPartyApplication.willNotFindASubscriptionFor(applicationId.toString, apiIdentifier)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -243,7 +234,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       thirdPartyApplication.willReturnTheApplicationForClientId(clientId, application)
 
       And("The application is subscribed to the correct API")
-      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, correctApis)
+      thirdPartyApplication.willFindTheSubscriptionFor(applicationId.toString, apiIdentifier)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -269,7 +260,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       thirdPartyApplication.willReturnTheApplicationForClientId(clientId, application)
 
       And("The application is subscribed to the correct API")
-      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, correctApis)
+      thirdPartyApplication.willFindTheSubscriptionFor(applicationId.toString, apiIdentifier)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -309,7 +300,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       thirdPartyApplication.willReturnTheApplicationForServerToken(serverToken = accessToken, application)
 
       And("The application is subscribed to the correct API")
-      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, correctApis)
+      thirdPartyApplication.willFindTheSubscriptionFor(applicationId.toString, apiIdentifier)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -336,7 +327,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       thirdPartyApplication.willReturnTheApplicationForClientId(clientId, application)
 
       And("The application is subscribed to the correct API")
-      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, correctApis)
+      thirdPartyApplication.willFindTheSubscriptionFor(applicationId.toString, apiIdentifier)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -408,7 +399,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       thirdPartyApplication.willReturnTheApplicationForServerToken(serverToken = accessToken, application)
 
       And("There is an error while fetching the application subscriptions")
-      thirdPartyApplication.willFailFindingTheSubscriptionsForApplicationId(applicationId.toString)
+      thirdPartyApplication.willFailWhenFetchingTheSubscription(applicationId.toString, apiIdentifier)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -431,36 +422,7 @@ class RequestAuthorizationIntegrationSpec extends BaseFeatureSpec {
       thirdPartyApplication.willReturnTheApplicationForServerToken(serverToken = accessToken, application)
 
       And("The application subscriptions are invalid")
-      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, wrongApis)
-
-      When("The request is sent to the gateway")
-      val httpResponse = invoke(httpRequest)
-
-      Then("The http response is '403' forbidden")
-      assertCodeIs(httpResponse, FORBIDDEN)
-
-      And("The response message code is 'RESOURCE_FORBIDDEN'")
-      assertBodyIs(httpResponse, """ {"code":"RESOURCE_FORBIDDEN","message":"The application is not subscribed to the API which it is attempting to invoke"} """)
-    }
-
-    scenario("An application restricted request with no subscriptions is not proxied") {
-
-      Given("A request with valid headers")
-      val httpRequest = Http(s"$serviceUrl/api-simulator/application")
-        .header(ACCEPT, "application/vnd.hmrc.1.0+json")
-        .header(AUTHORIZATION, s"Bearer $accessToken")
-
-      And("No applications are found by server token")
-      thirdPartyApplication.willNotFindAnApplicationForServerToken(serverToken = accessToken)
-
-      And("The token matches the authority")
-      thirdPartyDelegatedAuthority.willReturnTheAuthorityForAccessToken(accessToken, authority)
-
-      And("An application exists for the delegated authority")
-      thirdPartyApplication.willReturnTheApplicationForClientId(clientId, application)
-
-      And("The application is not subscribed to any API")
-      thirdPartyApplication.willReturnTheSubscriptionsForApplicationId(applicationId.toString, Seq())
+      thirdPartyApplication.willNotFindASubscriptionFor(applicationId.toString, apiIdentifier)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)

@@ -20,7 +20,7 @@ import com.github.tomakehurst.wiremock.client.MappingBuilder
 import com.github.tomakehurst.wiremock.client.WireMock._
 import play.api.http.Status._
 import play.api.libs.json.Json._
-import uk.gov.hmrc.apigateway.model.{Api, Application}
+import uk.gov.hmrc.apigateway.model.{ApiIdentifier, Application}
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 
@@ -74,23 +74,27 @@ trait ThirdPartyApplicationStubMappings {
       )
 
 
-  protected def returnTheSubscriptionsForApplicationId(applicationId: String, subscriptions: Seq[Api]): MappingBuilder =
-    get(urlPathEqualTo(s"/application/$applicationId/subscription"))
+  protected def findTheSubscriptionFor(applicationId: String, api: ApiIdentifier): MappingBuilder = {
+    get(urlEqualTo(s"/application/$applicationId/subscription/${api.context}/${api.version}"))
       .willReturn(
         aResponse()
           .withStatus(OK)
-          .withBody(stringify(toJson(subscriptions)))
+          .withBody(stringify(toJson(api)))
       )
+  }
 
-  protected def willNotFindAnySubscriptionForApplicationId(applicationId: String): MappingBuilder =
-    get(urlPathEqualTo(s"/application/$applicationId/subscription"))
+
+  protected def willNotFindTheSubscriptionFor(applicationId: String, api: ApiIdentifier): MappingBuilder = {
+    get(urlEqualTo(s"/application/$applicationId/subscription/${api.context}/${api.version}"))
       .willReturn(
         aResponse().withStatus(NOT_FOUND)
       )
+  }
 
-  protected def failFindingTheSubscriptionsForApplicationId(applicationId: String): MappingBuilder =
-    get(urlPathEqualTo(s"/application/$applicationId/subscription"))
+  protected def failWhenFetchingTheSubscription(applicationId: String, api: ApiIdentifier): MappingBuilder = {
+    get(urlEqualTo(s"/application/$applicationId/subscription/${api.context}/${api.version}"))
       .willReturn(
         aResponse().withStatus(INTERNAL_SERVER_ERROR)
       )
+  }
 }

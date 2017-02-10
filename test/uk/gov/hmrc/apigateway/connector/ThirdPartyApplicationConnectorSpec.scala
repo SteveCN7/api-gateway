@@ -39,12 +39,7 @@ class ThirdPartyApplicationConnectorSpec extends UnitSpec with BeforeAndAfterEac
 
   val applicationId = UUID.randomUUID()
   val application = Application(applicationId, "clientId", "App Name", BRONZE)
-
-  val v1 = Version("1.0")
-  val v2 = Version("2.0")
-  val subscriptions = Seq(
-    Api(context = "c1", versions = Seq(Subscription(v1, subscribed = true), Subscription(v2, subscribed = false))),
-    Api(context = "c2", versions = Seq(Subscription(v1, subscribed = false), Subscription(v2, subscribed = true))))
+  val api = ApiIdentifier("aContext", "1.0")
 
   trait Setup {
     val underTest = fakeApplication.injector.instanceOf[ThirdPartyApplicationConnector]
@@ -94,20 +89,29 @@ class ThirdPartyApplicationConnectorSpec extends UnitSpec with BeforeAndAfterEac
     }
   }
 
-  "getSubscriptionsByApplicationId" should {
+  "validateSubscription" should {
 
-    "propagate the exception when the subscriptions cannot be fetched" in new Setup {
-      stubFor(failFindingTheSubscriptionsForApplicationId(applicationId.toString))
+    "fail with ServerError when fetching the subscription fails" in new Setup {
+      stubFor(failWhenFetchingTheSubscription(applicationId.toString, api))
       intercept[ServerError] {
-        await(underTest.getSubscriptionsByApplicationId(applicationId.toString))
+        await(underTest.validateSubscription(applicationId.toString, api))
       }
     }
 
-    "return the subscriptions when the application id is valid" in new Setup {
-      stubFor(returnTheSubscriptionsForApplicationId(applicationId.toString, subscriptions))
-      await(underTest.getSubscriptionsByApplicationId(applicationId.toString)) shouldBe subscriptions
+    "fail with InvalidSubscription when the subscription does not exist" in new Setup {
+      stubFor(willNotFindTheSubscriptionFor(applicationId.toString, api))
+      intercept[InvalidSubscription] {
+        await(underTest.validateSubscription(applicationId.toString, api))
+      }
     }
 
+    "be successful when the subscription exists" in new Setup {
+      stubFor(findTheSubscriptionFor(applicationId.toString, api))
+
+      val result = await(underTest.validateSubscription(applicationId.toString, api))
+
+      result shouldBe ()
+    }
   }
 
 }

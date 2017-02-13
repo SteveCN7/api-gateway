@@ -110,7 +110,7 @@ class ThirdPartyApplicationConnectorSpec extends UnitSpec with BeforeAndAfterEac
 
       val result = await(underTest.validateSubscription(applicationId.toString, api))
 
-      result shouldBe ()
+      result shouldBe ((): Unit)
     }
   }
 

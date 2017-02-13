@@ -106,7 +106,7 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
 
     "return successfully when the application is subscribed and the rate limit is not reached" in new Setup {
       mockSubscription(applicationConnector, application.id, api)
-      given(rateLimitRepository.validateAndIncrement(application.clientId, bronzeRateLimit)).willReturn(successful())
+      given(rateLimitRepository.validateAndIncrement(application.clientId, bronzeRateLimit)).willReturn(successful(()))
 
       await(underTest.validateSubscriptionAndRateLimit(application, api))
     }
@@ -114,6 +114,6 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
   }
 
   private def mockSubscription(applicationConnector: ThirdPartyApplicationConnector, applicationId: UUID, api: ApiIdentifier) =
-    when(applicationConnector.validateSubscription(applicationId.toString, api)).thenReturn(())
+    when(applicationConnector.validateSubscription(applicationId.toString, api)).thenReturn(successful(()))
 
 }

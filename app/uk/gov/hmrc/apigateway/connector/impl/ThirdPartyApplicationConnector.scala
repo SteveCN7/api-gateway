@@ -21,11 +21,14 @@ import javax.inject.{Inject, Singleton}
 import play.api.libs.ws.WSClient
 import uk.gov.hmrc.apigateway.cache.CacheManager
 import uk.gov.hmrc.apigateway.connector.ServiceConnector
+import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound, InvalidSubscription}
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.util.HttpHeaders.X_SERVER_TOKEN
+import scala.concurrent.ExecutionContext.Implicits.global
 
 import scala.concurrent.Future
+import scala.concurrent.Future._
 
 @Singleton
 class ThirdPartyApplicationConnector @Inject() (wsClient: WSClient, cache: CacheManager)
@@ -44,9 +47,12 @@ class ThirdPartyApplicationConnector @Inject() (wsClient: WSClient, cache: Cache
       urlPath = s"application?clientId=$clientId"
     )
 
-  def getSubscriptionsByApplicationId(applicationId: String): Future[Seq[Api]] =
-    get[Seq[Api]](
-      key = s"$serviceName-$applicationId",
-      urlPath = s"application/$applicationId/subscription"
-    )
+  def validateSubscription(applicationId: String, apiIdentifier: ApiIdentifier): Future[Unit] = {
+    get[ApiIdentifier](
+      key = s"$serviceName-$applicationId-${apiIdentifier.context}-${apiIdentifier.version}",
+      urlPath = s"application/$applicationId/subscription/${apiIdentifier.context}/${apiIdentifier.version}"
+    ) map { _ => ()} recoverWith {
+      case NotFound() => failed(InvalidSubscription())
+    }
+  }
 }

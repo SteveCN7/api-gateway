@@ -21,23 +21,26 @@ import javax.inject.{Inject, Singleton}
 import play.Logger
 import play.api.http.Status._
 import play.api.libs.json.Json.toJson
-import play.api.mvc.{Action, BodyParsers, Result}
 import play.api.mvc.Results._
+import play.api.mvc._
+import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.exception.GatewayError._
+import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
-import uk.gov.hmrc.apigateway.service.ProxyService
+import uk.gov.hmrc.apigateway.service.{ProxyService, RoutingService}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 @Singleton
-class ProxyController @Inject()(proxyService: ProxyService) {
+class ProxyController @Inject()(proxyService: ProxyService, routingService: RoutingService) {
 
-  private def transformError: Result => Result =
+  private def transformError: Result => Result = {
     res => res.header.status match {
       case NOT_IMPLEMENTED => NotImplemented(toJson("API has not been implemented"))
       case BAD_GATEWAY | SERVICE_UNAVAILABLE | GATEWAY_TIMEOUT => ServiceUnavailable(toJson("Service unavailable"))
       case _ => res
     }
+  }
 
   private def recoverError: PartialFunction[Throwable, Result] = {
     case e =>
@@ -46,7 +49,9 @@ class ProxyController @Inject()(proxyService: ProxyService) {
   }
 
   def proxy = Action.async(BodyParsers.parse.anyContent) { implicit request =>
-    proxyService.proxy(request) recover recoverError map transformError
+    routingService.routeRequest(ProxyRequest(request)) flatMap { apiReq =>
+      proxyService.proxy(request, apiReq)
+    } recover GatewayError.recovery recover recoverError map transformError
   }
 
 }

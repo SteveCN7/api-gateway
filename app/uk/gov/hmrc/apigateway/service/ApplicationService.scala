@@ -18,9 +18,10 @@ package uk.gov.hmrc.apigateway.service
 
 import javax.inject.{Inject, Singleton}
 
-import play.api.Configuration
+import play.api.{Configuration, Logger}
 import uk.gov.hmrc.apigateway.connector.impl.ThirdPartyApplicationConnector
-import uk.gov.hmrc.apigateway.model.RateLimitTier.{SILVER, GOLD}
+import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound, ServerError}
+import uk.gov.hmrc.apigateway.model.RateLimitTier.{GOLD, SILVER}
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.repository.RateLimitRepository
 
@@ -37,7 +38,11 @@ class ApplicationService @Inject()(applicationConnector: ThirdPartyApplicationCo
   }
 
   def getByClientId(clientId: String): Future[Application] = {
-    applicationConnector.getApplicationByClientId(clientId)
+    applicationConnector.getApplicationByClientId(clientId) recover {
+      case e: NotFound =>
+        Logger.error(s"No application found for the client id: $clientId")
+        throw ServerError()
+    }
   }
 
   def validateSubscriptionAndRateLimit(application: Application, requestedApi: ApiIdentifier): Future[Unit] = {

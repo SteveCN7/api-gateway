@@ -17,8 +17,8 @@
 package uk.gov.hmrc.apigateway.repository
 
 import org.joda.time.DateTime.now
-import org.joda.time.DateTimeUtils.setCurrentMillisFixed
 import org.joda.time.DateTimeUtils
+import org.joda.time.DateTimeUtils.setCurrentMillisFixed
 import org.scalatest.BeforeAndAfterEach
 import org.scalatestplus.play.guice.GuiceFakeApplicationFactory
 import play.api.inject.guice.GuiceApplicationBuilder
@@ -26,6 +26,7 @@ import play.modules.reactivemongo.ReactiveMongoApi
 import uk.gov.hmrc.apigateway.exception.GatewayError.ThrottledOut
 import uk.gov.hmrc.mongo.MongoSpecSupport
 import uk.gov.hmrc.play.test.UnitSpec
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class RateLimitRepositorySpec extends UnitSpec with GuiceFakeApplicationFactory with MongoSpecSupport with BeforeAndAfterEach {

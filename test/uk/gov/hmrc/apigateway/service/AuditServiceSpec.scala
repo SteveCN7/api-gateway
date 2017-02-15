@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.apigateway.service
 
+import java.util.concurrent.TimeUnit
+
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import controllers.Default
@@ -32,7 +34,7 @@ import play.api.libs.json.Json
 import play.api.mvc.{AnyContentAsJson, AnyContentAsText}
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.connector.impl.MicroserviceAuditConnector
-import uk.gov.hmrc.apigateway.util.RequestTags._
+import uk.gov.hmrc.apigateway.model.{ApiIdentifier, ApiRequest, AuthType}
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
 import uk.gov.hmrc.play.audit.model.{DataCall, MergedDataEvent}
 import uk.gov.hmrc.play.http.HeaderCarrier
@@ -69,21 +71,19 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
 
       val request = FakeRequest("POST", "/api-gateway/hello/user")
         .withBody(AnyContentAsJson(Json.parse("""{"body":"test"}""")))
-        .copyFakeRequest(
-          tags = Map(
-            AUTH_TYPE -> "USER",
-            API_CONTEXT -> "hello",
-            API_VERSION -> "1.0",
-            OAUTH_AUTHORIZATION-> "Bearer accessToken",
-            REQUEST_TIMESTAMP_MILLIS -> requestTimestamp.getMillis.toString,
-            CLIENT_ID -> "applicationClientId",
-            USER_OID -> "userOid"
-          ),
-          remoteAddress = "10.10.10.10"
-        )
+        .copyFakeRequest(remoteAddress = "10.10.10.10")
         .withHeaders("X-Request-ID" -> "requestId")
 
-      val result = await(underTest.auditSuccessfulRequest(request, Default.Ok("responseBody")))
+      val apiRequest = ApiRequest(
+        timeInNanos = Some(TimeUnit.MILLISECONDS.toNanos(requestTimestamp.getMillis)),
+        apiIdentifier = ApiIdentifier("hello", "1.0"),
+        authType = AuthType.USER,
+        apiEndpoint = "/hello/user",
+        userOid = Some("userOid"),
+        clientId  = Some("applicationClientId"),
+        bearerToken = Some("Bearer accessToken"))
+
+      val result = await(underTest.auditSuccessfulRequest(request, apiRequest, Default.Ok("responseBody")))
 
       verify(auditConnector).sendMergedEvent(captor.capture())(any(), any())
       val auditedEvent = captor.getValue.asInstanceOf[MergedDataEvent]
@@ -131,7 +131,13 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
       val request = FakeRequest("POST", "/hello/user")
         .withBody(AnyContentAsText("requestBody"))
 
-      val result = await(auditService.auditSuccessfulRequest(request, Default.Ok("responseBody")))
+      val apiRequest = ApiRequest(
+        timeInNanos = None,
+        apiIdentifier = ApiIdentifier("hello", "1.0"),
+        authType = AuthType.USER,
+        apiEndpoint = "/hello/user")
+
+      val result = await(auditService.auditSuccessfulRequest(request, apiRequest, Default.Ok("responseBody")))
 
       verify(auditConnector).sendMergedEvent(captor.capture())(any(), any())
       val auditedEvent = captor.getValue.asInstanceOf[MergedDataEvent]

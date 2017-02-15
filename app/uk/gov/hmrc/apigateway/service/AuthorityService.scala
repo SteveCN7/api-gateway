@@ -20,12 +20,11 @@ import javax.inject.{Inject, Singleton}
 
 import org.joda.time.DateTime.now
 import uk.gov.hmrc.apigateway.connector.impl.DelegatedAuthorityConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError.{InvalidCredentials, MissingCredentials}
+import uk.gov.hmrc.apigateway.exception.GatewayError.InvalidCredentials
 import uk.gov.hmrc.apigateway.model.{Authority, ProxyRequest}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.Future.failed
 
 @Singleton
 class AuthorityService @Inject()(delegatedAuthorityConnector: DelegatedAuthorityConnector) {
@@ -34,14 +33,15 @@ class AuthorityService @Inject()(delegatedAuthorityConnector: DelegatedAuthority
     getDelegatedAuthority(proxyRequest) map { authority =>
       if (hasExpired(authority))
         throw InvalidCredentials()
+
       authority
     }
 
-  private def getDelegatedAuthority(proxyRequest: ProxyRequest): Future[Authority] =
-    proxyRequest.accessToken match {
-      case Some(accessToken) => delegatedAuthorityConnector.getByAccessToken(accessToken)
-      case _ => failed(MissingCredentials())
+  private def getDelegatedAuthority(proxyRequest: ProxyRequest): Future[Authority] = {
+    proxyRequest.accessToken.flatMap {
+      accessToken => delegatedAuthorityConnector.getByAccessToken(accessToken)
     }
+  }
 
   private def hasExpired(authority: Authority) =
     authority.delegatedAuthority.token.expiresAt.isBefore(now)

@@ -77,8 +77,15 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
     }
 
     "propagate the error when the application cannot be fetched for the given client id" in new Setup {
+      when(applicationConnector.getApplicationByClientId(clientId)).thenReturn(failed(new RuntimeException))
+      intercept[RuntimeException] {
+        await(underTest.getByClientId(clientId))
+      }
+    }
+
+    "throw a 'ServerError' when the application is not found" in new Setup {
       when(applicationConnector.getApplicationByClientId(clientId)).thenReturn(failed(NotFound()))
-      intercept[NotFound] {
+      intercept[ServerError] {
         await(underTest.getByClientId(clientId))
       }
     }

@@ -39,17 +39,22 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
   "Endpoint service" should {
 
     val proxyRequest = ProxyRequest("GET", "/api-context/api-endpoint", headers = Map(ACCEPT -> "application/vnd.hmrc.1.0+json"))
-    val apiDefinitionMatch = ApiDefinitionMatch("api-context", "http://host.example", "1.0", NONE, None)
 
     "invoke api definition connector with correct service name" in {
       mockApiServiceConnectorToReturnSuccess
-      await(endpointService.findApiDefinition(proxyRequest))
+
+      await(endpointService.apiRequest(proxyRequest))
       verify(apiDefinitionConnector).getByContext("api-context")
     }
 
     "return api definition when proxy request matches api definition endpoint" in {
       mockApiServiceConnectorToReturnSuccess
-      await(endpointService.findApiDefinition(proxyRequest)) shouldBe apiDefinitionMatch
+
+      val beforeTime = System.nanoTime()
+      val actualApiRequest = await(endpointService.apiRequest(proxyRequest))
+      val afterTime = System.nanoTime()
+
+      assertApiRequest(apiRequest, actualApiRequest, beforeTime, afterTime)
     }
 
     "fail with NotFound when no version matches the Accept headers in the API Definition" in {
@@ -57,7 +62,9 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
 
       mockApiServiceConnectorToReturnSuccess
 
-      intercept[NotFound]{await(endpointService.findApiDefinition(request))}
+      intercept[NotFound]{
+        await(endpointService.apiRequest(request))
+      }
     }
 
     "fail with MatchingResourceNotFound when no endpoint matches in the API Definition" in {
@@ -65,18 +72,21 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
 
       mockApiServiceConnectorToReturnSuccess
 
-      intercept[MatchingResourceNotFound]{await(endpointService.findApiDefinition(request))}
+      intercept[MatchingResourceNotFound]{
+        await(endpointService.apiRequest(request))
+      }
     }
 
     "fail with MatchingResourceNotFound when a required request parameter is not in the URL" in {
-      val request = proxyRequest.copy(path = "/api-context/api-endpoint")
 
       val anApiDefinition = ApiDefinition("api-context", "http://host.example", Seq(ApiVersion("1.0",
         Seq(ApiEndpoint("/api-endpoint", "GET", NONE, queryParameters = Some(Seq(Parameter("requiredParam", required = true))))))))
 
       mockApiServiceConnectorToReturn("api-context", successful(anApiDefinition))
 
-      intercept[MatchingResourceNotFound]{await(endpointService.findApiDefinition(request))}
+      intercept[MatchingResourceNotFound]{
+        await(endpointService.apiRequest(proxyRequest))
+      }
     }
 
     "succeed when all required request parameter are in the URL" in {
@@ -87,17 +97,44 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
 
       mockApiServiceConnectorToReturn("api-context", successful(anApiDefinition))
 
-      await(endpointService.findApiDefinition(request)) shouldBe apiDefinitionMatch
+      val beforeTime = System.nanoTime()
+      val actualApiRequest = await(endpointService.apiRequest(request))
+      val afterTime = System.nanoTime()
+
+      assertApiRequest(apiRequest, actualApiRequest, beforeTime, afterTime)
     }
 
     "throw an exception when proxy request does not match api definition endpoint" in {
+
       mockApiServiceConnectorToReturnFailure
+
       intercept[RuntimeException] {
-        await(endpointService.findApiDefinition(proxyRequest))
+        await(endpointService.apiRequest(proxyRequest))
       }
     }
 
   }
+
+  private def assertApiRequest(expectedApiRequest: ApiRequest, actualApiRequest: ApiRequest,
+                               actualNanoTimeBeforeExec: Long, actualNanoTimeAfterExec: Long) = {
+
+    if (actualApiRequest.timeInNanos != expectedApiRequest.timeInNanos) {
+      actualApiRequest.timeInNanos.get should (be > actualNanoTimeBeforeExec and be < actualNanoTimeAfterExec)
+    }
+    actualApiRequest.apiIdentifier shouldBe expectedApiRequest.apiIdentifier
+    actualApiRequest.authType shouldBe expectedApiRequest.authType
+    actualApiRequest.apiEndpoint shouldBe expectedApiRequest.apiEndpoint
+    actualApiRequest.scope shouldBe expectedApiRequest.scope
+    actualApiRequest.userOid shouldBe expectedApiRequest.userOid
+    actualApiRequest.clientId shouldBe expectedApiRequest.clientId
+    actualApiRequest.bearerToken shouldBe expectedApiRequest.bearerToken
+  }
+
+  private val apiRequest = ApiRequest(
+    timeInNanos = Some(System.nanoTime()),
+    apiIdentifier = ApiIdentifier("api-context", "1.0"),
+    apiEndpoint = "http://host.example//api-context/api-endpoint"
+  )
 
   private def mockApiServiceConnectorToReturnSuccess =
     mockApiServiceConnectorToReturn("api-context", successful(apiDefinition))

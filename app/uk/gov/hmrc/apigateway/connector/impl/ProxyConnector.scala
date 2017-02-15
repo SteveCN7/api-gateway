@@ -23,9 +23,9 @@ import play.api.http.HttpEntity
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.connector.AbstractConnector
+import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.apigateway.util.PlayRequestUtils.bodyOf
-import uk.gov.hmrc.apigateway.util.RequestTags.{AUTH_AUTHORIZATION, CLIENT_ID, OAUTH_AUTHORIZATION, REQUEST_TIMESTAMP_NANO}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -33,22 +33,25 @@ import scala.concurrent.Future
 @Singleton
 class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsClient: WSClient) {
 
-  def proxy(request: Request[AnyContent], destinationUrl: String): Future[Result] = {
+  def proxy(request: Request[AnyContent], apiRequest: ApiRequest): Future[Result] = {
+
     val headers = replaceHeaders(request.headers)(
       (HOST, None),
-      (AUTHORIZATION, request.tags.get(AUTH_AUTHORIZATION)),
-      (X_CLIENT_AUTHORIZATION_TOKEN,  request.tags.get(OAUTH_AUTHORIZATION).map(_.stripPrefix("Bearer "))),
-      (X_CLIENT_ID, request.tags.get(CLIENT_ID)),
-      (X_REQUEST_TIMESTAMP, request.tags.get(REQUEST_TIMESTAMP_NANO))
-    )
+      (AUTHORIZATION, apiRequest.bearerToken),
+      (X_CLIENT_AUTHORIZATION_TOKEN, apiRequest.bearerToken.map(_.stripPrefix("Bearer "))),
+      (X_CLIENT_ID, apiRequest.clientId),
+      (X_REQUEST_TIMESTAMP, apiRequest.timeInNanos.map(_.toString)))
 
-    wsClient.url(destinationUrl)
+    wsClient.url(apiRequest.apiEndpoint)
       .withMethod(request.method)
       .withHeaders(headers.toSimpleMap.toSeq: _*)
       .withBody(bodyOf(request).getOrElse(""))
       .execute.map { wsResponse =>
+
       val result = toResult(wsResponse)
+
       Logger.info(s"request [$request] response [$wsResponse] result [$result]")
+
       result
     }
   }

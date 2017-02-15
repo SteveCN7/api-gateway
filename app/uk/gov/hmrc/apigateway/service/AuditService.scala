@@ -17,6 +17,7 @@
 package uk.gov.hmrc.apigateway.service
 
 import java.util
+import java.util.concurrent.TimeUnit
 import javax.inject.{Inject, Singleton}
 
 import akka.stream.Materializer
@@ -25,8 +26,9 @@ import org.joda.time.DateTime
 import play.api.Configuration
 import play.api.mvc.{AnyContent, Request, Result}
 import uk.gov.hmrc.apigateway.connector.impl.MicroserviceAuditConnector
+import uk.gov.hmrc.apigateway.model.ApiRequest
+import uk.gov.hmrc.apigateway.model.AuthType._
 import uk.gov.hmrc.apigateway.util.PlayRequestUtils.bodyOf
-import uk.gov.hmrc.apigateway.util.RequestTags._
 import uk.gov.hmrc.play.audit.model.{DataCall, MergedDataEvent}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -37,13 +39,16 @@ class AuditService @Inject()(val configuration: Configuration, val auditConnecto
 
   val auditBodySizeLimit: Int = configuration.getInt("auditBodySizeLimit").getOrElse(99000)
 
-  def auditSuccessfulRequest(request: Request[AnyContent], response: Result, responseTimestamp: DateTime = DateTime.now()) = {
-    val authorisationType = {
-      request.tags.get(AUTH_TYPE) match {
-        case Some("USER") => "user-restricted"
-        case Some("APPLICATION") => "application-restricted"
-        case _ => "open"
-      }
+  def auditSuccessfulRequest(request: Request[AnyContent], apiRequest: ApiRequest, response: Result, responseTimestamp: DateTime = DateTime.now()) = {
+    val authorisationType = apiRequest.authType match {
+      case USER => "user-restricted"
+      case APPLICATION => "application-restricted"
+      case _ => "open"
+    }
+
+    def getRequestTimeInMillis = apiRequest.timeInNanos match {
+      case Some(nanos) => TimeUnit.NANOSECONDS.toMillis(nanos)
+      case _ => DateTime.now().getMillis
     }
 
     def successfulRequestEvent(responseBody: String) = {
@@ -60,13 +65,13 @@ class AuditService @Inject()(val configuration: Configuration, val auditConnecto
           detail = Map(
             "method" -> request.method,
             "authorisationType" -> authorisationType,
-            "requestBody" -> truncate(bodyOf(request).getOrElse("-"))) ++
-            addTag("Authorization", OAUTH_AUTHORIZATION)(request) ++
-            addTag("userOID", USER_OID)(request) ++
-            addTag("apiContext", API_CONTEXT)(request) ++
-            addTag("apiVersion", API_VERSION)(request) ++
-            addTag("applicationProductionClientId", CLIENT_ID)(request),
-          generatedAt = new DateTime(request.tags.getOrElse(REQUEST_TIMESTAMP_MILLIS, DateTime.now().getMillis.toString).toLong)),
+            "requestBody" -> truncate(bodyOf(request).getOrElse("-")),
+            "apiContext" -> apiRequest.apiIdentifier.context,
+            "apiVersion" -> apiRequest.apiIdentifier.version) ++
+            addTag("Authorization", apiRequest.bearerToken) ++
+            addTag("userOID", apiRequest.userOid) ++
+            addTag("applicationProductionClientId", apiRequest.clientId),
+          generatedAt = new DateTime(getRequestTimeInMillis)),
         response = DataCall(
           tags = Map(),
           detail = Map(
@@ -85,8 +90,8 @@ class AuditService @Inject()(val configuration: Configuration, val auditConnecto
     result.body.consumeData map (_.decodeString(Charsets.UTF_8))
   }
 
-  private def addTag(keyName: String, tagName: String)(request: Request[AnyContent]): Option[(String, String)] = {
-    request.tags.get(tagName) map ( keyName -> _)
+  private def addTag(keyName: String, value: Option[String]): Option[(String, String)] = {
+    value map ( keyName -> _ )
   }
 
   private def truncate(data: String): String = {
@@ -96,4 +101,3 @@ class AuditService @Inject()(val configuration: Configuration, val auditConnecto
       data
   }
 }
-

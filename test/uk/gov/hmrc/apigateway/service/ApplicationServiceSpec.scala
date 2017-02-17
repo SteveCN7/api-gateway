@@ -46,7 +46,7 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
     val applicationConnector = mock[ThirdPartyApplicationConnector]
     val rateLimitRepository = mock[RateLimitRepository]
     val configuration = mock[Configuration]
-    val underTest = new ApplicationService(applicationConnector, rateLimitRepository, configuration)
+    val applicationService = new ApplicationService(applicationConnector, rateLimitRepository, configuration)
 
     given(configuration.getInt("rateLimit.bronze")).willReturn(Some(bronzeRateLimit))
     given(configuration.getInt("rateLimit.silver")).willReturn(Some(silverRateLimit))
@@ -56,14 +56,14 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
 
     "return the application when an application exists for the given server token" in new Setup {
       when(applicationConnector.getApplicationByServerToken(serverToken)).thenReturn(successful(application))
-      val result = await(underTest.getByServerToken(serverToken))
+      val result = await(applicationService.getByServerToken(serverToken))
       result shouldBe application
     }
 
     "propagate the error when the application cannot be fetched for the given server token" in new Setup {
       when(applicationConnector.getApplicationByServerToken(serverToken)).thenReturn(failed(NotFound()))
       intercept[NotFound] {
-        await(underTest.getByServerToken(serverToken))
+        await(applicationService.getByServerToken(serverToken))
       }
     }
   }
@@ -72,14 +72,21 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
 
     "return the application when an application exists for the given client id" in new Setup {
       when(applicationConnector.getApplicationByClientId(clientId)).thenReturn(successful(application))
-      val result = await(underTest.getByClientId(clientId))
+      val result = await(applicationService.getByClientId(clientId))
       result shouldBe application
     }
 
     "propagate the error when the application cannot be fetched for the given client id" in new Setup {
+      when(applicationConnector.getApplicationByClientId(clientId)).thenReturn(failed(new RuntimeException))
+      intercept[RuntimeException] {
+        await(applicationService.getByClientId(clientId))
+      }
+    }
+
+    "throw a 'ServerError' when the application is not found" in new Setup {
       when(applicationConnector.getApplicationByClientId(clientId)).thenReturn(failed(NotFound()))
-      intercept[NotFound] {
-        await(underTest.getByClientId(clientId))
+      intercept[ServerError] {
+        await(applicationService.getByClientId(clientId))
       }
     }
   }
@@ -89,7 +96,7 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
     "propagate the InvalidSubscription when the application is not subscribed" in new Setup {
       when(applicationConnector.validateSubscription(applicationId.toString, api)).thenReturn(failed(InvalidSubscription()))
       intercept[InvalidSubscription] {
-        await(underTest.validateSubscriptionAndRateLimit(application, api))
+        await(applicationService.validateSubscriptionAndRateLimit(application, api))
       }
     }
 
@@ -100,7 +107,7 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
       given(rateLimitRepository.validateAndIncrement(silverApplication.clientId, silverRateLimit)).willReturn(failed(ThrottledOut()))
 
       intercept[ThrottledOut] {
-        await(underTest.validateSubscriptionAndRateLimit(silverApplication, api))
+        await(applicationService.validateSubscriptionAndRateLimit(silverApplication, api))
       }
     }
 
@@ -108,7 +115,7 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
       mockSubscription(applicationConnector, application.id, api)
       given(rateLimitRepository.validateAndIncrement(application.clientId, bronzeRateLimit)).willReturn(successful(()))
 
-      await(underTest.validateSubscriptionAndRateLimit(application, api))
+      await(applicationService.validateSubscriptionAndRateLimit(application, api))
     }
 
   }

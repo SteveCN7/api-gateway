@@ -16,7 +16,6 @@
 
 package uk.gov.hmrc.apigateway.service
 
-import org.joda.time.DateTimeUtils._
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.{timeout, verify, verifyZeroInteractions}
 import org.scalatest.BeforeAndAfterEach
@@ -24,32 +23,24 @@ import org.scalatest.mockito.MockitoSugar
 import play.api.mvc.Results.Ok
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
-import uk.gov.hmrc.apigateway.model.AuthType.NONE
-import uk.gov.hmrc.apigateway.util.RequestTags._
+import uk.gov.hmrc.apigateway.model.AuthType._
+import uk.gov.hmrc.apigateway.model.{ApiIdentifier, ApiRequest}
 import uk.gov.hmrc.play.test.UnitSpec
 
 class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach {
 
   trait Setup {
+    val request = FakeRequest("GET", "/hello/world")
+    val apiRequest = ApiRequest(
+      timeInNanos = Some(10000),
+      apiIdentifier = mock[ApiIdentifier],
+      authType = USER,
+      apiEndpoint = "http://hello-world.service/hello/world",
+      scope = Some("scope"))
+
     val proxyConnector = mock[ProxyConnector]
     val auditService = mock[AuditService]
     val underTest = new ProxyService(proxyConnector, auditService)
-  }
-
-  val microserviceEndpoint = "http://hello-world.service/hello/world"
-  val request = FakeRequest("GET", "/hello/world").copyFakeRequest(
-    tags = Map(
-      API_ENDPOINT -> microserviceEndpoint,
-      AUTH_TYPE -> "USER"
-    )
-  )
-
-  override def beforeEach() = {
-    setCurrentMillisFixed(10000)
-  }
-
-  override def afterEach() = {
-    setCurrentMillisSystem()
   }
 
   "proxy" should {
@@ -57,9 +48,9 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
     "call and return the response from the microservice" in new Setup {
       val response = Ok("hello")
 
-      given(proxyConnector.proxy(request, microserviceEndpoint)).willReturn(response)
+      given(proxyConnector.proxy(request, apiRequest)).willReturn(response)
 
-      val result = await(underTest.proxy(request))
+      val result = await(underTest.proxy(request, apiRequest))
 
       result shouldBe response
     }
@@ -68,19 +59,19 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
 
       val response = Ok("hello")
 
-      given(proxyConnector.proxy(request, microserviceEndpoint)).willReturn(response)
+      given(proxyConnector.proxy(request, apiRequest)).willReturn(response)
 
-      await(underTest.proxy(request))
+      await(underTest.proxy(request, apiRequest))
 
-      verify(auditService, timeout(2000)).auditSuccessfulRequest(request, response)
+      verify(auditService, timeout(2000)).auditSuccessfulRequest(request, apiRequest, response)
     }
 
     "not audit the request for open endpoint" in new Setup {
-      val openRequest = request.copyFakeRequest(tags = request.tags + (AUTH_TYPE -> NONE.toString))
+      val openApiRequest = apiRequest.copy(authType = NONE)
 
-      given(proxyConnector.proxy(openRequest, microserviceEndpoint)).willReturn(Ok("hello"))
+      given(proxyConnector.proxy(request, openApiRequest)).willReturn(Ok("hello"))
 
-      await(underTest.proxy(openRequest))
+      await(underTest.proxy(request, openApiRequest))
 
       verifyZeroInteractions(auditService)
     }

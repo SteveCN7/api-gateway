@@ -27,7 +27,6 @@ class ScopeValidatorSpec extends UnitSpec with MockitoSugar {
   trait Setup {
     val delegatedAuthority = mock[ThirdPartyDelegatedAuthority]
     val token = mock[Token]
-    val apiDefinitionMatch = mock[ApiDefinitionMatch]
     val scopeValidator = new ScopeValidator
 
     when(delegatedAuthority.token).thenReturn(token)

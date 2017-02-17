@@ -14,76 +14,69 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.play.filter
+package uk.gov.hmrc.apigateway.service
 
-import akka.stream.Materializer
 import org.scalatest.mockito.MockitoSugar
-import play.api.mvc.{Headers, RequestHeader}
+import play.api.mvc.Headers
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.exception.GatewayError._
-import uk.gov.hmrc.apigateway.model.AuthType.USER
-import uk.gov.hmrc.apigateway.model._
-import uk.gov.hmrc.apigateway.service.{ApplicationService, AuthorityService, ScopeValidator}
+import uk.gov.hmrc.apigateway.model.AuthType._
+import uk.gov.hmrc.apigateway.model.{ApiIdentifier, ApiRequest, ProxyRequest}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
-import uk.gov.hmrc.apigateway.util.RequestTags._
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future._
-import scala.concurrent.{ExecutionContext, Future}
 
-class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with EndpointFilterMocking {
+class UserRestrictedEndpointServiceSpec extends UnitSpec with MockitoSugar with RoutingServicesMocks {
 
-  implicit val executionContextExecutor = ExecutionContext.Implicits.global
-  implicit val materializer = mock[Materializer]
-
-  val fakeRequest = FakeRequest("GET", "http://host.example/foo")
-    .withTag(AUTH_TYPE, USER.toString)
-    .withTag(API_SCOPE, "scopeMoo")
-    .withTag(API_CONTEXT, "context")
-    .withTag(API_VERSION, "version")
+  private val fakeRequest = FakeRequest("GET", "http://host.example/foo")
     .copy(headers = Headers("Authorization" -> "Bearer accessToken"))
 
-  trait Setup {
+  private val apiRequest = ApiRequest(
+    timeInNanos = Some(10000),
+    apiIdentifier = ApiIdentifier("context", "version"),
+    authType = USER,
+    apiEndpoint = "http://host.example/foo/context",
+    scope = Some("scopeMoo"))
+
+  private trait Setup {
     val authorityService = mock[AuthorityService]
     val applicationService = mock[ApplicationService]
     val scopeValidator = mock[ScopeValidator]
-    val underTest = new UserRestrictedEndpointFilter(authorityService, applicationService, scopeValidator)
+
+    val userRestrictedEndpointService = new UserRestrictedEndpointService(authorityService, applicationService, scopeValidator)
 
     val clientId = "clientId"
     val application = anApplication()
   }
 
-  "User restricted endpoint filter" should {
+  "routeRequest" should {
 
     "fail without a valid access token" in new Setup {
       mockAuthority(authorityService, MissingCredentials())
+
       intercept[MissingCredentials] {
-        await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
+        await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
       }
-    }
-
-    "not add additional tags in the request header if the auth-type is not `USER` " in new Setup {
-      val nonUserRequest = fakeRequest.withTag(AUTH_TYPE, generateRandomAuthType(USER))
-
-      val result = await(underTest.filter(nonUserRequest, ProxyRequest(nonUserRequest)))
-      result.tags shouldBe nonUserRequest.tags
     }
 
     "decline a request not matching a delegated authority" in new Setup {
       mockAuthority(authorityService, InvalidCredentials())
+
       intercept[InvalidCredentials] {
-        await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
+        await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
       }
     }
 
     "decline a request with a valid server token" in new Setup {
-      val serverToken = "serverToken"
+      val serverToken = "accessToken"
       val request = fakeRequest.copy(headers = Headers(AUTHORIZATION -> serverToken))
 
       mockAuthority(authorityService, NotFound())
       mockApplicationByServerToken(applicationService, serverToken, application)
+
       intercept[IncorrectAccessTokenType] {
-        await(underTest.filter(request, ProxyRequest(request)))
+        await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
       }
     }
 
@@ -91,8 +84,9 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
       mockAuthority(authorityService, validAuthority())
       mockScopeValidation(scopeValidator)
       mockApplicationByClientId(applicationService, clientId, ServerError())
+
       intercept[ServerError] {
-        await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
+        await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
       }
     }
 
@@ -101,8 +95,9 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
       mockScopeValidation(scopeValidator)
       mockApplicationByClientId(applicationService, clientId, application)
       mockValidateSubscriptionAndRateLimit(applicationService, application, failed(InvalidSubscription()))
+
       intercept[InvalidSubscription] {
-        await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
+        await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
       }
     }
 
@@ -111,8 +106,9 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
       mockApplicationByClientId(applicationService, clientId, application)
       mockValidateSubscriptionAndRateLimit(applicationService, application, successful(()))
       mockScopeValidation(scopeValidator, InvalidScope())
+
       intercept[InvalidScope] {
-        await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
+        await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
       }
     }
 
@@ -123,20 +119,24 @@ class UserRestrictedEndpointFilterSpec extends UnitSpec with MockitoSugar with E
       mockValidateSubscriptionAndRateLimit(applicationService, application, failed(ThrottledOut()))
 
       intercept[ThrottledOut] {
-        await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
+        await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
       }
     }
 
-    "process a request which meets all requirements" in new Setup {
+    "route a request which meets all requirements" in new Setup {
       mockAuthority(authorityService, validAuthority())
       mockScopeValidation(scopeValidator)
       mockApplicationByClientId(applicationService, clientId, application)
       mockValidateSubscriptionAndRateLimit(applicationService, application, successful(()))
 
-      val result: Future[RequestHeader] = await(underTest.filter(fakeRequest, ProxyRequest(fakeRequest)))
+      val expectedResult = apiRequest.copy(
+        userOid = Some("userOID"),
+        clientId = Some("clientId"),
+        bearerToken = Some("Bearer authBearerToken")
+      )
+      val result = await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
 
-      result.tags(AUTH_AUTHORIZATION) shouldBe "Bearer authBearerToken"
-      result.tags(CLIENT_ID) shouldBe clientId
+      result shouldBe expectedResult
     }
 
   }

@@ -19,15 +19,16 @@ package uk.gov.hmrc.apigateway.controller
 import akka.stream.Materializer
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
-import play.api.mvc.Results._
-import uk.gov.hmrc.apigateway.service.ProxyService
 import org.scalatest.mockito.MockitoSugar
-import play.api.test.FakeRequest
-import uk.gov.hmrc.play.test.UnitSpec
 import play.api.http.Status._
 import play.api.libs.json.Json._
+import play.api.mvc.Results._
+import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.exception.GatewayError.ServerError
+import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
+import uk.gov.hmrc.apigateway.service.{ProxyService, RoutingService}
+import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future.{failed, successful}
 
@@ -38,13 +39,16 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar {
   private trait Setup {
     val request = FakeRequest("POST", "/hello/world")
     val mockProxyService = mock[ProxyService]
-    val underTest = new ProxyController(mockProxyService)
+    val mockAuthenticationService = mock[RoutingService]
+    val underTest = new ProxyController(mockProxyService, mockAuthenticationService)
+
+    when(mockAuthenticationService.routeRequest(any())).thenReturn(mock[ApiRequest])
   }
 
   "proxy" should {
 
     "propagate the response" in new Setup {
-      when(mockProxyService.proxy(any())).thenReturn(successful(NotFound(toJson("Item Not Found"))))
+      when(mockProxyService.proxy(any(), any())).thenReturn(successful(NotFound(toJson("Item Not Found"))))
 
       val result = await(underTest.proxy(request))
 
@@ -53,7 +57,7 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar {
     }
 
     "convert exceptions to `InternalServerError` " in new Setup {
-      when(mockProxyService.proxy(any())).thenReturn(failed(new RuntimeException))
+      when(mockProxyService.proxy(any(), any())).thenReturn(failed(new RuntimeException))
 
       val result = await(underTest.proxy(request))
 
@@ -63,7 +67,7 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar {
 
     "convert [502|503|504] responses" in new Setup {
       for (s <- List(BadGateway, ServiceUnavailable, GatewayTimeout)) {
-        when(mockProxyService.proxy(any())).thenReturn(successful(s))
+        when(mockProxyService.proxy(any(), any())).thenReturn(successful(s))
 
         val result = await(underTest.proxy(request))
 
@@ -73,7 +77,7 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar {
     }
 
     "convert 501 responses" in new Setup {
-      when(mockProxyService.proxy(any())).thenReturn(successful(NotImplemented))
+      when(mockProxyService.proxy(any(), any())).thenReturn(successful(NotImplemented))
 
       val result = await(underTest.proxy(request))
 

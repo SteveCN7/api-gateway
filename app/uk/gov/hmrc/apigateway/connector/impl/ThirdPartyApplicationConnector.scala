@@ -25,8 +25,8 @@ import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound, InvalidSubscript
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.util.HttpHeaders.X_SERVER_TOKEN
-import scala.concurrent.ExecutionContext.Implicits.global
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.Future._
 

@@ -35,10 +35,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class ProxyController @Inject()(proxyService: ProxyService, routingService: RoutingService) {
 
   private def transformError: Result => Result = {
-    res => res.header.status match {
+    result => result.header.status match {
       case NOT_IMPLEMENTED => NotImplemented(toJson("API has not been implemented"))
       case BAD_GATEWAY | SERVICE_UNAVAILABLE | GATEWAY_TIMEOUT => ServiceUnavailable(toJson("Service unavailable"))
-      case _ => res
+      case _ => result
     }
   }
 
@@ -49,8 +49,8 @@ class ProxyController @Inject()(proxyService: ProxyService, routingService: Rout
   }
 
   def proxy = Action.async(BodyParsers.parse.anyContent) { implicit request =>
-    routingService.routeRequest(ProxyRequest(request)) flatMap { apiReq =>
-      proxyService.proxy(request, apiReq)
+    routingService.routeRequest(ProxyRequest(request)) flatMap { apiRequest =>
+      proxyService.proxy(request, apiRequest)
     } recover GatewayError.recovery recover recoverError map transformError
   }
 

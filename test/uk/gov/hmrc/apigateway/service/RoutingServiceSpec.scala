@@ -55,7 +55,7 @@ class RoutingServiceSpec extends UnitSpec with MockitoSugar {
     val userRestrictedEndpointService = mock[UserRestrictedEndpointService]
     val applicationRestrictedEndpointService = mock[ApplicationRestrictedEndpointService]
 
-    val underTest = new RoutingService(endpointService, userRestrictedEndpointService, applicationRestrictedEndpointService)
+    val routingService = new RoutingService(endpointService, userRestrictedEndpointService, applicationRestrictedEndpointService)
   }
 
   "routeRequest" should {
@@ -64,14 +64,14 @@ class RoutingServiceSpec extends UnitSpec with MockitoSugar {
       when(endpointService.apiRequest(any[ProxyRequest])).thenReturn(failed(MatchingResourceNotFound()))
 
       intercept[MatchingResourceNotFound] {
-        await(underTest.routeRequest(ProxyRequest(openRequest)))
+        await(routingService.routeRequest(ProxyRequest(openRequest)))
       }
     }
 
     "route an open-endpoint request" in new Setup {
       when(endpointService.apiRequest(any[ProxyRequest])).thenReturn(successful(openApiRequest))
 
-      val apiRequest = await(underTest.routeRequest(ProxyRequest(openRequest)))
+      val apiRequest = await(routingService.routeRequest(ProxyRequest(openRequest)))
 
       apiRequest shouldBe openApiRequest
     }
@@ -82,7 +82,7 @@ class RoutingServiceSpec extends UnitSpec with MockitoSugar {
         .thenReturn(failed(ServerError()))
 
       intercept[ServerError] {
-        await(underTest.routeRequest(ProxyRequest(userRequest)))
+        await(routingService.routeRequest(ProxyRequest(userRequest)))
       }
     }
 
@@ -91,7 +91,7 @@ class RoutingServiceSpec extends UnitSpec with MockitoSugar {
       when(userRestrictedEndpointService.routeRequest(ProxyRequest(userRequest), userApiRequest))
         .thenReturn(successful(userApiRequest))
 
-      val apiRequest = await(underTest.routeRequest(ProxyRequest(userRequest)))
+      val apiRequest = await(routingService.routeRequest(ProxyRequest(userRequest)))
 
       apiRequest shouldBe userApiRequest
     }
@@ -102,7 +102,7 @@ class RoutingServiceSpec extends UnitSpec with MockitoSugar {
         .thenReturn(failed(ServerError()))
 
       intercept[ServerError] {
-        await(underTest.routeRequest(ProxyRequest(applicationRequest)))
+        await(routingService.routeRequest(ProxyRequest(applicationRequest)))
       }
     }
 
@@ -111,7 +111,7 @@ class RoutingServiceSpec extends UnitSpec with MockitoSugar {
       when(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequest), applicationApiRequest))
         .thenReturn(successful(applicationApiRequest))
 
-      val apiRequest = await(underTest.routeRequest(ProxyRequest(applicationRequest)))
+      val apiRequest = await(routingService.routeRequest(ProxyRequest(applicationRequest)))
 
       apiRequest shouldBe applicationApiRequest
     }

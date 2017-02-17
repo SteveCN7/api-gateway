@@ -52,7 +52,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
     when(auditConnector.sendMergedEvent(any())(any(), any())).thenReturn(AuditResult.Success)
     when(configuration.getInt("auditBodySizeLimit")).thenReturn(Some(100))
 
-    val underTest = new AuditService(configuration, auditConnector, materializer)
+    val auditService = new AuditService(configuration, auditConnector, materializer)
   }
 
   override def beforeEach() = {
@@ -83,7 +83,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
         clientId  = Some("applicationClientId"),
         bearerToken = Some("Bearer accessToken"))
 
-      val result = await(underTest.auditSuccessfulRequest(request, apiRequest, Default.Ok("responseBody")))
+      val result = await(auditService.auditSuccessfulRequest(request, apiRequest, Default.Ok("responseBody")))
 
       verify(auditConnector).sendMergedEvent(captor.capture())(any(), any())
       val auditedEvent = captor.getValue.asInstanceOf[MergedDataEvent]
@@ -126,7 +126,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
 
     "truncate the request and response to auditBodySizeLimit" in new Setup {
       when(configuration.getInt("auditBodySizeLimit")).thenReturn(Some(5))
-      val auditService = new AuditService(configuration, auditConnector, materializer)
+      val service = new AuditService(configuration, auditConnector, materializer)
 
       val request = FakeRequest("POST", "/hello/user")
         .withBody(AnyContentAsText("requestBody"))
@@ -137,7 +137,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
         authType = AuthType.USER,
         apiEndpoint = "/hello/user")
 
-      val result = await(auditService.auditSuccessfulRequest(request, apiRequest, Default.Ok("responseBody")))
+      val result = await(service.auditSuccessfulRequest(request, apiRequest, Default.Ok("responseBody")))
 
       verify(auditConnector).sendMergedEvent(captor.capture())(any(), any())
       val auditedEvent = captor.getValue.asInstanceOf[MergedDataEvent]

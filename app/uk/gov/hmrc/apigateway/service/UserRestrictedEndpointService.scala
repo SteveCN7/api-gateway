@@ -38,10 +38,7 @@ class UserRestrictedEndpointService @Inject()(authorityService: AuthorityService
       }
     }
 
-    for {
-      accessToken <- proxyRequest.accessToken
-      app <- getApplication(accessToken)
-    } yield app
+    proxyRequest.accessToken flatMap getApplication
   }
 
   private def getAuthority(proxyRequest: ProxyRequest, authType: AuthType) = {

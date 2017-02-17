@@ -31,10 +31,10 @@ class RoutingService @Inject()(endpointService: EndpointService,
 
   def routeRequest(proxyRequest: ProxyRequest): Future[ApiRequest] = {
     val apiRequestF = endpointService.apiRequest(proxyRequest)
-    apiRequestF flatMap { apiReq =>
-      apiReq.authType match {
-        case USER => userRestrictedEndpointService.routeRequest(proxyRequest, apiReq)
-        case APPLICATION => applicationRestrictedEndpointService.routeRequest(proxyRequest, apiReq)
+    apiRequestF flatMap { apiRequest =>
+      apiRequest.authType match {
+        case USER => userRestrictedEndpointService.routeRequest(proxyRequest, apiRequest)
+        case APPLICATION => applicationRestrictedEndpointService.routeRequest(proxyRequest, apiRequest)
         case _ => apiRequestF
       }
     }

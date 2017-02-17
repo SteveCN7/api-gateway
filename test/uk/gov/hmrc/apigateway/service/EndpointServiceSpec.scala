@@ -118,16 +118,8 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
   private def assertApiRequest(expectedApiRequest: ApiRequest, actualApiRequest: ApiRequest,
                                actualNanoTimeBeforeExec: Long, actualNanoTimeAfterExec: Long) = {
 
-    if (actualApiRequest.timeInNanos != expectedApiRequest.timeInNanos) {
-      actualApiRequest.timeInNanos.get should (be > actualNanoTimeBeforeExec and be < actualNanoTimeAfterExec)
-    }
-    actualApiRequest.apiIdentifier shouldBe expectedApiRequest.apiIdentifier
-    actualApiRequest.authType shouldBe expectedApiRequest.authType
-    actualApiRequest.apiEndpoint shouldBe expectedApiRequest.apiEndpoint
-    actualApiRequest.scope shouldBe expectedApiRequest.scope
-    actualApiRequest.userOid shouldBe expectedApiRequest.userOid
-    actualApiRequest.clientId shouldBe expectedApiRequest.clientId
-    actualApiRequest.bearerToken shouldBe expectedApiRequest.bearerToken
+    actualApiRequest.timeInNanos.get should (be >= actualNanoTimeBeforeExec and be <= actualNanoTimeAfterExec)
+    actualApiRequest.copy(timeInNanos = None) shouldBe expectedApiRequest.copy(timeInNanos = None)
   }
 
   private val apiRequest = ApiRequest(

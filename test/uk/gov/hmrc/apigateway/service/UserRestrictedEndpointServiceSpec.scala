@@ -44,7 +44,7 @@ class UserRestrictedEndpointServiceSpec extends UnitSpec with MockitoSugar with 
     val applicationService = mock[ApplicationService]
     val scopeValidator = mock[ScopeValidator]
 
-    val underTest = new UserRestrictedEndpointService(authorityService, applicationService, scopeValidator)
+    val userRestrictedEndpointService = new UserRestrictedEndpointService(authorityService, applicationService, scopeValidator)
 
     val clientId = "clientId"
     val application = anApplication()
@@ -56,7 +56,7 @@ class UserRestrictedEndpointServiceSpec extends UnitSpec with MockitoSugar with 
       mockAuthority(authorityService, MissingCredentials())
 
       intercept[MissingCredentials] {
-        await(underTest.routeRequest(ProxyRequest(fakeRequest), apiRequest))
+        await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
       }
     }
 
@@ -64,7 +64,7 @@ class UserRestrictedEndpointServiceSpec extends UnitSpec with MockitoSugar with 
       mockAuthority(authorityService, InvalidCredentials())
 
       intercept[InvalidCredentials] {
-        await(underTest.routeRequest(ProxyRequest(fakeRequest), apiRequest))
+        await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
       }
     }
 
@@ -76,7 +76,7 @@ class UserRestrictedEndpointServiceSpec extends UnitSpec with MockitoSugar with 
       mockApplicationByServerToken(applicationService, serverToken, application)
 
       intercept[IncorrectAccessTokenType] {
-        await(underTest.routeRequest(ProxyRequest(fakeRequest), apiRequest))
+        await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
       }
     }
 
@@ -86,7 +86,7 @@ class UserRestrictedEndpointServiceSpec extends UnitSpec with MockitoSugar with 
       mockApplicationByClientId(applicationService, clientId, ServerError())
 
       intercept[ServerError] {
-        await(underTest.routeRequest(ProxyRequest(fakeRequest), apiRequest))
+        await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
       }
     }
 
@@ -97,7 +97,7 @@ class UserRestrictedEndpointServiceSpec extends UnitSpec with MockitoSugar with 
       mockValidateSubscriptionAndRateLimit(applicationService, application, failed(InvalidSubscription()))
 
       intercept[InvalidSubscription] {
-        await(underTest.routeRequest(ProxyRequest(fakeRequest), apiRequest))
+        await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
       }
     }
 
@@ -108,7 +108,7 @@ class UserRestrictedEndpointServiceSpec extends UnitSpec with MockitoSugar with 
       mockScopeValidation(scopeValidator, InvalidScope())
 
       intercept[InvalidScope] {
-        await(underTest.routeRequest(ProxyRequest(fakeRequest), apiRequest))
+        await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
       }
     }
 
@@ -119,7 +119,7 @@ class UserRestrictedEndpointServiceSpec extends UnitSpec with MockitoSugar with 
       mockValidateSubscriptionAndRateLimit(applicationService, application, failed(ThrottledOut()))
 
       intercept[ThrottledOut] {
-        await(underTest.routeRequest(ProxyRequest(fakeRequest), apiRequest))
+        await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
       }
     }
 
@@ -134,7 +134,7 @@ class UserRestrictedEndpointServiceSpec extends UnitSpec with MockitoSugar with 
         clientId = Some("clientId"),
         bearerToken = Some("Bearer authBearerToken")
       )
-      val result = await(underTest.routeRequest(ProxyRequest(fakeRequest), apiRequest))
+      val result = await(userRestrictedEndpointService.routeRequest(ProxyRequest(fakeRequest), apiRequest))
 
       result shouldBe expectedResult
     }

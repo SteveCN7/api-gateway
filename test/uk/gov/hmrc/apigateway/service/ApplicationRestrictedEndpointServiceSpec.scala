@@ -51,14 +51,14 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
     val authorityService = mock[AuthorityService]
     val applicationService = mock[ApplicationService]
 
-    val underTest = new ApplicationRestrictedEndpointService(authorityService, applicationService)
+    val applicationRestrictedEndpointService = new ApplicationRestrictedEndpointService(authorityService, applicationService)
   }
 
   "routeRequest" should {
 
     "fail with a request not matching authority" in new Setup {
       intercept[MissingCredentials] {
-        await(underTest.routeRequest(ProxyRequest(basicRequest), apiRequest))
+        await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(basicRequest), apiRequest))
       }
     }
 
@@ -66,7 +66,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       mockApplicationByServerToken(applicationService, serverToken, ServerError())
 
       intercept[ServerError] {
-        await(underTest.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
+        await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
       }
     }
 
@@ -75,7 +75,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       mockAuthority(authorityService, NotFound())
 
       intercept[InvalidCredentials] {
-        await(underTest.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
+        await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
       }
     }
 
@@ -85,7 +85,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       mockApplicationByClientId(applicationService, clientId, ServerError())
 
       intercept[ServerError] {
-        await(underTest.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
+        await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
       }
     }
 
@@ -96,7 +96,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       mockValidateSubscriptionAndRateLimit(applicationService, application, failed(ServerError()))
 
       intercept[ServerError] {
-        await(underTest.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
+        await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
       }
     }
 
@@ -107,7 +107,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       mockValidateSubscriptionAndRateLimit(applicationService, application, failed(ThrottledOut()))
 
       intercept[ThrottledOut] {
-        await(underTest.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
+        await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
       }
     }
 
@@ -118,7 +118,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       mockValidateSubscriptionAndRateLimit(applicationService, application, successful(()))
 
       val expectedResult = apiRequest.copy(clientId = Some(clientId))
-      val result = await(underTest.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
+      val result = await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
 
       result shouldBe expectedResult
     }
@@ -128,7 +128,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       mockValidateSubscriptionAndRateLimit(applicationService, application, successful(()))
 
       val expectedResult = apiRequest.copy(clientId = Some(clientId))
-      val result = await(underTest.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
+      val result = await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
 
       result shouldBe expectedResult
     }

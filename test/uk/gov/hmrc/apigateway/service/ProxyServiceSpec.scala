@@ -32,7 +32,6 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
   trait Setup {
     val request = FakeRequest("GET", "/hello/world")
     val apiRequest = ApiRequest(
-      timeInNanos = Some(10000),
       apiIdentifier = mock[ApiIdentifier],
       authType = USER,
       apiEndpoint = "http://hello-world.service/hello/world",

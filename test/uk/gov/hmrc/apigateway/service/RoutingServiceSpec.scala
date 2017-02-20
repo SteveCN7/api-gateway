@@ -31,13 +31,11 @@ class RoutingServiceSpec extends UnitSpec with MockitoSugar {
 
   private val openRequest = FakeRequest("GET", "/hello/world")
   private val openApiRequest = ApiRequest(
-    timeInNanos = Some(10000),
     apiIdentifier = ApiIdentifier("foo1", "1.0"),
     apiEndpoint = "http://api.service1//hello/world")
 
   private val userRequest = FakeRequest("GET", "/hello/user")
   private val userApiRequest = ApiRequest(
-    timeInNanos = Some(20000),
     apiIdentifier = ApiIdentifier("foo2", "2.0"),
     authType = USER,
     apiEndpoint = "http://api.service2//hello/user",
@@ -45,7 +43,6 @@ class RoutingServiceSpec extends UnitSpec with MockitoSugar {
 
   private val applicationRequest = FakeRequest("GET", "/hello/application")
   private val applicationApiRequest = ApiRequest(
-    timeInNanos = Some(30000),
     apiIdentifier = ApiIdentifier("foo3", "3.0"),
     authType = APPLICATION,
     apiEndpoint = "http://api.service3//hello/application")

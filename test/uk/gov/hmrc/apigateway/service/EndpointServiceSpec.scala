@@ -50,11 +50,13 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
     "return api definition when proxy request matches api definition endpoint" in {
       mockApiServiceConnectorToReturnSuccess
 
-      val beforeTime = System.nanoTime()
+      val beforeTimeMillis = System.currentTimeMillis()
+      val beforeTimeNanos = System.nanoTime()
       val actualApiRequest = await(endpointService.apiRequest(proxyRequest))
-      val afterTime = System.nanoTime()
+      val afterTimeMillis = System.currentTimeMillis()
+      val afterTimeNanos = System.nanoTime()
 
-      assertApiRequest(apiRequest, actualApiRequest, beforeTime, afterTime)
+      assertApiRequest(apiRequest, actualApiRequest, beforeTimeMillis, afterTimeMillis, beforeTimeNanos, afterTimeNanos)
     }
 
     "fail with NotFound when no version matches the Accept headers in the API Definition" in {
@@ -97,11 +99,13 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
 
       mockApiServiceConnectorToReturn("api-context", successful(anApiDefinition))
 
-      val beforeTime = System.nanoTime()
+      val beforeTimeMillis = System.currentTimeMillis()
+      val beforeTimeNanos = System.nanoTime()
       val actualApiRequest = await(endpointService.apiRequest(request))
-      val afterTime = System.nanoTime()
+      val afterTimeMillis = System.currentTimeMillis()
+      val afterTimeNanos = System.nanoTime()
 
-      assertApiRequest(apiRequest, actualApiRequest, beforeTime, afterTime)
+      assertApiRequest(apiRequest, actualApiRequest, beforeTimeMillis, afterTimeMillis, beforeTimeNanos, afterTimeNanos)
     }
 
     "throw an exception when proxy request does not match api definition endpoint" in {
@@ -116,10 +120,12 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
   }
 
   private def assertApiRequest(expectedApiRequest: ApiRequest, actualApiRequest: ApiRequest,
+                               actualMillisTimeBeforeExec: Long, actualMillisTimeAfterExec: Long,
                                actualNanoTimeBeforeExec: Long, actualNanoTimeAfterExec: Long) = {
 
+    actualApiRequest.timeInMillis.get should (be >= actualMillisTimeBeforeExec and be <= actualMillisTimeAfterExec)
     actualApiRequest.timeInNanos.get should (be >= actualNanoTimeBeforeExec and be <= actualNanoTimeAfterExec)
-    actualApiRequest.copy(timeInNanos = None) shouldBe expectedApiRequest.copy(timeInNanos = None)
+    actualApiRequest.copy(timeInNanos = None, timeInMillis = None) shouldBe expectedApiRequest.copy(timeInNanos = None, timeInMillis = None)
   }
 
   private val apiRequest = ApiRequest(

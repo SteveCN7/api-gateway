@@ -36,7 +36,6 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
     val application = anApplication()
 
     val apiRequest = ApiRequest(
-      timeInNanos = Some(10000),
       apiIdentifier = ApiIdentifier("context", "version"),
       authType = APPLICATION,
       apiEndpoint = "http://host.example/foo/context")

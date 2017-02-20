@@ -47,6 +47,7 @@ object EndpointService {
   private def createAndLogApiRequest(proxyRequest: ProxyRequest, context: String, version: String, apiDefinition: ApiDefinition, apiEndpoint: ApiEndpoint) = {
     val apiReq = ApiRequest(
       timeInNanos = Some(System.nanoTime()),
+      timeInMillis = Some(System.currentTimeMillis()),
       apiIdentifier = ApiIdentifier(context, version),
       authType = apiEndpoint.authType,
       apiEndpoint = s"${apiDefinition.serviceBaseUrl}/${proxyRequest.path}",

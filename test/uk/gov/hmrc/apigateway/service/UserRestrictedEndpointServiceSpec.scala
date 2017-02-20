@@ -33,7 +33,6 @@ class UserRestrictedEndpointServiceSpec extends UnitSpec with MockitoSugar with 
     .copy(headers = Headers("Authorization" -> "Bearer accessToken"))
 
   private val apiRequest = ApiRequest(
-    timeInNanos = Some(10000),
     apiIdentifier = ApiIdentifier("context", "version"),
     authType = USER,
     apiEndpoint = "http://host.example/foo/context",

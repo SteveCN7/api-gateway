@@ -38,6 +38,7 @@ case class ApiEndpoint(uriPattern: String,
 case class Parameter(name: String, required: Boolean = false)
 
 case class ApiRequest(timeInNanos: Option[Long] = None,
+                      timeInMillis: Option[Long] = None,
                       apiIdentifier: ApiIdentifier,
                       authType: AuthType = NONE,
                       apiEndpoint: String,

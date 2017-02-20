@@ -47,8 +47,6 @@ class RateLimitRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi,
   implicit val format = Json.format[RateLimitCounter]
 
   val databaseFuture = reactiveMongoApi.database.map(_.collection[JSONCollection]("rateLimitCounter"))
-  lazy val mongoWrite = configuration.getInt("mongodb.w").getOrElse(throw new RuntimeException("mongodb.w not set"))
-  lazy val mongoJournal = configuration.getBoolean("mongodb.j").getOrElse(throw new RuntimeException("mongodb.j not set"))
 
   val indexes = Seq(
     Index(
@@ -76,8 +74,7 @@ class RateLimitRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi,
       rateLimitCounterDb.update(
         Json.obj("clientId" -> clientId, "minutesSinceEpoch" -> minutesSinceEpoch),
         Json.obj("$inc" -> Json.obj("count" -> 1), "$setOnInsert" -> Json.obj("createdAt" -> now())),
-        upsert = true,
-        writeConcern = GetLastError(WaitForAknowledgments(mongoWrite), mongoJournal, fsync = false))
+        upsert = true)
     }
 
     for {

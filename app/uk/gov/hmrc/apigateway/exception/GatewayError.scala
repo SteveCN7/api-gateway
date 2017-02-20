@@ -26,6 +26,10 @@ class GatewayError(val code: String, val message: String) extends RuntimeExcepti
 
 object GatewayError {
 
+  case class NotImplemented() extends GatewayError("NOT_IMPLEMENTED", "API has not been implemented")
+
+  case class ServiceUnavailable() extends GatewayError("SERVER_ERROR", "Service unavailable")
+
   case class ServerError() extends GatewayError("SERVER_ERROR", "Internal server error")
 
   case class NotFound() extends GatewayError("NOT_FOUND", "The requested resource could not be found.")

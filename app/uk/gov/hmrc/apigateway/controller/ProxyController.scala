@@ -24,7 +24,6 @@ import play.api.libs.json.Json.toJson
 import play.api.mvc.Results._
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.exception.GatewayError
-import uk.gov.hmrc.apigateway.exception.GatewayError._
 import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.service.{ProxyService, RoutingService}
@@ -34,11 +33,11 @@ import scala.concurrent.ExecutionContext.Implicits.global
 @Singleton
 class ProxyController @Inject()(proxyService: ProxyService, routingService: RoutingService) {
 
-  private val notImplementedError = ServiceUnavailable(toJson("API has not been implemented"))
-  private val serviceUnavailableError = ServiceUnavailable(toJson("Service unavailable"))
+  private val notImplementedError = NotImplemented(toJson(GatewayError.NotImplemented()))
+  private val serviceUnavailableError = ServiceUnavailable(toJson(GatewayError.ServiceUnavailable()))
 
   private def logResult(originalResult: Result, newResult: Result) = {
-    Logger.warn(s"Api Gateway is converting [ ${originalResult.header.status} ${originalResult.body} ] to $newResult")
+    Logger.warn(s"Api Gateway is converting a ${originalResult.header.status} response to ${newResult.header.status}")
   }
 
   private def transformError: Result => Result = {
@@ -56,7 +55,7 @@ class ProxyController @Inject()(proxyService: ProxyService, routingService: Rout
   private def recoverError: PartialFunction[Throwable, Result] = {
     case e =>
       Logger.error("unexpected error", e)
-      InternalServerError(toJson(ServerError()))
+      InternalServerError(toJson(GatewayError.ServerError()))
   }
 
   def proxy = Action.async(BodyParsers.parse.anyContent) { implicit request =>

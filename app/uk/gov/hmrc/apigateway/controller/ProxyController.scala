@@ -34,10 +34,21 @@ import scala.concurrent.ExecutionContext.Implicits.global
 @Singleton
 class ProxyController @Inject()(proxyService: ProxyService, routingService: RoutingService) {
 
+  private val notImplementedError = ServiceUnavailable(toJson("API has not been implemented"))
+  private val serviceUnavailableError = ServiceUnavailable(toJson("Service unavailable"))
+
+  private def logResult(originalResult: Result, newResult: Result) = {
+    Logger.warn(s"Api Gateway is converting [ ${originalResult.header.status} ${originalResult.body} ] to $newResult")
+  }
+
   private def transformError: Result => Result = {
     result => result.header.status match {
-      case NOT_IMPLEMENTED => NotImplemented(toJson("API has not been implemented"))
-      case BAD_GATEWAY | SERVICE_UNAVAILABLE | GATEWAY_TIMEOUT => ServiceUnavailable(toJson("Service unavailable"))
+      case NOT_IMPLEMENTED =>
+        logResult(result, notImplementedError)
+        notImplementedError
+      case BAD_GATEWAY | SERVICE_UNAVAILABLE | GATEWAY_TIMEOUT =>
+        logResult(result, serviceUnavailableError)
+        serviceUnavailableError
       case _ => result
     }
   }

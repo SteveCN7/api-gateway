@@ -33,21 +33,16 @@ import scala.concurrent.ExecutionContext.Implicits.global
 @Singleton
 class ProxyController @Inject()(proxyService: ProxyService, routingService: RoutingService) {
 
-  private val notImplementedError = NotImplemented(toJson(GatewayError.NotImplemented()))
-  private val serviceUnavailableError = ServiceUnavailable(toJson(GatewayError.ServiceUnavailable()))
-
-  private def logResult(originalResult: Result, newResult: Result) = {
-    Logger.warn(s"Api Gateway is converting a ${originalResult.header.status} response to ${newResult.header.status}")
+  private def newResult: (Result, Result) => Result = {
+    (originalResult, newResult) =>
+      Logger.warn(s"Api Gateway is converting a ${originalResult.header.status} response to ${newResult.header.status}")
+      newResult
   }
 
   private def transformError: Result => Result = {
     result => result.header.status match {
-      case NOT_IMPLEMENTED =>
-        logResult(result, notImplementedError)
-        notImplementedError
-      case BAD_GATEWAY | SERVICE_UNAVAILABLE | GATEWAY_TIMEOUT =>
-        logResult(result, serviceUnavailableError)
-        serviceUnavailableError
+      case NOT_IMPLEMENTED => newResult(result, NotImplemented(toJson(GatewayError.NotImplemented())))
+      case BAD_GATEWAY | SERVICE_UNAVAILABLE | GATEWAY_TIMEOUT => newResult(result, ServiceUnavailable(toJson(GatewayError.ServiceUnavailable())))
       case _ => result
     }
   }

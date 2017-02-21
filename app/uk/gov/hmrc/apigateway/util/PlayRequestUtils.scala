@@ -29,4 +29,9 @@ object PlayRequestUtils {
       case _ => None
     }
   }
+
+  def asMapOfSets(seqOfPairs: Seq[(String, String)]): Map[String, Set[String]] =
+    seqOfPairs
+      .groupBy(_._1)
+      .mapValues(_.map(_._2).toSet)
 }

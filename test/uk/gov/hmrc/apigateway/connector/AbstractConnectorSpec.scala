@@ -49,23 +49,6 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
     wireMockServer.stop()
   }
 
-  "asMapOfSeq" should {
-    "convert a simple seq into a map"  in new Setup(){
-      val res = underTest.asMapOfSets(Seq("A" -> "aaa", "B" -> "bbb"))
-      res shouldBe(Map("A" -> Set("aaa"), "B" -> Set("bbb")))
-    }
-
-    "convert a complex seq into a map"  in new Setup(){
-      val res = underTest.asMapOfSets(Seq(
-        "A" -> "aaa",
-        "B" -> "bbb",
-        "B" -> "yyy,qqq",
-        "A" -> "xxx, zzz"
-      ))
-      res shouldBe(Map("A" -> Set("aaa", "xxx, zzz"), "B" -> Set("bbb", "yyy,qqq")))
-    }
-  }
-
   "Abstract connector" should {
 
     "throw a not found error when the response is '404' not found" in new Setup {

@@ -49,8 +49,4 @@ abstract class AbstractConnector(wsClient: WSClient) {
     }
   }
 
-  def asMapOfSets(seqOfPairs: Seq[(String, String)]): Map[String, Set[String]] =
-    seqOfPairs
-      .groupBy(_._1)
-      .mapValues(_.map(_._2).toSet)
 }

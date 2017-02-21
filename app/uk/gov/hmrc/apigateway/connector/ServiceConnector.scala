@@ -19,6 +19,7 @@ package uk.gov.hmrc.apigateway.connector
 import play.api.libs.json.Format
 import play.api.libs.ws.WSClient
 import uk.gov.hmrc.apigateway.cache.CacheManager
+import uk.gov.hmrc.apigateway.util.PlayRequestUtils
 import uk.gov.hmrc.play.config.ServicesConfig
 
 import scala.concurrent.Future
@@ -36,5 +37,5 @@ abstract class ServiceConnector(wsClient: WSClient, cache: CacheManager, val ser
     get(key, urlPath, Seq.empty)
 
   def get[T: ClassTag](key: String, urlPath: String, headers: Seq[(String, String)])(implicit format: Format[T]): Future[T] =
-    cache.get[T](key, serviceName, super.get(s"$serviceBaseUrl/$urlPath", headers), asMapOfSets(headers))
+    cache.get[T](key, serviceName, super.get(s"$serviceBaseUrl/$urlPath", headers), PlayRequestUtils.asMapOfSets(headers))
 }

@@ -53,6 +53,11 @@ class CacheControlSpec extends UnitSpec {
         .shouldBe(model.CacheControl(false, Some(234), Set.empty))
     }
 
+    "have maxAge set to the max possible if max-age is out of integer bounds" in {
+      CacheControl.fromHeaders(Map(HeaderNames.CACHE_CONTROL -> Set("max-age=77777777777777777777777777777777777777777777777777777")))
+        .shouldBe(model.CacheControl(false, Some(Int.MaxValue), Set.empty))
+    }
+
     "set both no-cache and max-age values when appropriate headers are provided" in {
       CacheControl.fromHeaders(Map(
         HeaderNames.CACHE_CONTROL -> Set("no-transform", "max-age=0", "no-cache"),

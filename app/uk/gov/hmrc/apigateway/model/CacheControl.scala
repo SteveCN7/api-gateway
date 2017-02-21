@@ -49,7 +49,7 @@ object CacheControl {
   private def findMaxAge(vals: Seq[String]): Option[Int] = {
     val maxAgePattern = "max-age=(\\d+)".r
     vals.foldLeft[Option[Int]](None) {
-      case (None, maxAgePattern(age)) => Some(age.toInt)
+      case (None, maxAgePattern(age)) => Some(Try(age.toInt).toOption.getOrElse(Int.MaxValue))
       case (a, _) => a
     }
   }

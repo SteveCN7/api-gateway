@@ -18,16 +18,15 @@ package uk.gov.hmrc.apigateway.service
 
 import javax.inject.{Inject, Singleton}
 
-import play.api.Configuration
+import play.api.{Configuration, Logger}
 import uk.gov.hmrc.apigateway.connector.impl.ThirdPartyApplicationConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError._
-import uk.gov.hmrc.apigateway.model.RateLimitTier.{SILVER, GOLD}
+import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound, ServerError}
+import uk.gov.hmrc.apigateway.model.RateLimitTier.{GOLD, SILVER}
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.repository.RateLimitRepository
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.Future.{failed, successful}
 
 @Singleton
 class ApplicationService @Inject()(applicationConnector: ThirdPartyApplicationConnector,
@@ -39,33 +38,21 @@ class ApplicationService @Inject()(applicationConnector: ThirdPartyApplicationCo
   }
 
   def getByClientId(clientId: String): Future[Application] = {
-    applicationConnector.getApplicationByClientId(clientId)
+    applicationConnector.getApplicationByClientId(clientId) recover {
+      case e: NotFound =>
+        Logger.error(s"No application found for the client id: $clientId")
+        throw ServerError()
+    }
   }
 
   def validateSubscriptionAndRateLimit(application: Application, requestedApi: ApiIdentifier): Future[Unit] = {
-    val validateSubscription = validateApplicationIsSubscribedToApi(application.id.toString, requestedApi)
+    val validateSubscription = applicationConnector.validateSubscription(application.id.toString, requestedApi)
     val validateRateLimit = validateApplicationRateLimit(application)
 
     for {
       _ <- validateSubscription
       _ <- validateRateLimit
     } yield ()
-  }
-
-  private def validateApplicationIsSubscribedToApi(applicationId: String, requestedApi: ApiIdentifier): Future[Unit] = {
-
-    def subscribed(appSubscriptions: Seq[Api]): Boolean = {
-      appSubscriptions.exists { api: Api =>
-        api.context == requestedApi.context && api.versions.exists { sub: Subscription =>
-          sub.subscribed && sub.version.version == requestedApi.version
-        }
-      }
-    }
-
-    applicationConnector.getSubscriptionsByApplicationId(applicationId) flatMap {
-      case appSubscriptions: Seq[Api] if subscribed(appSubscriptions) => successful(())
-      case _ => failed(InvalidSubscription())
-    }
   }
 
   private def validateApplicationRateLimit(application: Application): Future[Unit] = {

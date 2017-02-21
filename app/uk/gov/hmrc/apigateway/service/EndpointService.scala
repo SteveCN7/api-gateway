@@ -20,43 +20,50 @@ import javax.inject.{Inject, Singleton}
 
 import play.api.Logger
 import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound, MatchingResourceNotFound}
+import uk.gov.hmrc.apigateway.exception.GatewayError.{MatchingResourceNotFound, NotFound}
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.service.EndpointService._
-import uk.gov.hmrc.apigateway.util.HttpHeaders._
-import uk.gov.hmrc.apigateway.util.ProxyRequestUtils.{validateContext, parseVersion}
+import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
+import uk.gov.hmrc.apigateway.util.ProxyRequestUtils.{parseVersion, validateContext}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.concurrent.Future.{failed, successful}
 
 @Singleton
 class EndpointService @Inject()(apiDefinitionConnector: ApiDefinitionConnector) {
 
-  def findApiDefinition(proxyRequest: ProxyRequest): Future[ApiDefinitionMatch] =
+  def apiRequest(proxyRequest: ProxyRequest) = {
     for {
-      requestContext <- validateContext(proxyRequest)
-      requestVersion <- parseVersion(proxyRequest)
-      apiDefinition <- apiDefinitionConnector.getByContext(requestContext)
-      apiEndpoint <- findEndpoint(proxyRequest, requestContext, requestVersion, apiDefinition)
-    } yield createAndLogApiDefinitionMatch(proxyRequest, requestContext, apiDefinition, requestVersion, apiEndpoint)
-
+      context <- validateContext(proxyRequest)
+      version <- parseVersion(proxyRequest)
+      apiDefinition <- apiDefinitionConnector.getByContext(context)
+      apiEndpoint <- findEndpoint(proxyRequest, context, version, apiDefinition)
+    } yield createAndLogApiRequest(proxyRequest, context, version, apiDefinition, apiEndpoint)
+  }
 }
 
 object EndpointService {
 
-  private def createAndLogApiDefinitionMatch(proxyRequest: ProxyRequest, requestContext: String, apiDefinition: ApiDefinition, requestVersion: String, apiEndpoint: ApiEndpoint): ApiDefinitionMatch = {
-    val apiDefinitionMatch = ApiDefinitionMatch(requestContext, apiDefinition.serviceBaseUrl, requestVersion, apiEndpoint.authType, apiEndpoint.scope)
-    Logger.debug(s"successful endpoint match for [${stringify(proxyRequest)}] to [$apiDefinitionMatch]")
-    apiDefinitionMatch
+  private def createAndLogApiRequest(proxyRequest: ProxyRequest, context: String, version: String, apiDefinition: ApiDefinition, apiEndpoint: ApiEndpoint) = {
+    val apiReq = ApiRequest(
+      timeInNanos = Some(System.nanoTime()),
+      apiIdentifier = ApiIdentifier(context, version),
+      authType = apiEndpoint.authType,
+      apiEndpoint = s"${apiDefinition.serviceBaseUrl}/${proxyRequest.path}",
+      scope = apiEndpoint.scope)
+
+    Logger.debug(s"successful api request match for [${stringify(proxyRequest)}] to [$apiReq]")
+
+    apiReq
   }
 
   private def findEndpoint(proxyRequest: ProxyRequest, requestContext: String, requestVersion: String, apiDefinition: ApiDefinition) = {
 
-    def filterEndpoint(apiEndpoint: ApiEndpoint): Boolean =
+    def filterEndpoint(apiEndpoint: ApiEndpoint): Boolean = {
       apiEndpoint.method == proxyRequest.httpMethod &&
         pathMatchesPattern(apiEndpoint.uriPattern, proxyRequest.rawPath) &&
         queryParametersMatch(proxyRequest.queryParameters, apiEndpoint.queryParameters)
+    }
 
     val apiVersion = apiDefinition.versions.find(_.version == requestVersion)
     val apiEndpoint = apiVersion.flatMap(_.endpoints.find(filterEndpoint))

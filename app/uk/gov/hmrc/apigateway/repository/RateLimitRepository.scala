@@ -16,27 +16,27 @@
 
 package uk.gov.hmrc.apigateway.repository
 
-import javax.inject.{Singleton, Inject}
+import javax.inject.{Inject, Singleton}
 
-import org.joda.time.LocalDateTime.now
 import org.joda.time.LocalDateTime
+import org.joda.time.LocalDateTime.now
 import play.api.Configuration
+import play.api.libs.json.Json
+import play.modules.reactivemongo.ReactiveMongoApi
+import play.modules.reactivemongo.json._
 import reactivemongo.api.ReadPreference
 import reactivemongo.api.commands.GetLastError
 import reactivemongo.api.commands.GetLastError.WaitForAknowledgments
-import reactivemongo.api.indexes.{IndexType, Index}
+import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.bson.BSONDocument
 import reactivemongo.play.json.collection.JSONCollection
-import play.modules.reactivemongo.ReactiveMongoApi
-import play.api.libs.json.Json
-import play.modules.reactivemongo.json._
 import uk.gov.hmrc.apigateway.exception.GatewayError.ThrottledOut
 import uk.gov.hmrc.apigateway.util.Time
-
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future.sequence
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats._
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.concurrent.Future.sequence
 
 case class RateLimitCounter(clientId: String, minutesSinceEpoch: Long, createdAt: LocalDateTime = now(), count: Int = 1)
 
@@ -47,8 +47,6 @@ class RateLimitRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi,
   implicit val format = Json.format[RateLimitCounter]
 
   val databaseFuture = reactiveMongoApi.database.map(_.collection[JSONCollection]("rateLimitCounter"))
-  lazy val mongoWrite = configuration.getInt("mongodb.w").getOrElse(throw new RuntimeException("mongodb.w not set"))
-  lazy val mongoJournal = configuration.getBoolean("mongodb.j").getOrElse(throw new RuntimeException("mongodb.j not set"))
 
   val indexes = Seq(
     Index(
@@ -76,8 +74,7 @@ class RateLimitRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi,
       rateLimitCounterDb.update(
         Json.obj("clientId" -> clientId, "minutesSinceEpoch" -> minutesSinceEpoch),
         Json.obj("$inc" -> Json.obj("count" -> 1), "$setOnInsert" -> Json.obj("createdAt" -> now())),
-        upsert = true,
-        writeConcern = GetLastError(WaitForAknowledgments(mongoWrite), mongoJournal, fsync = false))
+        upsert = true)
     }
 
     for {

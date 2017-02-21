@@ -48,11 +48,15 @@ object GatewayError {
     case e: MissingCredentials => Unauthorized(toJson(e))
     case e: InvalidCredentials => Unauthorized(toJson(e))
     case e: IncorrectAccessTokenType => Unauthorized(toJson(e))
-    case e: MatchingResourceNotFound => PlayNotFound(toJson(e))
+
     case e: InvalidScope => Forbidden(toJson(e))
     case e: InvalidSubscription => Forbidden(toJson(e))
+
+    case e: MatchingResourceNotFound => PlayNotFound(toJson(e))
     case e: NotFound => PlayNotFound(toJson(e))
+
     case e: ThrottledOut => TooManyRequests(toJson(e))
+
     case e =>
       Logger.error("unexpected error", e)
       InternalServerError(toJson(ServerError()))

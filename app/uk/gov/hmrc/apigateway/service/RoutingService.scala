@@ -18,23 +18,25 @@ package uk.gov.hmrc.apigateway.service
 
 import javax.inject.{Inject, Singleton}
 
-import play.api.mvc.{AnyContent, Request, Result}
-import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
-import uk.gov.hmrc.apigateway.model.ApiRequest
-import uk.gov.hmrc.apigateway.model.AuthType.NONE
+import uk.gov.hmrc.apigateway.model.AuthType._
+import uk.gov.hmrc.apigateway.model._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class ProxyService @Inject()(proxyConnector: ProxyConnector, auditService: AuditService) {
+class RoutingService @Inject()(endpointService: EndpointService,
+                               userRestrictedEndpointService: UserRestrictedEndpointService,
+                               applicationRestrictedEndpointService: ApplicationRestrictedEndpointService) {
 
-  def proxy(request: Request[AnyContent], apiRequest: ApiRequest): Future[Result] = {
-    proxyConnector.proxy(request, apiRequest) map { response =>
-      if (apiRequest.authType != NONE) {
-        auditService.auditSuccessfulRequest(request, apiRequest, response)
+  def routeRequest(proxyRequest: ProxyRequest): Future[ApiRequest] = {
+    val apiRequestF = endpointService.apiRequest(proxyRequest)
+    apiRequestF flatMap { apiRequest =>
+      apiRequest.authType match {
+        case USER => userRestrictedEndpointService.routeRequest(proxyRequest, apiRequest)
+        case APPLICATION => applicationRestrictedEndpointService.routeRequest(proxyRequest, apiRequest)
+        case _ => apiRequestF
       }
-      response
     }
   }
 

@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.apigateway.model
 
-import uk.gov.hmrc.apigateway.model.AuthType.AuthType
+import uk.gov.hmrc.apigateway.model.AuthType.{AuthType, NONE}
 
 object AuthType extends Enumeration {
   type AuthType = Value
@@ -37,4 +37,11 @@ case class ApiEndpoint(uriPattern: String,
 
 case class Parameter(name: String, required: Boolean = false)
 
-case class ApiDefinitionMatch(context: String, serviceBaseUrl: String, apiVersion: String, authType: AuthType, scope: Option[String])
+case class ApiRequest(timeInNanos: Option[Long] = None,
+                      apiIdentifier: ApiIdentifier,
+                      authType: AuthType = NONE,
+                      apiEndpoint: String,
+                      scope: Option[String] = None,
+                      userOid: Option[String] = None,
+                      clientId: Option[String] = None,
+                      bearerToken: Option[String] = None)

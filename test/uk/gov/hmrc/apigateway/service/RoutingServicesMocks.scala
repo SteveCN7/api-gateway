@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.play.filter
+package uk.gov.hmrc.apigateway.service
 
 import java.util.UUID
 
@@ -25,13 +25,12 @@ import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.model.AuthType.AuthType
 import uk.gov.hmrc.apigateway.model.RateLimitTier.BRONZE
 import uk.gov.hmrc.apigateway.model._
-import uk.gov.hmrc.apigateway.service.{ApplicationService, AuthorityService, ScopeValidator}
 
 import scala.concurrent.Future
 import scala.concurrent.Future._
 import scala.util.Random
 
-trait EndpointFilterMocking {
+trait RoutingServicesMocks {
 
   protected def generateRandomAuthType(valueToExclude: AuthType): String = {
     var randomAuthType: AuthType = null

@@ -18,6 +18,7 @@ package uk.gov.hmrc.apigateway.connector.impl
 
 import javax.inject.{Inject, Singleton}
 
+import play.api.Logger
 import play.api.libs.ws.WSClient
 import uk.gov.hmrc.apigateway.cache.CacheManager
 import uk.gov.hmrc.apigateway.connector.ServiceConnector

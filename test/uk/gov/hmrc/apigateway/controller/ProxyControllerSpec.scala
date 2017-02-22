@@ -24,7 +24,7 @@ import play.api.http.Status._
 import play.api.libs.json.Json._
 import play.api.mvc.Results._
 import play.api.test.FakeRequest
-import uk.gov.hmrc.apigateway.exception.GatewayError.ServerError
+import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.service.{ProxyService, RoutingService}
@@ -62,7 +62,7 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar {
       val result = await(underTest.proxy(request))
 
       status(result) shouldBe INTERNAL_SERVER_ERROR
-      jsonBodyOf(result) shouldBe toJson( ServerError())
+      jsonBodyOf(result) shouldBe toJson(GatewayError.ServerError())
     }
 
     "convert [502|503|504] responses" in new Setup {
@@ -72,7 +72,7 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar {
         val result = await(underTest.proxy(request))
 
         status(result) shouldBe SERVICE_UNAVAILABLE
-        jsonBodyOf(result) shouldBe toJson("Service unavailable")
+        jsonBodyOf(result) shouldBe toJson(GatewayError.ServiceUnavailable())
       }
     }
 
@@ -82,7 +82,7 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar {
       val result = await(underTest.proxy(request))
 
       status(result) shouldBe NOT_IMPLEMENTED
-      jsonBodyOf(result) shouldBe toJson("API has not been implemented")
+      jsonBodyOf(result) shouldBe toJson(GatewayError.NotImplemented())
     }
 
   }

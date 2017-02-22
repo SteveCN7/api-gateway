@@ -17,7 +17,6 @@
 package uk.gov.hmrc.apigateway.service
 
 import java.util
-import java.util.concurrent.TimeUnit
 import javax.inject.{Inject, Singleton}
 
 import akka.stream.Materializer
@@ -46,9 +45,9 @@ class AuditService @Inject()(val configuration: Configuration, val auditConnecto
       case _ => "open"
     }
 
-    def getRequestTimeInMillis = apiRequest.timeInNanos match {
-      case Some(nanos) => TimeUnit.NANOSECONDS.toMillis(nanos)
-      case _ => DateTime.now().getMillis
+    def getRequestTime: DateTime = apiRequest.timeInMillis match {
+      case Some(millis) => new DateTime(millis)
+      case _ => DateTime.now()
     }
 
     def successfulRequestEvent(responseBody: String) = {
@@ -71,7 +70,7 @@ class AuditService @Inject()(val configuration: Configuration, val auditConnecto
             addTag("Authorization", apiRequest.bearerToken) ++
             addTag("userOID", apiRequest.userOid) ++
             addTag("applicationProductionClientId", apiRequest.clientId),
-          generatedAt = new DateTime(getRequestTimeInMillis)),
+          generatedAt = getRequestTime),
         response = DataCall(
           tags = Map(),
           detail = Map(

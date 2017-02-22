@@ -16,8 +16,6 @@
 
 package uk.gov.hmrc.apigateway.service
 
-import java.util.concurrent.TimeUnit
-
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import controllers.Default
@@ -65,7 +63,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
 
   "auditSuccessful" should {
     val captor = ArgumentCaptor.forClass(classOf[MergedDataEvent])
-    val requestTimestamp = new DateTime("2017-01-01")
+    val requestMillis = System.currentTimeMillis()
 
     "send an audit event" in new Setup {
 
@@ -75,7 +73,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
         .withHeaders("X-Request-ID" -> "requestId")
 
       val apiRequest = ApiRequest(
-        timeInNanos = Some(TimeUnit.MILLISECONDS.toNanos(requestTimestamp.getMillis)),
+        timeInMillis = Some(requestMillis),
         apiIdentifier = ApiIdentifier("hello", "1.0"),
         authType = AuthType.USER,
         apiEndpoint = "/hello/user",
@@ -111,7 +109,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
             "applicationProductionClientId" -> "applicationClientId",
             "userOID" -> "userOid"
           ),
-          generatedAt = requestTimestamp
+          generatedAt = new DateTime(requestMillis)
         ),
         response = DataCall(
           tags = Map(),
@@ -132,7 +130,6 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
         .withBody(AnyContentAsText("requestBody"))
 
       val apiRequest = ApiRequest(
-        timeInNanos = None,
         apiIdentifier = ApiIdentifier("hello", "1.0"),
         authType = AuthType.USER,
         apiEndpoint = "/hello/user")

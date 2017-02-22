@@ -18,6 +18,7 @@ package uk.gov.hmrc.apigateway.service
 
 import javax.inject.{Inject, Singleton}
 
+import org.joda.time.DateTimeUtils
 import play.api.Logger
 import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.{MatchingResourceNotFound, NotFound}
@@ -47,7 +48,7 @@ object EndpointService {
   private def createAndLogApiRequest(proxyRequest: ProxyRequest, context: String, version: String, apiDefinition: ApiDefinition, apiEndpoint: ApiEndpoint) = {
     val apiReq = ApiRequest(
       timeInNanos = Some(System.nanoTime()),
-      timeInMillis = Some(System.currentTimeMillis()),
+      timeInMillis = Some(DateTimeUtils.currentTimeMillis()),
       apiIdentifier = ApiIdentifier(context, version),
       authType = apiEndpoint.authType,
       apiEndpoint = s"${apiDefinition.serviceBaseUrl}/${proxyRequest.path}",

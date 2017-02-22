@@ -16,7 +16,10 @@
 
 package uk.gov.hmrc.apigateway.service
 
+import org.joda.time.DateTimeUtils
+import org.joda.time.DateTimeUtils._
 import org.mockito.Mockito.{verify, when}
+import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mockito.MockitoSugar
 import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.{MatchingResourceNotFound, NotFound}
@@ -28,13 +31,22 @@ import uk.gov.hmrc.play.test.UnitSpec
 import scala.concurrent.Future
 import scala.concurrent.Future._
 
-class EndpointServiceSpec extends UnitSpec with MockitoSugar {
+class EndpointServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach {
 
   private val apiDefinitionConnector = mock[ApiDefinitionConnector]
   private val endpointService = new EndpointService(apiDefinitionConnector)
   private val apiDefinition = ApiDefinition(
     "api-context", "http://host.example", Seq(ApiVersion("1.0", Seq(ApiEndpoint("/api-endpoint", "GET", NONE))))
   )
+  private val fixedTimeInMillis = 11223344
+
+  override def beforeEach(): Unit = {
+    setCurrentMillisFixed(fixedTimeInMillis)
+  }
+
+  override def afterEach(): Unit = {
+    DateTimeUtils.setCurrentMillisSystem()
+  }
 
   "Endpoint service" should {
 
@@ -50,13 +62,11 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
     "return api definition when proxy request matches api definition endpoint" in {
       mockApiServiceConnectorToReturnSuccess
 
-      val beforeTimeMillis = System.currentTimeMillis()
       val beforeTimeNanos = System.nanoTime()
       val actualApiRequest = await(endpointService.apiRequest(proxyRequest))
-      val afterTimeMillis = System.currentTimeMillis()
       val afterTimeNanos = System.nanoTime()
 
-      assertApiRequest(apiRequest, actualApiRequest, beforeTimeMillis, afterTimeMillis, beforeTimeNanos, afterTimeNanos)
+      assertApiRequest(apiRequest, actualApiRequest, beforeTimeNanos, afterTimeNanos)
     }
 
     "fail with NotFound when no version matches the Accept headers in the API Definition" in {
@@ -99,13 +109,11 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
 
       mockApiServiceConnectorToReturn("api-context", successful(anApiDefinition))
 
-      val beforeTimeMillis = System.currentTimeMillis()
       val beforeTimeNanos = System.nanoTime()
       val actualApiRequest = await(endpointService.apiRequest(request))
-      val afterTimeMillis = System.currentTimeMillis()
       val afterTimeNanos = System.nanoTime()
 
-      assertApiRequest(apiRequest, actualApiRequest, beforeTimeMillis, afterTimeMillis, beforeTimeNanos, afterTimeNanos)
+      assertApiRequest(apiRequest, actualApiRequest, beforeTimeNanos, afterTimeNanos)
     }
 
     "throw an exception when proxy request does not match api definition endpoint" in {
@@ -120,15 +128,14 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar {
   }
 
   private def assertApiRequest(expectedApiRequest: ApiRequest, actualApiRequest: ApiRequest,
-                               actualMillisTimeBeforeExec: Long, actualMillisTimeAfterExec: Long,
                                actualNanoTimeBeforeExec: Long, actualNanoTimeAfterExec: Long) = {
 
-    actualApiRequest.timeInMillis.get should (be >= actualMillisTimeBeforeExec and be <= actualMillisTimeAfterExec)
     actualApiRequest.timeInNanos.get should (be >= actualNanoTimeBeforeExec and be <= actualNanoTimeAfterExec)
     actualApiRequest.copy(timeInNanos = None, timeInMillis = None) shouldBe expectedApiRequest.copy(timeInNanos = None, timeInMillis = None)
   }
 
   private val apiRequest = ApiRequest(
+    timeInMillis = Some(fixedTimeInMillis),
     timeInNanos = Some(System.nanoTime()),
     apiIdentifier = ApiIdentifier("api-context", "1.0"),
     apiEndpoint = "http://host.example//api-context/api-endpoint"

@@ -14,24 +14,17 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.util
+package uk.gov.hmrc.apigateway.cache
 
-import play.api.libs.json.Json
-import play.api.mvc._
+import javax.inject.{Inject, Singleton}
 
-object PlayRequestUtils {
+import play.api.cache.CacheApi
+import uk.gov.hmrc.apigateway.model.{PrimaryCacheKey, VaryCacheKey}
 
-  def bodyOf(request: Request[AnyContent]): Option[String] = {
-    request.body match {
-      case AnyContentAsJson(json) => Some(Json.stringify(json))
-      case AnyContentAsText(txt) => Some(txt)
-      case AnyContentAsXml(xml) => Some(xml.toString())
-      case _ => None
-    }
+@Singleton
+class VaryHeaderCacheManager @Inject()(cache: CacheApi) {
+  def getKey(key: String, reqHeaders: Map[String, Set[String]]): String = {
+    val requiredHeader = cache.get[String](VaryCacheKey(key))
+    PrimaryCacheKey(key, requiredHeader, reqHeaders)
   }
-
-  def asMapOfSets(seqOfPairs: Seq[(String, String)]): Map[String, Set[String]] =
-    seqOfPairs
-      .groupBy(_._1)
-      .mapValues(_.map(_._2).toSet)
 }

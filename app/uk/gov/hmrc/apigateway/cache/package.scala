@@ -14,24 +14,10 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.util
+package uk.gov.hmrc.apigateway
 
-import play.api.libs.json.Json
-import play.api.mvc._
+package object cache {
 
-object PlayRequestUtils {
+  type EntityWithResponseHeaders[T] = (T, Map[String, Set[String]])
 
-  def bodyOf(request: Request[AnyContent]): Option[String] = {
-    request.body match {
-      case AnyContentAsJson(json) => Some(Json.stringify(json))
-      case AnyContentAsText(txt) => Some(txt)
-      case AnyContentAsXml(xml) => Some(xml.toString())
-      case _ => None
-    }
-  }
-
-  def asMapOfSets(seqOfPairs: Seq[(String, String)]): Map[String, Set[String]] =
-    seqOfPairs
-      .groupBy(_._1)
-      .mapValues(_.map(_._2).toSet)
 }

@@ -14,24 +14,21 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.util
+package uk.gov.hmrc.apigateway.model
 
-import play.api.libs.json.Json
-import play.api.mvc._
-
-object PlayRequestUtils {
-
-  def bodyOf(request: Request[AnyContent]): Option[String] = {
-    request.body match {
-      case AnyContentAsJson(json) => Some(Json.stringify(json))
-      case AnyContentAsText(txt) => Some(txt)
-      case AnyContentAsXml(xml) => Some(xml.toString())
-      case _ => None
+object PrimaryCacheKey {
+  def apply(key: String, requiredHeader: Option[String] = None, actualHeaders: Map[String, Set[String]] = Map.empty) = {
+    requiredHeader match {
+      case None => key
+      case Some(h)  =>
+        val v = actualHeaders.get(h).map(_.toSeq.sorted.mkString(",")).getOrElse("")
+        s"$key::$h=$v"
     }
   }
+}
 
-  def asMapOfSets(seqOfPairs: Seq[(String, String)]): Map[String, Set[String]] =
-    seqOfPairs
-      .groupBy(_._1)
-      .mapValues(_.map(_._2).toSet)
+object VaryCacheKey {
+  def apply(path: String) = {
+    s"vary::$path"
+  }
 }

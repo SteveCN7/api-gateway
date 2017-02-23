@@ -41,7 +41,7 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics, varyHeaderC
 
     cache.get[T](keyWithRelevantVaryHeaders) match {
       case Some(value) =>
-        Logger.info(s"Cache hit for key [$keyWithRelevantVaryHeaders], service: $serviceName")
+        Logger.debug(s"Cache hit for key [$keyWithRelevantVaryHeaders], service: $serviceName")
         metrics.cacheHit(serviceName)
         Future.successful(value)
       case _ =>
@@ -60,10 +60,10 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics, varyHeaderC
     fallbackFunction map { case (result, respHeaders) => {
       CacheControl.fromHeaders(respHeaders, serviceName) match {
           case CacheControl(false, Some(max), varyHeaders) if varyHeaders.isEmpty =>
-            Logger.info(s"Caching ${serviceName}")
+            Logger.debug(s"Caching ${serviceName}")
             cache.set(key, result, max seconds)
           case CacheControl(false, Some(max), varyHeaders) if varyHeaders.size == 1 =>
-            Logger.info(s"Caching with Vary ${serviceName}")
+            Logger.debug(s"Caching with Vary ${serviceName}")
             cache.set(VaryCacheKey(key), varyHeaders.head, max seconds)
             cache.set(PrimaryCacheKey(key, varyHeaders.headOption, reqHeaders), result, max seconds)
           case CacheControl(_, _, varyHeaders) if varyHeaders.size > 1 =>

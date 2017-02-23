@@ -26,25 +26,18 @@ case class CacheControlException(message: String, cause: Throwable = null) exten
 case class CacheControl(noCache: Boolean, maxAgeSeconds: Option[Int], vary: Set[String])
 
 object CacheControl {
-  def fromHeaders(originalHeaders: Map[String, Set[String]], context: String = "") = {
-    val headers = originalHeaders.mapValues(_.flatMap(_.split(",\\s*")).toSeq)
-    val cacheControlHeader = headers.get(HeaderNames.CACHE_CONTROL)
-    val varyHeader = headers.get(HeaderNames.VARY)
+  def fromHeaders(headers: Map[String, Set[String]], context: String = "") = {
+    val cacheControlHeader = headers.get(HeaderNames.CACHE_CONTROL).map(splitValues)
+    val varyHeader: Option[Seq[String]] = headers.get(HeaderNames.VARY).map(splitValues)
 
     CacheControl(
       noCache = cacheControlHeader.exists(_.contains("no-cache")),
       maxAgeSeconds = cacheControlHeader.flatMap(findMaxAge),
       vary = varyHeader.map(_.toSet).getOrElse(Set.empty)
     )
-
-    headers.foldLeft[CacheControl](CacheControl(false, None, Set.empty)) {
-      case (a, (HeaderNames.CACHE_CONTROL, vals)) =>
-        a.copy(noCache = vals.contains("no-cache"), maxAgeSeconds = findMaxAge(vals))
-      case (a, (HeaderNames.VARY, headers)) =>
-        a.copy(vary = headers.toSet)
-      case (a, _) => a
-    }
   }
+
+  private def splitValues(values: Set[String]) = values.flatMap(_.split(",\\s*")).toSeq
 
   private def findMaxAge(vals: Seq[String]): Option[Int] = {
     val maxAgePattern = "max-age=(\\d+)".r

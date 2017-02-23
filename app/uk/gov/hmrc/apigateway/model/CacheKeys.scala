@@ -19,10 +19,10 @@ package uk.gov.hmrc.apigateway.model
 object PrimaryCacheKey {
   def apply(key: String, requiredHeader: Option[String] = None, actualHeaders: Map[String, Set[String]] = Map.empty) = {
     requiredHeader match {
-    case None => key
-    case Some(h)  =>
-      val v = actualHeaders.get(h).map(_.toSeq.sorted.mkString(",")).getOrElse("")
-      s"$key::$h=$v"
+      case None => key
+      case Some(h)  =>
+        val v = actualHeaders.get(h).map(_.toSeq.sorted.mkString(",")).getOrElse("")
+        s"$key::$h=$v"
     }
   }
 }

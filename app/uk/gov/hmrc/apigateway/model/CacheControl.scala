@@ -16,12 +16,9 @@
 
 package uk.gov.hmrc.apigateway.model
 
-import play.api.Logger
 import play.mvc.Http.HeaderNames
 
 import scala.util.Try
-
-case class CacheControlException(message: String, cause: Throwable = null) extends Exception(message, cause)
 
 case class CacheControl(noCache: Boolean, maxAgeSeconds: Option[Int], vary: Set[String])
 

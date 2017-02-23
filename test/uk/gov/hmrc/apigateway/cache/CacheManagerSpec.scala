@@ -27,6 +27,7 @@ import uk.gov.hmrc.play.test.UnitSpec
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration.{Duration, DurationInt}
+import scala.reflect.ClassTag
 
 class CacheManagerSpec extends UnitSpec with MockitoSugar {
 
@@ -63,7 +64,7 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
       val vcm = new VaryHeaderCacheManager(cache)
       new CacheManager(cache, metrics, vcm)
     }
- }
+  }
 
   "Get cached item" should {
     "return cached value when present." in new Setup {
@@ -83,7 +84,7 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
       await(cm.get[String](cacheKey, serviceName, fallbackFunctionWithCacheExpiry, Map.empty)) shouldBe updatedValue
 
       fakeCache.get(cacheKey) shouldBe Some(updatedValue)
-      fakeCache.getTtl(cacheKey) shouldBe Some(123 seconds)
+      fakeCache.getTtl(cacheKey) shouldBe Some(123.seconds)
 
       verify(metrics).cacheMiss(serviceName)
       verifyNoMoreInteractions(metrics)
@@ -230,13 +231,13 @@ class CacheManagerSpec extends UnitSpec with MockitoSugar {
       await(cm.get[String](cacheKey, serviceName, respC, reqHeadersC)) shouldBe "C Response"
       await(cm.get[String](cacheKey, serviceName, shouldUseCacheResp, reqHeadersC)) shouldBe "C Response"
 
-      fakeCache.addTime(123 seconds)
+      fakeCache.addTime(123.seconds)
 
       await(cm.get[String](cacheKey, serviceName, shouldUseCacheResp, reqHeadersA)) shouldBe "A Response"
       await(cm.get[String](cacheKey, serviceName, shouldUseCacheResp, reqHeadersB)) shouldBe "B Response"
       await(cm.get[String](cacheKey, serviceName, shouldUseCacheResp, reqHeadersC)) shouldBe "C Response"
 
-      fakeCache.addTime(1 seconds)
+      fakeCache.addTime(1.seconds)
 
       await(cm.get[String](cacheKey, serviceName, respA2, reqHeadersA)) shouldBe "A2 Response"
       await(cm.get[String](cacheKey, serviceName, respB2, reqHeadersB)) shouldBe "B2 Response"
@@ -249,11 +250,11 @@ class FakeCacheApi(initialState: (String, Any)*) extends CacheApi {
 
   val cache = new mutable.HashMap[String, Any]()
   val ttlCache = new mutable.HashMap[String, Duration]()
-  var currentTimeSecs: Duration = 0 seconds
+  var currentTimeSecs: Duration = 0.seconds
 
   initialState.foreach { kv =>
     cache.update(kv._1, kv._2)
-    ttlCache.update(kv._1, 30 seconds)
+    ttlCache.update(kv._1, 30.seconds)
   }
 
   def isEmpty = cache.isEmpty
@@ -271,17 +272,17 @@ class FakeCacheApi(initialState: (String, Any)*) extends CacheApi {
   }
 
   def expireCache(key: String) = {
-    ttlCache.get(key).map { expiry =>
+    ttlCache.get(key).foreach { expiry =>
       if (expiry < currentTimeSecs) remove(key)
     }
   }
 
-  override def get[T](key: String)(implicit evidence$2: ClassManifest[T]): Option[T] = {
+  override def get[T](key: String)(implicit evidence$2: ClassTag[T]): Option[T] = {
     expireCache(key)
     cache.get(key).asInstanceOf[Option[T]]
   }
 
-  override def getOrElse[A](key: String, expiration: Duration)(orElse: => A)(implicit evidence$1: ClassManifest[A]): A = {
+  override def getOrElse[A](key: String, expiration: Duration)(orElse: => A)(implicit evidence$1: ClassTag[A]): A = {
     expireCache(key)
     cache.getOrElse(key, orElse).asInstanceOf[A]
   }

@@ -18,6 +18,7 @@ package uk.gov.hmrc.apigateway.service
 
 import javax.inject.{Inject, Singleton}
 
+import play.api.mvc.{AnyContent, Request}
 import uk.gov.hmrc.apigateway.model.AuthType._
 import uk.gov.hmrc.apigateway.model._
 
@@ -29,12 +30,13 @@ class RoutingService @Inject()(endpointService: EndpointService,
                                userRestrictedEndpointService: UserRestrictedEndpointService,
                                applicationRestrictedEndpointService: ApplicationRestrictedEndpointService) {
 
-  def routeRequest(proxyRequest: ProxyRequest): Future[ApiRequest] = {
+  def routeRequest(request: Request[AnyContent]): Future[ApiRequest] = {
+    val proxyRequest = ProxyRequest(request)
     val apiRequestF = endpointService.apiRequest(proxyRequest)
     apiRequestF flatMap { apiRequest =>
       apiRequest.authType match {
-        case USER => userRestrictedEndpointService.routeRequest(proxyRequest, apiRequest)
-        case APPLICATION => applicationRestrictedEndpointService.routeRequest(proxyRequest, apiRequest)
+        case USER => userRestrictedEndpointService.routeRequest(request, proxyRequest, apiRequest)
+        case APPLICATION => applicationRestrictedEndpointService.routeRequest(request, proxyRequest, apiRequest)
         case _ => apiRequestF
       }
     }

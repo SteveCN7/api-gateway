@@ -16,11 +16,8 @@
 
 package uk.gov.hmrc.apigateway.exception
 
-import play.api.Logger
-import play.api.libs.json.Json._
-import play.api.mvc.Result
-import play.api.mvc.Results.{NotFound => PlayNotFound, _}
-import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
+import play.api.mvc.{AnyContent, Request}
+import uk.gov.hmrc.apigateway.model.ApiRequest
 
 class GatewayError(val code: String, val message: String) extends RuntimeException(message)
 
@@ -36,9 +33,9 @@ object GatewayError {
 
   case class MatchingResourceNotFound() extends GatewayError("MATCHING_RESOURCE_NOT_FOUND", "A resource with the name in the request cannot be found in the API")
 
-  case class InvalidCredentials() extends GatewayError("INVALID_CREDENTIALS", "Invalid Authentication information provided")
+  case class InvalidCredentials(request: Request[AnyContent], apiRequest: ApiRequest) extends GatewayError("INVALID_CREDENTIALS", "Invalid Authentication information provided")
 
-  case class MissingCredentials() extends GatewayError("MISSING_CREDENTIALS", "Authentication information is not provided")
+  case class MissingCredentials(request: Request[AnyContent], apiRequest: ApiRequest) extends GatewayError("MISSING_CREDENTIALS", "Authentication information is not provided")
 
   case class IncorrectAccessTokenType() extends GatewayError("INCORRECT_ACCESS_TOKEN_TYPE", "The access token type used is not supported when invoking the API")
 
@@ -47,23 +44,5 @@ object GatewayError {
   case class InvalidSubscription() extends GatewayError("RESOURCE_FORBIDDEN", "The application is not subscribed to the API which it is attempting to invoke")
 
   case class ThrottledOut() extends GatewayError("MESSAGE_THROTTLED_OUT", "The request for the API is throttled as you have exceeded your quota.")
-
-  def recovery: PartialFunction[Throwable, Result] = {
-    case e: MissingCredentials => Unauthorized(toJson(e))
-    case e: InvalidCredentials => Unauthorized(toJson(e))
-    case e: IncorrectAccessTokenType => Unauthorized(toJson(e))
-
-    case e: InvalidScope => Forbidden(toJson(e))
-    case e: InvalidSubscription => Forbidden(toJson(e))
-
-    case e: MatchingResourceNotFound => PlayNotFound(toJson(e))
-    case e: NotFound => PlayNotFound(toJson(e))
-
-    case e: ThrottledOut => TooManyRequests(toJson(e))
-
-    case e =>
-      Logger.error("unexpected error", e)
-      InternalServerError(toJson(ServerError()))
-  }
 
 }

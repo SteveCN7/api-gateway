@@ -18,9 +18,9 @@ package uk.gov.hmrc.apigateway.model
 
 import java.net.URI
 
-import play.api.mvc.RequestHeader
+import play.api.mvc.{AnyContent, Request, RequestHeader}
 import uk.gov.hmrc.apigateway.exception.GatewayError.MissingCredentials
-import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.apigateway.util.HttpHeaders.AUTHORIZATION
 
 import scala.concurrent.Future
 import scala.concurrent.Future.{failed, successful}
@@ -34,9 +34,11 @@ case class ProxyRequest
 
   def getHeader(name: String): Option[String] = headers.get(name)
 
-  def accessToken: Future[String] = getHeader(AUTHORIZATION) map(_.stripPrefix("Bearer ")) match {
-    case Some(bearerToken) => successful(bearerToken)
-    case _ => failed(MissingCredentials())
+  def accessToken(request: Request[AnyContent], apiRequest: ApiRequest): Future[String] = {
+    getHeader(AUTHORIZATION) map (_.stripPrefix("Bearer ")) match {
+      case Some(bearerToken) => successful(bearerToken)
+      case _ => failed(MissingCredentials(request, apiRequest))
+    }
   }
 
   lazy val rawPath = new URI(path).getRawPath

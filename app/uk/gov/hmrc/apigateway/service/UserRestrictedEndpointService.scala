@@ -18,8 +18,8 @@ package uk.gov.hmrc.apigateway.service
 
 import javax.inject.{Inject, Singleton}
 
+import play.api.mvc.{AnyContent, Request}
 import uk.gov.hmrc.apigateway.exception.GatewayError._
-import uk.gov.hmrc.apigateway.model.AuthType._
 import uk.gov.hmrc.apigateway.model._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -30,25 +30,25 @@ class UserRestrictedEndpointService @Inject()(authorityService: AuthorityService
                                               applicationService: ApplicationService,
                                               scopeValidator: ScopeValidator) {
 
-  private def getApplicationByServerToken(proxyRequest: ProxyRequest) = {
+  def routeRequest(request: Request[AnyContent], proxyRequest: ProxyRequest, apiRequest: ApiRequest) = {
 
     def getApplication(accessToken: String) = {
       applicationService.getByServerToken(accessToken) recover {
-        case e: NotFound => throw InvalidCredentials()
+        case e: NotFound => throw InvalidCredentials(request, apiRequest)
       }
     }
 
-    proxyRequest.accessToken flatMap getApplication
-  }
-
-  private def getAuthority(proxyRequest: ProxyRequest, authType: AuthType) = {
-    authorityService.findAuthority(proxyRequest) recoverWith {
-      case e: NotFound => getApplicationByServerToken(proxyRequest).map(_ => throw IncorrectAccessTokenType())
+    def getApplicationByServerToken = {
+      proxyRequest.accessToken(request, apiRequest) flatMap getApplication
     }
-  }
 
-  def routeRequest(proxyRequest: ProxyRequest, apiRequest: ApiRequest) = {
-    getAuthority(proxyRequest, apiRequest.authType) flatMap { authority =>
+    def getAuthority = {
+      authorityService.findAuthority(request, proxyRequest, apiRequest) recoverWith {
+        case e: NotFound => getApplicationByServerToken.map(_ => throw IncorrectAccessTokenType())
+      }
+    }
+
+    getAuthority flatMap { authority =>
       val validateScopes: Future[Unit] = scopeValidator.validate(authority.delegatedAuthority, apiRequest.scope)
 
       for {

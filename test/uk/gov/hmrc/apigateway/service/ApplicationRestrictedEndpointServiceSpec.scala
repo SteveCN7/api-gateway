@@ -17,7 +17,8 @@
 package uk.gov.hmrc.apigateway.service
 
 import org.scalatest.mockito.MockitoSugar
-import play.api.mvc.Headers
+import play.api.libs.json.Json
+import play.api.mvc.{AnyContentAsJson, Headers}
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.exception.GatewayError._
 import uk.gov.hmrc.apigateway.model.AuthType._
@@ -40,12 +41,13 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       authType = APPLICATION,
       apiEndpoint = "http://host.example/foo/context")
 
-    val basicRequest = new FakeRequest(
+    val basicRequest = FakeRequest(
       method = "GET",
       uri = "http://host.example/foo",
       headers = Headers(),
-      body = "")
-    val applicationRequestWithToken = basicRequest.copy(headers = Headers(AUTHORIZATION -> s"Bearer $serverToken"))
+      body = AnyContentAsJson(Json.parse("""{}""")))
+
+    val applicationRequestWithToken = basicRequest.withHeaders(AUTHORIZATION -> s"Bearer $serverToken")
 
     val authorityService = mock[AuthorityService]
     val applicationService = mock[ApplicationService]
@@ -57,7 +59,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
 
     "fail with a request not matching authority" in new Setup {
       intercept[MissingCredentials] {
-        await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(basicRequest), apiRequest))
+        await(applicationRestrictedEndpointService.routeRequest(basicRequest, ProxyRequest(basicRequest), apiRequest))
       }
     }
 
@@ -65,7 +67,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       mockApplicationByServerToken(applicationService, serverToken, ServerError())
 
       intercept[ServerError] {
-        await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
+        await(applicationRestrictedEndpointService.routeRequest(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken), apiRequest))
       }
     }
 
@@ -74,7 +76,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       mockAuthority(authorityService, NotFound())
 
       intercept[InvalidCredentials] {
-        await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
+        await(applicationRestrictedEndpointService.routeRequest(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken), apiRequest))
       }
     }
 
@@ -84,7 +86,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       mockApplicationByClientId(applicationService, clientId, ServerError())
 
       intercept[ServerError] {
-        await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
+        await(applicationRestrictedEndpointService.routeRequest(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken), apiRequest))
       }
     }
 
@@ -95,7 +97,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       mockValidateSubscriptionAndRateLimit(applicationService, application, failed(ServerError()))
 
       intercept[ServerError] {
-        await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
+        await(applicationRestrictedEndpointService.routeRequest(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken), apiRequest))
       }
     }
 
@@ -106,7 +108,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       mockValidateSubscriptionAndRateLimit(applicationService, application, failed(ThrottledOut()))
 
       intercept[ThrottledOut] {
-        await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
+        await(applicationRestrictedEndpointService.routeRequest(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken), apiRequest))
       }
     }
 
@@ -117,7 +119,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       mockValidateSubscriptionAndRateLimit(applicationService, application, successful(()))
 
       val expectedResult = apiRequest.copy(clientId = Some(clientId))
-      val result = await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
+      val result = await(applicationRestrictedEndpointService.routeRequest(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken), apiRequest))
 
       result shouldBe expectedResult
     }
@@ -127,7 +129,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       mockValidateSubscriptionAndRateLimit(applicationService, application, successful(()))
 
       val expectedResult = apiRequest.copy(clientId = Some(clientId))
-      val result = await(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequestWithToken), apiRequest))
+      val result = await(applicationRestrictedEndpointService.routeRequest(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken), apiRequest))
 
       result shouldBe expectedResult
     }

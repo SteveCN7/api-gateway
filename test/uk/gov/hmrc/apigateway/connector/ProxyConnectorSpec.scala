@@ -155,6 +155,18 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
         .withoutHeader("X-Client-Authorization-Token")
         .withoutHeader("X-Request-Timestamp"))
     }
+
+    "Add the Transfer-Encoding header to the response" in new Setup {
+      givenGetReturns("/world", OK)
+
+      val result = await(underTest.proxy(request, apiRequest))
+
+      verify(getRequestedFor(urlEqualTo("/world"))
+        .withHeader(X_CLIENT_AUTHORIZATION_TOKEN, equalTo("12345")))
+
+      result.header.headers.get(TRANSFER_ENCODING) shouldBe Some("chunked")
+      result.header.headers.get(CONTENT_LENGTH) shouldBe None
+    }
   }
 
   def givenGetReturns(endpoint: String, status: Int) = {

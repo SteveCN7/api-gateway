@@ -18,8 +18,9 @@ package uk.gov.hmrc.apigateway.connector.impl
 
 import javax.inject.{Inject, Singleton}
 
+import akka.stream.scaladsl.Source
 import play.Logger
-import play.api.http.HttpEntity
+import play.api.http.{HttpChunk, HttpEntity}
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.connector.AbstractConnector
@@ -48,7 +49,7 @@ class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsC
       .withBody(bodyOf(request).getOrElse(""))
       .execute.map { wsResponse =>
 
-      val result = toResult(wsResponse)
+      val result = buildResult(wsResponse)
 
       Logger.info(s"request [$request] response [$wsResponse] result [$result]")
 
@@ -64,13 +65,22 @@ class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsC
     }
   }
 
-  private def toResult(streamedResponse: WSResponse): Result =
-    Result(
-      ResponseHeader(streamedResponse.status, flattenHeaders(streamedResponse.allHeaders)),
-      HttpEntity.Strict(streamedResponse.bodyAsBytes, None)
+  private def buildResult(streamedResponse: WSResponse): Result = {
+
+    def flattenHeaders(headers: Map[String, Seq[String]]) = headers.mapValues(_.mkString(","))
+
+    val body = Source.fromIterator(() =>
+      Seq[HttpChunk](
+        HttpChunk.Chunk(streamedResponse.bodyAsBytes),
+        HttpChunk.LastChunk(Headers())
+      ).iterator
     )
 
-  private def flattenHeaders(headers: Map[String, Seq[String]]) =
-    headers.mapValues(_.mkString(","))
+    val headers = flattenHeaders(streamedResponse.allHeaders - CONTENT_LENGTH)
 
+    Result(
+      ResponseHeader(streamedResponse.status, headers),
+      HttpEntity.Chunked(body, None)
+    )
+  }
 }

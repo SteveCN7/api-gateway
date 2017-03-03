@@ -16,10 +16,12 @@
 
 package uk.gov.hmrc.apigateway.connector
 
+import java.util.UUID
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration._
+import it.uk.gov.hmrc.apigateway.testutils.RequestUtils
 import org.scalatest.BeforeAndAfterEach
 import play.api.http.Status._
 import play.api.libs.json.Json
@@ -29,8 +31,9 @@ import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
 import uk.gov.hmrc.apigateway.model.{ApiIdentifier, ApiRequest}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
+import com.google.common.net.{HttpHeaders => http}
 
-class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAndAfterEach {
+class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAndAfterEach with RequestUtils {
 
   val stubPort = sys.env.getOrElse("WIREMOCK", "22220").toInt
   val stubHost = "localhost"
@@ -39,6 +42,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
   trait Setup {
     val underTest = fakeApplication.injector.instanceOf[ProxyConnector]
+    val requestId = UUID.randomUUID().toString
   }
 
   val apiRequest = ApiRequest(
@@ -64,7 +68,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
     "Proxy the request" in new Setup {
       givenGetReturns("/world", OK)
 
-      val result = await(underTest.proxy(request, apiRequest))
+      val result = await(underTest.proxy(request, apiRequest)(requestId))
 
       status(result) shouldBe OK
     }
@@ -75,7 +79,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
       givenPostReturns("/world", OK)
 
-      val result = await(underTest.proxy(requestWithBody, apiRequest))
+      val result = await(underTest.proxy(requestWithBody, apiRequest)(requestId))
 
       verify(postRequestedFor(urlEqualTo("/world")).withRequestBody(equalTo(body)))
     }
@@ -85,10 +89,11 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
       givenGetReturns("/world", OK)
 
-      await(underTest.proxy(requestWithHeader, apiRequest))
+      await(underTest.proxy(requestWithHeader, apiRequest)(requestId))
 
       verify(getRequestedFor(urlEqualTo("/world"))
-        .withHeader("aHeader", equalTo("aHeaderValue")))
+        .withHeader("aHeader", equalTo("aHeaderValue"))
+        .withHeader(X_REQUEST_ID, equalTo(requestId)))
     }
 
     "Not forward the Host header from the original request to the microservice" in new Setup {
@@ -96,14 +101,14 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
       givenGetReturns("/world", OK)
 
-      await(underTest.proxy(requestWithHeader, apiRequest))
+      await(underTest.proxy(requestWithHeader, apiRequest)(requestId))
 
       verify(getRequestedFor(urlEqualTo("/world")).withHeader("Host", equalTo(s"localhost:$stubPort")))
     }
 
     val gatewayHeaders = Map(
       "Authorization" -> apiRequest.bearerToken.get,
-      "X-Client-ID" ->  apiRequest.clientId.get,
+      "X-Client-ID" -> apiRequest.clientId.get,
       "X-Request-Timestamp" -> apiRequest.timeInNanos.get.toString)
 
     "Add extra headers in the request" in new Setup {
@@ -112,7 +117,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
         givenGetReturns("/world", OK)
 
-        await(underTest.proxy(request, apiRequest))
+        await(underTest.proxy(request, apiRequest)(requestId))
 
         verify(getRequestedFor(urlEqualTo("/world"))
           .withHeader(header, equalTo(value)))
@@ -127,7 +132,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
         givenGetReturns("/world", OK)
 
-        await(underTest.proxy(requestWithHeader, apiRequest))
+        await(underTest.proxy(requestWithHeader, apiRequest)(requestId))
 
         verify(getRequestedFor(urlEqualTo("/world")).withHeader(header, equalTo(value)))
       }
@@ -136,7 +141,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
     "Add Oauth token header in the request" in new Setup {
       givenGetReturns("/world", OK)
 
-      await(underTest.proxy(request, apiRequest))
+      await(underTest.proxy(request, apiRequest)(requestId))
 
       verify(getRequestedFor(urlEqualTo("/world"))
         .withHeader(X_CLIENT_AUTHORIZATION_TOKEN, equalTo("12345")))
@@ -147,7 +152,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
       await(underTest.proxy(request, apiRequest.copy(
         timeInNanos = None,
         clientId = None,
-        bearerToken = None)))
+        bearerToken = None))(requestId))
 
       verify(getRequestedFor(urlEqualTo("/world"))
         .withoutHeader("Authorization")
@@ -156,16 +161,21 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
         .withoutHeader("X-Request-Timestamp"))
     }
 
-    "Add the Transfer-Encoding header to the response" in new Setup {
+    "Align with WSO2 response headers" in new Setup {
       givenGetReturns("/world", OK)
 
-      val result = await(underTest.proxy(request, apiRequest))
+      val result = await(underTest.proxy(request, apiRequest)(requestId))
 
       verify(getRequestedFor(urlEqualTo("/world"))
         .withHeader(X_CLIENT_AUTHORIZATION_TOKEN, equalTo("12345")))
 
-      result.header.headers.get(TRANSFER_ENCODING) shouldBe Some("chunked")
-      result.header.headers.get(CONTENT_LENGTH) shouldBe None
+      validateHeaders(result.header.headers,
+        (TRANSFER_ENCODING, Some("chunked")),
+        (VARY, Some("Accept")),
+        (CONTENT_LENGTH, None),
+        (http.STRICT_TRANSPORT_SECURITY, None),
+        (http.X_FRAME_OPTIONS, None),
+        (http.X_CONTENT_TYPE_OPTIONS, None))
     }
   }
 

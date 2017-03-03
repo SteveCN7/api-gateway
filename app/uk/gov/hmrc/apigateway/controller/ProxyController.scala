@@ -18,6 +18,7 @@ package uk.gov.hmrc.apigateway.controller
 
 import javax.inject.{Inject, Singleton}
 
+import com.google.common.net.{HttpHeaders => http}
 import play.Logger
 import play.api.http.Status._
 import play.api.libs.json.Json.toJson
@@ -27,6 +28,8 @@ import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.service.{ProxyService, RoutingService}
+import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.apigateway.util.PlayRequestUtils
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -47,16 +50,22 @@ class ProxyController @Inject()(proxyService: ProxyService, routingService: Rout
     }
   }
 
-  private def recoverError: PartialFunction[Throwable, Result] = {
-    case e =>
-      Logger.error("unexpected error", e)
-      InternalServerError(toJson(GatewayError.ServerError()))
+  private def addHeaders(implicit requestId: String): Result => Result = {
+    result =>
+      val headers = PlayRequestUtils.replaceHeaders(Headers(result.header.headers.toSeq: _*))(
+        (X_REQUEST_ID, Some(requestId)),
+        (CACHE_CONTROL, Some("no-cache")),
+        (CONTENT_TYPE, Some("application/json; charset=UTF-8")),
+        (http.X_FRAME_OPTIONS, None),
+        (http.X_CONTENT_TYPE_OPTIONS, None)
+      ).toSimpleMap
+
+      result.withHeaders(headers.toSeq: _*)
   }
 
-  def proxy = Action.async(BodyParsers.parse.anyContent) { implicit request =>
+  def proxy()(implicit requestId: String) = Action.async(BodyParsers.parse.anyContent) { implicit request =>
     routingService.routeRequest(ProxyRequest(request)) flatMap { apiRequest =>
       proxyService.proxy(request, apiRequest)
-    } recover GatewayError.recovery recover recoverError map transformError
+    } recover GatewayError.recovery.andThen(addHeaders) map transformError
   }
-
 }

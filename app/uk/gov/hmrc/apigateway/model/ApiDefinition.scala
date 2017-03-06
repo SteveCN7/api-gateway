@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.apigateway.model
 
+import java.util.UUID
+
 import uk.gov.hmrc.apigateway.model.AuthType.{AuthType, NONE}
 
 object AuthType extends Enumeration {
@@ -37,7 +39,8 @@ case class ApiEndpoint(uriPattern: String,
 
 case class Parameter(name: String, required: Boolean = false)
 
-case class ApiRequest(timeInNanos: Option[Long] = None,
+case class ApiRequest(requestId: Option[String] = Some(UUID.randomUUID().toString),
+                      timeInNanos: Option[Long] = None,
                       timeInMillis: Option[Long] = None,
                       apiIdentifier: ApiIdentifier,
                       authType: AuthType = NONE,

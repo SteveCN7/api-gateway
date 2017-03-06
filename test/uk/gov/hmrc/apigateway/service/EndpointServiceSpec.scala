@@ -131,7 +131,7 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfter
                                actualNanoTimeBeforeExec: Long, actualNanoTimeAfterExec: Long) = {
 
     actualApiRequest.timeInNanos.get should (be >= actualNanoTimeBeforeExec and be <= actualNanoTimeAfterExec)
-    actualApiRequest.copy(timeInNanos = None) shouldBe expectedApiRequest.copy(timeInNanos = None)
+    actualApiRequest.copy(requestId = None, timeInNanos = None) shouldBe expectedApiRequest.copy(requestId = None, timeInNanos = None)
   }
 
   private val apiRequest = ApiRequest(

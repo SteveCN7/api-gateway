@@ -40,7 +40,8 @@ class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsC
       (AUTHORIZATION, apiRequest.bearerToken),
       (X_CLIENT_AUTHORIZATION_TOKEN, apiRequest.bearerToken.map(_.stripPrefix("Bearer "))),
       (X_CLIENT_ID, apiRequest.clientId),
-      (X_REQUEST_TIMESTAMP, apiRequest.timeInNanos.map(_.toString)))
+      (X_REQUEST_TIMESTAMP, apiRequest.timeInNanos.map(_.toString)),
+      (X_REQUEST_ID, apiRequest.requestId))
 
     wsClient.url(apiRequest.apiEndpoint)
       .withMethod(request.method)

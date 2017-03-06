@@ -27,7 +27,6 @@ import play.api.mvc.AnyContentAsJson
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
 import uk.gov.hmrc.apigateway.model.{ApiIdentifier, ApiRequest}
-import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
 class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAndAfterEach {
@@ -104,7 +103,8 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
     val gatewayHeaders = Map(
       "Authorization" -> apiRequest.bearerToken.get,
       "X-Client-ID" ->  apiRequest.clientId.get,
-      "X-Request-Timestamp" -> apiRequest.timeInNanos.get.toString)
+      "X-Request-Timestamp" -> apiRequest.timeInNanos.get.toString,
+      "X-Request-ID" -> apiRequest.requestId.get)
 
     "Add extra headers in the request" in new Setup {
 
@@ -139,12 +139,13 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
       await(underTest.proxy(request, apiRequest))
 
       verify(getRequestedFor(urlEqualTo("/world"))
-        .withHeader(X_CLIENT_AUTHORIZATION_TOKEN, equalTo("12345")))
+        .withHeader("X-Client-Authorization-Token", equalTo("12345")))
     }
 
     "Not include extra headers when there is no tag in the request" in new Setup {
 
       await(underTest.proxy(request, apiRequest.copy(
+        requestId = None,
         timeInNanos = None,
         clientId = None,
         bearerToken = None)))
@@ -153,7 +154,8 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
         .withoutHeader("Authorization")
         .withoutHeader("X-Client-ID")
         .withoutHeader("X-Client-Authorization-Token")
-        .withoutHeader("X-Request-Timestamp"))
+        .withoutHeader("X-Request-Timestamp")
+        .withoutHeader("X-Request-ID"))
     }
   }
 

@@ -42,21 +42,15 @@ class ProxyController @Inject()(proxyService: ProxyService, routingService: Rout
   private def transformError: Result => Result = {
     result => result.header.status match {
       case NOT_IMPLEMENTED => newResult(result, NotImplemented(toJson(GatewayError.NotImplemented())))
-      case BAD_GATEWAY | SERVICE_UNAVAILABLE | GATEWAY_TIMEOUT => newResult(result, ServiceUnavailable(toJson(GatewayError.ServiceUnavailable())))
+      case BAD_GATEWAY | SERVICE_UNAVAILABLE | GATEWAY_TIMEOUT => newResult(result, ServiceUnavailable(toJson(GatewayError.ServiceNotAvailable())))
       case _ => result
     }
-  }
-
-  private def recoverError: PartialFunction[Throwable, Result] = {
-    case e =>
-      Logger.error("unexpected error", e)
-      InternalServerError(toJson(GatewayError.ServerError()))
   }
 
   def proxy = Action.async(BodyParsers.parse.anyContent) { implicit request =>
     routingService.routeRequest(ProxyRequest(request)) flatMap { apiRequest =>
       proxyService.proxy(request, apiRequest)
-    } recover GatewayError.recovery recover recoverError map transformError
+    } recover GatewayError.recovery(request) map transformError
   }
 
 }

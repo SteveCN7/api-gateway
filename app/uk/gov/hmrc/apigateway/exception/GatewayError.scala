@@ -16,9 +16,12 @@
 
 package uk.gov.hmrc.apigateway.exception
 
+import java.net.ConnectException
+import java.util.concurrent.TimeoutException
+
 import play.api.Logger
 import play.api.libs.json.Json._
-import play.api.mvc.Result
+import play.api.mvc.{AnyContent, Request, Result}
 import play.api.mvc.Results.{NotFound => PlayNotFound, _}
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 
@@ -28,7 +31,7 @@ object GatewayError {
 
   case class NotImplemented() extends GatewayError("NOT_IMPLEMENTED", "API has not been implemented")
 
-  case class ServiceUnavailable() extends GatewayError("SERVER_ERROR", "Service unavailable")
+  case class ServiceNotAvailable() extends GatewayError("SERVER_ERROR", "Service unavailable")
 
   case class ServerError() extends GatewayError("SERVER_ERROR", "Internal server error")
 
@@ -48,7 +51,7 @@ object GatewayError {
 
   case class ThrottledOut() extends GatewayError("MESSAGE_THROTTLED_OUT", "The request for the API is throttled as you have exceeded your quota.")
 
-  def recovery: PartialFunction[Throwable, Result] = {
+  def recovery(request: Request[AnyContent]): PartialFunction[Throwable, Result] = {
     case e: MissingCredentials => Unauthorized(toJson(e))
     case e: InvalidCredentials => Unauthorized(toJson(e))
     case e: IncorrectAccessTokenType => Unauthorized(toJson(e))
@@ -61,8 +64,16 @@ object GatewayError {
 
     case e: ThrottledOut => TooManyRequests(toJson(e))
 
+    case e: TimeoutException =>
+      Logger.warn(s"Request timeout error for $request", e)
+      ServiceUnavailable(toJson(ServiceNotAvailable()))
+
+    case e: ConnectException =>
+      Logger.warn(s"Connect timeout error for $request", e)
+      ServiceUnavailable(toJson(ServiceNotAvailable()))
+
     case e =>
-      Logger.error("unexpected error", e)
+      Logger.error(s"Unexpected error for $request", e)
       InternalServerError(toJson(ServerError()))
   }
 

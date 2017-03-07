@@ -16,6 +16,9 @@
 
 package uk.gov.hmrc.apigateway.controller
 
+import java.net.ConnectException
+import java.util.concurrent.TimeoutException
+
 import akka.stream.Materializer
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
@@ -72,7 +75,7 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar {
         val result = await(underTest.proxy(request))
 
         status(result) shouldBe SERVICE_UNAVAILABLE
-        jsonBodyOf(result) shouldBe toJson(GatewayError.ServiceUnavailable())
+        jsonBodyOf(result) shouldBe toJson(GatewayError.ServiceNotAvailable())
       }
     }
 
@@ -85,6 +88,23 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar {
       jsonBodyOf(result) shouldBe toJson(GatewayError.NotImplemented())
     }
 
+    "convert request timeout errors" in new Setup {
+      when(mockProxyService.proxy(any(), any())).thenReturn(failed(new TimeoutException()))
+
+      val result = await(underTest.proxy(request))
+
+      status(result) shouldBe SERVICE_UNAVAILABLE
+      jsonBodyOf(result) shouldBe toJson(GatewayError.ServiceNotAvailable())
+    }
+
+    "convert connect timeout errors" in new Setup {
+      when(mockProxyService.proxy(any(), any())).thenReturn(failed(new ConnectException()))
+
+      val result = await(underTest.proxy(request))
+
+      status(result) shouldBe SERVICE_UNAVAILABLE
+      jsonBodyOf(result) shouldBe toJson(GatewayError.ServiceNotAvailable())
+    }
   }
 
 }

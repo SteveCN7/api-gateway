@@ -16,11 +16,16 @@
 
 package uk.gov.hmrc.apigateway.connector
 
+import java.util.concurrent.TimeoutException
+
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration._
+import org.mockito.Mockito.when
 import org.scalatest.BeforeAndAfterEach
+import org.scalatest.mockito.MockitoSugar
+import play.api.Configuration
 import play.api.http.Status._
 import play.api.libs.json.Json
 import play.api.mvc.AnyContentAsJson
@@ -30,12 +35,14 @@ import uk.gov.hmrc.apigateway.model.{ApiIdentifier, ApiRequest}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
-class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAndAfterEach {
+import scala.concurrent.duration._
 
-  val stubPort = sys.env.getOrElse("WIREMOCK", "22220").toInt
-  val stubHost = "localhost"
-  val wireMockUrl = s"http://$stubHost:$stubPort"
-  val wireMockServer = new WireMockServer(wireMockConfig().port(stubPort))
+class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoSugar with BeforeAndAfterEach {
+
+  private val stubPort = sys.env.getOrElse("WIREMOCK", "22220").toInt
+  private val stubHost = "localhost"
+  private val wireMockUrl = s"http://$stubHost:$stubPort"
+  private val wireMockServer = new WireMockServer(wireMockConfig().port(stubPort))
 
   trait Setup {
     val underTest = fakeApplication.injector.instanceOf[ProxyConnector]
@@ -61,10 +68,28 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
     val request = FakeRequest("GET", "/hello/world")
 
-    "Proxy the request" in new Setup {
-      givenGetReturns("/world", OK)
+    "Fail with a `TimeoutException` when the response is too slow" in new Setup {
 
-      val result = await(underTest.proxy(request, apiRequest))
+      val requestTimeout = 500
+      val configuration = mock[Configuration]
+      when(configuration.getInt("timeout.request")).thenReturn(Some(requestTimeout))
+
+      givenGetReturns("/world", OK, delay = 2000)
+
+      intercept[TimeoutException] {
+        await(underTest.proxy(request, apiRequest))(timeout = requestTimeout.milliseconds)
+      }
+    }
+
+    "Proxy the request when the response is processed on time" in new Setup {
+
+      val requestTimeout = 1500
+      val configuration = mock[Configuration]
+      when(configuration.getInt("timeout.request")).thenReturn(Some(requestTimeout))
+
+      givenGetReturns("/world", OK, delay = 500)
+
+      val result = await(underTest.proxy(request, apiRequest))(timeout = requestTimeout.milliseconds)
 
       status(result) shouldBe OK
     }
@@ -103,7 +128,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
     val gatewayHeaders = Map(
       "Authorization" -> apiRequest.bearerToken.get,
-      "X-Client-ID" ->  apiRequest.clientId.get,
+      "X-Client-ID" -> apiRequest.clientId.get,
       "X-Request-Timestamp" -> apiRequest.timeInNanos.get.toString)
 
     "Add extra headers in the request" in new Setup {
@@ -157,14 +182,26 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
     }
   }
 
-  def givenGetReturns(endpoint: String, status: Int) = {
-    stubFor(get(urlEqualTo(endpoint))
-      .willReturn(aResponse().withStatus(status)))
+  def givenGetReturns(endpoint: String, status: Int, delay: Int = 0) = {
+    stubFor(
+      get(urlEqualTo(endpoint))
+        .willReturn(
+          aResponse()
+            .withStatus(status)
+            .withFixedDelay(delay)
+        )
+    )
   }
 
-  def givenPostReturns(endpoint: String, status: Int) = {
-    stubFor(get(urlEqualTo(endpoint))
-      .willReturn(aResponse().withStatus(status)))
+  def givenPostReturns(endpoint: String, status: Int, delay: Int = 0) = {
+    stubFor(
+      post(urlEqualTo(endpoint))
+      .willReturn(
+        aResponse()
+          .withStatus(status)
+          .withFixedDelay(delay)
+      )
+    )
   }
 
 }

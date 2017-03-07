@@ -16,10 +16,13 @@
 
 package uk.gov.hmrc.apigateway.controller
 
+import java.util.concurrent.TimeoutException
 import javax.inject.{Inject, Singleton}
 
+import akka.actor.ActorSystem
 import play.Logger
 import play.api.http.Status._
+import play.api.libs.concurrent.Timeout
 import play.api.libs.json.Json.toJson
 import play.api.mvc.Results._
 import play.api.mvc._
@@ -28,6 +31,7 @@ import uk.gov.hmrc.apigateway.model.ProxyRequest
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.service.{ProxyService, RoutingService}
 
+import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 @Singleton
@@ -40,23 +44,31 @@ class ProxyController @Inject()(proxyService: ProxyService, routingService: Rout
   }
 
   private def transformError: Result => Result = {
-    result => result.header.status match {
+    result =>
+      println ("error found: " + result)
+
+      result.header.status match {
       case NOT_IMPLEMENTED => newResult(result, NotImplemented(toJson(GatewayError.NotImplemented())))
-      case BAD_GATEWAY | SERVICE_UNAVAILABLE | GATEWAY_TIMEOUT => newResult(result, ServiceUnavailable(toJson(GatewayError.ServiceUnavailable())))
+      case BAD_GATEWAY | SERVICE_UNAVAILABLE | GATEWAY_TIMEOUT => newResult(result, ServiceUnavailable(toJson(GatewayError.ServiceNotAvailable())))
       case _ => result
     }
   }
 
-  private def recoverError: PartialFunction[Throwable, Result] = {
-    case e =>
-      Logger.error("unexpected error", e)
-      InternalServerError(toJson(GatewayError.ServerError()))
-  }
+//  private def recoverError: PartialFunction[Throwable, Result] = {
+//    case e =>
+//      Logger.error("unexpected error", e)
+//      InternalServerError(toJson(GatewayError.ServerError()))
+//  }
+
+ // lazy private val actorSystem = ActorSystem() //("api-gw-sys")
+ // lazy private val requestTimeout = 30.seconds
 
   def proxy = Action.async(BodyParsers.parse.anyContent) { implicit request =>
-    routingService.routeRequest(ProxyRequest(request)) flatMap { apiRequest =>
-      proxyService.proxy(request, apiRequest)
-    } recover GatewayError.recovery recover recoverError map transformError
+//    Timeout.timeout(actorSystem, requestTimeout) {
+      routingService.routeRequest(ProxyRequest(request)) flatMap { apiRequest =>
+        proxyService.proxy(request, apiRequest)
+//      }
+    } recover GatewayError.recovery map transformError
   }
 
 }

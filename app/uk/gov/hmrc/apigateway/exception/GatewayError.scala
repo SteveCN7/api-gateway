@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.apigateway.exception
 
+import java.util.concurrent.TimeoutException
+
 import play.api.Logger
 import play.api.libs.json.Json._
 import play.api.mvc.Result
@@ -28,7 +30,7 @@ object GatewayError {
 
   case class NotImplemented() extends GatewayError("NOT_IMPLEMENTED", "API has not been implemented")
 
-  case class ServiceUnavailable() extends GatewayError("SERVER_ERROR", "Service unavailable")
+  case class ServiceNotAvailable() extends GatewayError("SERVER_ERROR", "Service unavailable")
 
   case class ServerError() extends GatewayError("SERVER_ERROR", "Internal server error")
 
@@ -60,6 +62,11 @@ object GatewayError {
     case e: NotFound => PlayNotFound(toJson(e))
 
     case e: ThrottledOut => TooManyRequests(toJson(e))
+
+    case e: TimeoutException =>
+      println("time out error ")
+      e.printStackTrace()
+      ServiceUnavailable(toJson(ServiceNotAvailable()))
 
     case e =>
       Logger.error("unexpected error", e)

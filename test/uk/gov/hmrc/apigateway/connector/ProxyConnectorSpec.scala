@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.apigateway.connector
 
+import java.util.concurrent.TimeoutException
+
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock._
@@ -30,12 +32,18 @@ import uk.gov.hmrc.apigateway.model.{ApiIdentifier, ApiRequest}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
+import scala.concurrent.duration._
+
 class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAndAfterEach {
 
-  val stubPort = sys.env.getOrElse("WIREMOCK", "22220").toInt
-  val stubHost = "localhost"
-  val wireMockUrl = s"http://$stubHost:$stubPort"
-  val wireMockServer = new WireMockServer(wireMockConfig().port(stubPort))
+  implicit override val defaultTimeout = 45.seconds
+
+  private val stubPort = sys.env.getOrElse("WIREMOCK", "22220").toInt
+  private val stubHost = "localhost"
+  private val wireMockUrl = s"http://$stubHost:$stubPort"
+  private val wireMockServer = new WireMockServer(wireMockConfig().port(stubPort))
+//
+//  implicit private val maximumWaitingTime = 45.seconds
 
   trait Setup {
     val underTest = fakeApplication.injector.instanceOf[ProxyConnector]
@@ -49,6 +57,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
     bearerToken = Some("Bearer 12345"))
 
   override def beforeEach {
+    // wireMockServer.resetMappings()
     wireMockServer.start()
     WireMock.configureFor(stubHost, stubPort)
   }
@@ -61,10 +70,19 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
     val request = FakeRequest("GET", "/hello/world")
 
-    "Proxy the request" in new Setup {
-      givenGetReturns("/world", OK)
+    "failing with a `TimeoutException` when there is a delay of 30 seconds" in new Setup {
+      givenGetReturns("/world", OK, delay = 30000)
 
-      val result = await(underTest.proxy(request, apiRequest))
+      intercept[TimeoutException] {
+        await(underTest.proxy(request, apiRequest))// (timeout = defaultTimeout)
+      }
+    }
+
+    "Proxy the request when the response is processed in less than 30 seconds" in new Setup {
+      // TODO: this is failing if using delay >= 20 sec [maybe hardcoded somewhere in WireMock!?] => test it with `SBT RUN`
+      givenGetReturns("/world", OK, delay = 23000)
+
+      val result = await(underTest.proxy(request, apiRequest))// (timeout = defaultTimeout)
 
       status(result) shouldBe OK
     }
@@ -103,7 +121,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
     val gatewayHeaders = Map(
       "Authorization" -> apiRequest.bearerToken.get,
-      "X-Client-ID" ->  apiRequest.clientId.get,
+      "X-Client-ID" -> apiRequest.clientId.get,
       "X-Request-Timestamp" -> apiRequest.timeInNanos.get.toString)
 
     "Add extra headers in the request" in new Setup {
@@ -157,14 +175,26 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
     }
   }
 
-  def givenGetReturns(endpoint: String, status: Int) = {
-    stubFor(get(urlEqualTo(endpoint))
-      .willReturn(aResponse().withStatus(status)))
+  def givenGetReturns(endpoint: String, status: Int, delay: Int = 0) = {
+    stubFor(
+      get(urlEqualTo(endpoint))
+        .willReturn(
+          aResponse()
+            .withStatus(status)
+            .withFixedDelay(delay)
+        )
+    )
   }
 
-  def givenPostReturns(endpoint: String, status: Int) = {
-    stubFor(get(urlEqualTo(endpoint))
-      .willReturn(aResponse().withStatus(status)))
+  def givenPostReturns(endpoint: String, status: Int, delay: Int = 0) = {
+    stubFor(
+      post(urlEqualTo(endpoint))
+      .willReturn(
+        aResponse()
+          .withStatus(status)
+          .withFixedDelay(delay)
+      )
+    )
   }
 
 }

@@ -16,17 +16,23 @@
 
 package uk.gov.hmrc.apigateway.connector.impl
 
+import java.util.concurrent.TimeoutException
 import javax.inject.{Inject, Singleton}
 
 import play.Logger
 import play.api.http.HttpEntity
-import play.api.libs.ws.{WSClient, WSResponse}
+import play.api.libs.json.Json._
+import play.api.libs.ws.{StreamedResponse, WSClient, WSResponse}
+import play.api.mvc.Results._
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.connector.AbstractConnector
+import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.util.PlayRequestUtils.bodyOf
 
+import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -35,6 +41,8 @@ class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsC
 
   def proxy(request: Request[AnyContent], apiRequest: ApiRequest): Future[Result] = {
 
+    println(" hello 0 ")
+
     val headers = replaceHeaders(request.headers)(
       (HOST, None),
       (AUTHORIZATION, apiRequest.bearerToken),
@@ -42,10 +50,13 @@ class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsC
       (X_CLIENT_ID, apiRequest.clientId),
       (X_REQUEST_TIMESTAMP, apiRequest.timeInNanos.map(_.toString)))
 
+    println(" hello 1 ")
+
     wsClient.url(apiRequest.apiEndpoint)
       .withMethod(request.method)
       .withHeaders(headers.toSimpleMap.toSeq: _*)
       .withBody(bodyOf(request).getOrElse(""))
+      //.withRequestTimeout(5.seconds)
       .execute.map { wsResponse =>
 
       val result = toResult(wsResponse)
@@ -55,6 +66,81 @@ class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsC
       result
     }
   }
+
+//  import play.api.libs.concurrent.Execution.Implicits.defaultContext
+//  import scala.concurrent.duration._
+//  import play.api.libs.concurrent.Timeout
+//
+//  def index(request: Request[AnyContent], apiRequest: ApiRequest) = Action.async {
+//    Timeout.timeout(actorSystem, 1.seconds) {
+//      intensiveComputation().map { i =>
+//        Ok("Got result: " + i)
+//      }
+//    } recover {
+//      case e: TimeoutException =>
+//        InternalServerError("timeout")
+//    }
+//  }
+
+
+
+
+
+//
+//      .execute
+//      .transform(proxySuccessfulResponse(request), _)
+//      .recover {
+//        case e: TimeoutException =>
+//          Logger.warn("timeout error occurred", e)
+//          InternalServerError(toJson(GatewayError.ServiceUnavailable()))
+//      }
+//
+//
+//  }
+
+
+//        recoverFailure)
+
+
+
+
+
+//      .recover(recoverTimeout)
+//      .map { wsResponse =>
+//
+//      println (" hello 2 ")
+//
+//      val result = toResult(wsResponse)
+//
+//      println (" hello 3 ")
+//
+//      Logger.info(s"request [$request] response [$wsResponse] result [$result]")
+//
+//      println (" hello 4 ")
+//
+//      result
+//    }
+
+    //recover recoverTimeout
+  //}
+
+//  private def proxySuccessfulResponse(request: Request[AnyContent]): PartialFunction[WSResponse, Result] = {
+//    case wsResponse =>
+//      println (" hello 2 ")
+//      val result = toResult(wsResponse)
+//      println (" hello 3 ")
+//      Logger.info(s"request [$request] response [$wsResponse] result [$result]")
+//      println (" hello 4 ")
+//      result
+//  }
+//
+//  private def recoverFailure: PartialFunction[Throwable, Result] = {
+//    case e /*: TimeoutException */ =>
+//      Logger.warn("timeout error occurred", e)
+//      InternalServerError(toJson(GatewayError.ServiceUnavailable()))
+////    case e =>
+////      throw e
+//  }
 
   private def replaceHeaders(headers: Headers)(updatedHeaders: (String, Option[String])*): Headers = {
     updatedHeaders.headOption match {

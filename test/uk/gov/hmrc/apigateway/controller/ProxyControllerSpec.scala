@@ -50,6 +50,10 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar {
 
   "proxy" should {
 
+    "timeout" in new Setup {
+//      defaultTimeout
+    }
+
     "propagate the response" in new Setup {
       when(mockProxyService.proxy(any(), any())).thenReturn(successful(NotFound(toJson("Item Not Found"))))
 

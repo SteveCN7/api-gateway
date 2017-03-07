@@ -34,8 +34,6 @@ class ProxyService @Inject()(proxyConnector: ProxyConnector, auditService: Audit
       if (apiRequest.authType != NONE) {
         auditService.auditSuccessfulRequest(request, apiRequest, response)
       }
-
-      println ("response: " + response)
       response
     }
   }

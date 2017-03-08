@@ -25,17 +25,16 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration._
 import org.mockito.Mockito.when
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mockito.MockitoSugar
-import play.api.Configuration
 import play.api.http.Status._
 import play.api.libs.json.Json
+import play.api.libs.ws.WSClient
 import play.api.mvc.AnyContentAsJson
 import play.api.test.FakeRequest
+import uk.gov.hmrc.apigateway.config.AppContext
 import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
 import uk.gov.hmrc.apigateway.model.{ApiIdentifier, ApiRequest}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
-
-import scala.concurrent.duration._
 
 class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoSugar with BeforeAndAfterEach {
 
@@ -45,14 +44,16 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoS
   private val wireMockServer = new WireMockServer(wireMockConfig().port(stubPort))
 
   trait Setup {
-    val underTest = fakeApplication.injector.instanceOf[ProxyConnector]
+    val appContext = mock[AppContext]
+
+    val underTest = new ProxyConnector(wsClient = fakeApplication.injector.instanceOf[WSClient], appContext)
   }
 
   val apiRequest = ApiRequest(
-    timeInNanos = Some(1232356),
+    timeInNanos = Some(33333),
     apiIdentifier = ApiIdentifier("c", "v"),
     apiEndpoint = s"$wireMockUrl/world",
-    clientId = Some("123456"),
+    clientId = Some("7777"),
     bearerToken = Some("Bearer 12345"))
 
   override def beforeEach {
@@ -70,26 +71,22 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoS
 
     "Fail with a `TimeoutException` when the response is too slow" in new Setup {
 
-      val requestTimeout = 500
-      val configuration = mock[Configuration]
-      when(configuration.getInt("timeout.request")).thenReturn(Some(requestTimeout))
+      when(appContext.requestTimeoutInMilliseconds).thenReturn(10)
 
-      givenGetReturns("/world", OK, delay = 2000)
+      givenGetReturns("/world", OK, delay = 50)
 
       intercept[TimeoutException] {
-        await(underTest.proxy(request, apiRequest))(timeout = requestTimeout.milliseconds)
+        await(underTest.proxy(request, apiRequest))
       }
     }
 
     "Proxy the request when the response is processed on time" in new Setup {
 
-      val requestTimeout = 1500
-      val configuration = mock[Configuration]
-      when(configuration.getInt("timeout.request")).thenReturn(Some(requestTimeout))
+      when(appContext.requestTimeoutInMilliseconds).thenReturn(50)
 
-      givenGetReturns("/world", OK, delay = 500)
+      givenGetReturns("/world", OK, delay = 10)
 
-      val result = await(underTest.proxy(request, apiRequest))(timeout = requestTimeout.milliseconds)
+      val result = await(underTest.proxy(request, apiRequest))
 
       status(result) shouldBe OK
     }
@@ -100,7 +97,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoS
 
       givenPostReturns("/world", OK)
 
-      val result = await(underTest.proxy(requestWithBody, apiRequest))
+      await(underTest.proxy(requestWithBody, apiRequest))
 
       verify(postRequestedFor(urlEqualTo("/world")).withRequestBody(equalTo(body)))
     }

@@ -22,8 +22,8 @@ import javax.inject.{Inject, Singleton}
 import akka.stream.Materializer
 import com.google.common.base.Charsets
 import org.joda.time.DateTime
-import play.api.Configuration
 import play.api.mvc.{AnyContent, Request, Result}
+import uk.gov.hmrc.apigateway.config.AppContext
 import uk.gov.hmrc.apigateway.connector.impl.MicroserviceAuditConnector
 import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.model.AuthType._
@@ -34,9 +34,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class AuditService @Inject()(val configuration: Configuration, val auditConnector: MicroserviceAuditConnector, implicit val mat: Materializer) {
-
-  val auditBodySizeLimit: Int = configuration.getInt("auditBodySizeLimit").getOrElse(99000)
+class AuditService @Inject()(val appContext: AppContext, val auditConnector: MicroserviceAuditConnector, implicit val mat: Materializer) {
 
   def auditSuccessfulRequest(request: Request[AnyContent], apiRequest: ApiRequest, response: Result, responseTimestamp: DateTime = DateTime.now()) = {
     val authorisationType = apiRequest.authType match {
@@ -94,8 +92,8 @@ class AuditService @Inject()(val configuration: Configuration, val auditConnecto
   }
 
   private def truncate(data: String): String = {
-    if (data.getBytes.length > auditBodySizeLimit)
-      new String(util.Arrays.copyOf(data.getBytes, auditBodySizeLimit))
+    if (data.getBytes.length > appContext.auditBodySizeLimit)
+      new String(util.Arrays.copyOf(data.getBytes, appContext.auditBodySizeLimit))
     else
       data
   }

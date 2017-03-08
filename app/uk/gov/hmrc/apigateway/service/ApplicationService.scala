@@ -18,7 +18,8 @@ package uk.gov.hmrc.apigateway.service
 
 import javax.inject.{Inject, Singleton}
 
-import play.api.{Configuration, Logger}
+import play.api.Logger
+import uk.gov.hmrc.apigateway.config.AppContext
 import uk.gov.hmrc.apigateway.connector.impl.ThirdPartyApplicationConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound, ServerError}
 import uk.gov.hmrc.apigateway.model.RateLimitTier.{GOLD, SILVER}
@@ -31,7 +32,7 @@ import scala.concurrent.Future
 @Singleton
 class ApplicationService @Inject()(applicationConnector: ThirdPartyApplicationConnector,
                                    rateLimitRepository: RateLimitRepository,
-                                   configuration: Configuration) {
+                                   appContext: AppContext) {
 
   def getByServerToken(serverToken: String): Future[Application] = {
     applicationConnector.getApplicationByServerToken(serverToken)
@@ -60,11 +61,10 @@ class ApplicationService @Inject()(applicationConnector: ThirdPartyApplicationCo
   }
 
   private def rateLimit(application: Application): Int = {
-    val rateLimitProperty = application.rateLimitTier match {
-      case GOLD => "rateLimit.gold"
-      case SILVER => "rateLimit.silver"
-      case _ => "rateLimit.bronze"
+    application.rateLimitTier match {
+      case GOLD => appContext.rateLimitGold
+      case SILVER => appContext.rateLimitSilver
+      case _ => appContext.rateLimitBronze
     }
-    configuration.getInt(rateLimitProperty).getOrElse(throw new RuntimeException(s"$rateLimitProperty is not configured"))
   }
 }

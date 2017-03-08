@@ -19,10 +19,10 @@ package uk.gov.hmrc.apigateway.connector.impl
 import javax.inject.{Inject, Singleton}
 
 import play.Logger
-import play.api.Configuration
 import play.api.http.HttpEntity
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.mvc._
+import uk.gov.hmrc.apigateway.config.AppContext
 import uk.gov.hmrc.apigateway.connector.AbstractConnector
 import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
@@ -33,13 +33,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class ProxyConnector @Inject()(wsClient: WSClient, configuration: Configuration) extends AbstractConnector(wsClient: WSClient) {
-
-  lazy private val requestTimeout = {
-    val propName = "timeout.request"
-    val timeout = configuration.getInt(propName).getOrElse(throw new RuntimeException(s"Not found: $propName"))
-    timeout.milliseconds
-  }
+class ProxyConnector @Inject()(wsClient: WSClient, appContext: AppContext) extends AbstractConnector(wsClient: WSClient) {
 
   def proxy(request: Request[AnyContent], apiRequest: ApiRequest): Future[Result] = {
 
@@ -54,7 +48,7 @@ class ProxyConnector @Inject()(wsClient: WSClient, configuration: Configuration)
       .withMethod(request.method)
       .withHeaders(headers.toSimpleMap.toSeq: _*)
       .withBody(bodyOf(request).getOrElse(""))
-      .withRequestTimeout(requestTimeout)
+      .withRequestTimeout(appContext.requestTimeoutInMilliseconds.milliseconds)
       .execute.map { wsResponse =>
 
       val result = toResult(wsResponse)

@@ -20,9 +20,9 @@ import javax.inject.{Inject, Singleton}
 
 import com.google.common.net.HttpHeaders._
 import play.api.http.HttpVerbs._
-import play.api.mvc.{RawBuffer, AnyContent, Request, Result}
+import play.api.mvc.{AnyContent, Request, Result}
 import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError.ServiceUnavailable
+import uk.gov.hmrc.apigateway.exception.GatewayError.ServiceNotAvailable
 import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.model.AuthType.NONE
 import uk.gov.hmrc.apigateway.util.PlayRequestUtils._
@@ -48,8 +48,8 @@ class ProxyService @Inject()(proxyConnector: ProxyConnector, auditService: Audit
     val body = bodyOf(request).getOrElse("")
 
     (requiresValidation, contentType, body) match {
-      case (true, contentType, _) if contentType.isEmpty => throw new ServiceUnavailable()
-      case (true, _, body) if body.isEmpty => throw new ServiceUnavailable()
+      case (true, `contentType`, _) if contentType.isEmpty => throw ServiceNotAvailable()
+      case (true, _, `body`) if body.isEmpty => throw ServiceNotAvailable()
       case (_, _, _) => proxyF
     }
   }

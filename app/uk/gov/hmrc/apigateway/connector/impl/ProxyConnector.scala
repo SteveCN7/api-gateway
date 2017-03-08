@@ -20,14 +20,13 @@ import javax.inject.{Inject, Singleton}
 
 import akka.stream.scaladsl.Source
 import com.google.common.net.{HttpHeaders => http}
-import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import play.Logger
 import play.api.http.{HttpChunk, HttpEntity}
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.connector.AbstractConnector
 import uk.gov.hmrc.apigateway.model.ApiRequest
-import uk.gov.hmrc.apigateway.util.PlayRequestUtils
+import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.apigateway.util.PlayRequestUtils._
 
 import scala.concurrent.ExecutionContext.Implicits.global

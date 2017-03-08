@@ -54,7 +54,7 @@ class ProxyController @Inject()(proxyService: ProxyService, routingService: Rout
       Unauthorized(toJson(e))
     case e: GatewayError.InvalidCredentials =>
       auditService.auditFailingRequest(e.request, e.apiRequest)
-      Unauthorized(toJson(e))
+      Unauthorized(toJson(e)).withHeaders(WWW_AUTHENTICATE -> """Bearer realm="HMRC API Platform"""")
     case e: GatewayError.IncorrectAccessTokenType => Unauthorized(toJson(e))
 
     case e: GatewayError.InvalidScope => Forbidden(toJson(e))

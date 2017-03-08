@@ -16,20 +16,31 @@
 
 package it.uk.gov.hmrc.apigateway.feature
 
+import com.google.common.net.{HttpHeaders => http}
 import it.uk.gov.hmrc.apigateway.BaseFeatureSpec
+import it.uk.gov.hmrc.apigateway.testutils.RequestUtils
 import play.api.http.Status._
 import uk.gov.hmrc.apigateway.model._
-import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
+import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import play.api.http.HttpVerbs._
+import play.mvc.Http.MimeTypes.JSON
 
-import scalaj.http.Http
+import scalaj.http.{HttpRequest, Http}
 
-class RequestProxyingIntegrationSpec extends BaseFeatureSpec {
+class RequestProxyingIntegrationSpec extends BaseFeatureSpec with RequestUtils {
 
   val anApiDefinition = ApiDefinition("api-simulator", api.url,
     Seq(
-      ApiVersion("1.0", Seq(ApiEndpoint("version1", "GET", AuthType.NONE))),
-      ApiVersion("2.0", Seq(ApiEndpoint("version2", "GET", AuthType.NONE,
-        queryParameters = Some(Seq(Parameter("requiredParam", required = true), Parameter("optionalParam", required = false))))))
+      ApiVersion("1.0",
+        Seq(ApiEndpoint("version1", "GET", AuthType.NONE),
+          ApiEndpoint("version1", "POST", AuthType.NONE),
+          ApiEndpoint("version1", "PUT", AuthType.NONE),
+          ApiEndpoint("version1", "PATCH", AuthType.NONE))),
+      ApiVersion("2.0",
+        Seq(ApiEndpoint("version2", "GET", AuthType.NONE,
+        queryParameters = Some(Seq(
+          Parameter("requiredParam", required = true),
+          Parameter("optionalParam", required = false))))))
     ))
   val apiResponse = """{"response": "ok"}"""
 
@@ -59,7 +70,7 @@ class RequestProxyingIntegrationSpec extends BaseFeatureSpec {
 
     scenario("A request with a malformed 'accept' http header is proxied to the version 1.0") {
       Given("A request with a malformed 'accept' http header")
-      val httpRequest = Http(s"$serviceUrl/api-simulator/version1").header(ACCEPT, "application/json")
+      val httpRequest = Http(s"$serviceUrl/api-simulator/version1").header(ACCEPT, JSON)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -151,6 +162,121 @@ class RequestProxyingIntegrationSpec extends BaseFeatureSpec {
       Then("The request is proxied")
       assertCodeIs(httpResponse, OK)
       assertBodyIs(httpResponse, apiResponse)
+    }
+  }
+
+  feature("The API gateway is backward compatible with WSO2") {
+
+    val verbs = Seq(POST, PUT, PATCH)
+    val verbNames = verbs.mkString(",")
+
+    def invokeAndValidateResponse(httpRequest: HttpRequest) = {
+
+      When("The request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("The http response is '503' service unavailable")
+      assertCodeIs(httpResponse, SERVICE_UNAVAILABLE)
+
+      And("The response message 'SERVICE_UNAVAILABLE'")
+      assertBodyIs(httpResponse, """{ "code": "SERVER_ERROR", "message": "Service unavailable"}""")
+    }
+
+    def request(verb: String, data: String): HttpRequest = {
+      val http = Http(s"$serviceUrl/api-simulator/version1")
+
+      verb match {
+        case `POST` => http.postData(data)
+        case `PUT` => http.put(data)
+        case `PATCH` => http.put(data).method(PATCH)
+        case _ => http
+      }
+    }
+
+    scenario("A successful response for a proxied request matches WSO2 response headers") {
+      Given("A valid request")
+      val httpRequest = Http(s"$serviceUrl/api-simulator/version1")
+
+      When("The request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("The request is proxied successfully")
+      assertCodeIs(httpResponse, OK)
+
+      And("The response headers are backward compatible with WSO2")
+      validateHeaders(flattenHeaders(httpResponse.headers),
+        (TRANSFER_ENCODING, Some("chunked")),
+        (VARY, Some("Accept")),
+        (CONTENT_LENGTH, None),
+        (http.STRICT_TRANSPORT_SECURITY, None),
+        (http.X_FRAME_OPTIONS, None),
+        (http.X_CONTENT_TYPE_OPTIONS, None))
+    }
+
+    scenario("A failed response for a request which cannot be proxied matches WSO2 response headers") {
+      Given("A request for a non existent version")
+      val httpRequest = Http(s"$serviceUrl/api-simulator/version1").header(ACCEPT, "application/vnd.hmrc.3.0+json")
+
+      When("The request is sent to the gateway")
+      val httpResponse = invoke(httpRequest)
+
+      Then("The http response is '404' not found")
+      assertCodeIs(httpResponse, NOT_FOUND)
+
+      And("The response headers are backward compatible with WSO2")
+      validateHeaders(flattenHeaders(httpResponse.headers),
+        (CACHE_CONTROL, Some("no-cache")),
+        (CONTENT_TYPE, Some("application/json; charset=UTF-8")),
+        (http.X_FRAME_OPTIONS, None),
+        (http.X_CONTENT_TYPE_OPTIONS, None))
+    }
+
+    scenario(s"$verbNames requests with an empty body fail with a WSO2 matching response") {
+
+      def performTest(verb: String) = {
+        Given(s"A $verb request with an empty body")
+        val aRequest = request(verb, "")
+          .header(CONTENT_TYPE, JSON)
+          .header(ACCEPT, "application/vnd.hmrc.1.0+json")
+
+        withClue(s"A $verb request with an empty body was incorrectly proxied") {
+          invokeAndValidateResponse(aRequest)
+        }
+      }
+
+      verbs foreach performTest
+    }
+
+    scenario(s"$verbNames requests with an invalid body fail with a WSO2 matching response") {
+
+      def performTest(verb: String) = {
+        Given(s"A $verb request with an empty body")
+        val aRequest = request(verb, "</html>")
+          .header(CONTENT_TYPE, JSON)
+          .header(ACCEPT, "application/vnd.hmrc.1.0+json")
+
+        withClue(s"A $verb request with an invalid body was incorrectly proxied") {
+          invokeAndValidateResponse(aRequest)
+        }
+      }
+
+      verbs foreach performTest
+    }
+
+    scenario(s"$verbNames requests without Content-Type fail with a WSO2 matching response") {
+
+      def performTest(verb: String) = {
+        Given(s"A $verb request with an empty body")
+        val aRequest = request(verb, """{"foo":"bar"}""")
+          .header(CONTENT_TYPE, "")
+          .header(ACCEPT, "application/vnd.hmrc.1.0+json")
+
+        withClue(s"A $verb request without Content-Type was incorrectly proxied") {
+          invokeAndValidateResponse(aRequest)
+        }
+      }
+
+      verbs foreach performTest
     }
   }
 }

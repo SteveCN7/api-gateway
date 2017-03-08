@@ -87,9 +87,13 @@ object EndpointService {
     }
   }
 
-  private def queryParametersMatch(queryParameters: Map[String, Seq[String]], endpointQueryParameters: Option[Seq[Parameter]] = None)  = {
-    val missingParameter = endpointQueryParameters.exists(_.exists(p => p.required && queryParameters.get(p.name).isEmpty))
-    !missingParameter
+  private def queryParametersMatch(queryParameters: Map[String, Seq[String]],
+                                   endpointQueryParameters: Option[Seq[Parameter]] = None) = {
+    endpointQueryParameters match {
+      case Some(configuredParams) if configuredParams.exists(_.required) =>
+        configuredParams.flatMap(cp => queryParameters.get(cp.name)).flatten.nonEmpty
+      case _ => true
+    }
   }
 
   private def parsePathParts(value: String) =

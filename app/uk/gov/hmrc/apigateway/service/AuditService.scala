@@ -28,7 +28,8 @@ import uk.gov.hmrc.apigateway.connector.impl.MicroserviceAuditConnector
 import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.model.AuthType._
 import uk.gov.hmrc.apigateway.util.PlayRequestUtils.bodyOf
-import uk.gov.hmrc.play.audit.model.{DataCall, MergedDataEvent}
+import uk.gov.hmrc.apigateway.util.HttpHeaders.X_REQUEST_ID
+import uk.gov.hmrc.play.audit.model.{DataCall, DataEvent, MergedDataEvent}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -36,51 +37,74 @@ import scala.concurrent.Future
 @Singleton
 class AuditService @Inject()(val appContext: AppContext, val auditConnector: MicroserviceAuditConnector, implicit val mat: Materializer) {
 
+  private def authorisationType(apiRequest: ApiRequest) = apiRequest.authType match {
+    case USER => "user-restricted"
+    case APPLICATION => "application-restricted"
+    case _ => "open"
+  }
+
+  private def getRequestTime(apiRequest: ApiRequest): DateTime = apiRequest.timeInMillis match {
+    case Some(millis) => new DateTime(millis)
+    case _ => DateTime.now()
+  }
+
+  private def buildEventDetails(request: Request[AnyContent], apiRequest: ApiRequest): Map[String, String] = Map(
+    "method" -> request.method,
+    "authorisationType" -> authorisationType(apiRequest),
+    "requestBody" -> truncate(bodyOf(request).getOrElse("-")),
+    "apiContext" -> apiRequest.apiIdentifier.context,
+    "apiVersion" -> apiRequest.apiIdentifier.version) ++
+    addTag("Authorization", apiRequest.bearerToken) ++
+    addTag("userOID", apiRequest.userOid) ++
+    addTag("applicationProductionClientId", apiRequest.clientId)
+
   def auditSuccessfulRequest(request: Request[AnyContent], apiRequest: ApiRequest, response: Result, responseTimestamp: DateTime = DateTime.now()) = {
-    val authorisationType = apiRequest.authType match {
-      case USER => "user-restricted"
-      case APPLICATION => "application-restricted"
-      case _ => "open"
-    }
 
-    def getRequestTime: DateTime = apiRequest.timeInMillis match {
-      case Some(millis) => new DateTime(millis)
-      case _ => DateTime.now()
-    }
-
-    def successfulRequestEvent(responseBody: String) = {
-      MergedDataEvent("api-gateway", "APIGatewayRequestCompleted",
-        request = DataCall(
-          tags = Map(
-            "X-Request-ID" -> request.headers.get("X-Request-ID").getOrElse(""),
-            "path" -> request.path.stripPrefix("/api-gateway"),
-            "transactionName" -> "Request has been completed via the API Gateway",
-            "clientIP" -> request.remoteAddress,
-            "clientPort" -> "443",
-            "type" -> "Audit")
-          ,
-          detail = Map(
-            "method" -> request.method,
-            "authorisationType" -> authorisationType,
-            "requestBody" -> truncate(bodyOf(request).getOrElse("-")),
-            "apiContext" -> apiRequest.apiIdentifier.context,
-            "apiVersion" -> apiRequest.apiIdentifier.version) ++
-            addTag("Authorization", apiRequest.bearerToken) ++
-            addTag("userOID", apiRequest.userOid) ++
-            addTag("applicationProductionClientId", apiRequest.clientId),
-          generatedAt = getRequestTime),
-        response = DataCall(
-          tags = Map(),
-          detail = Map(
-            "statusCode" -> response.header.status.toString,
-            "responseMessage" -> truncate(responseBody)),
-          generatedAt = responseTimestamp))
-    }
+    def successfulRequestEvent(responseBody: String) = MergedDataEvent(
+      auditSource = "api-gateway",
+      auditType = "APIGatewayRequestCompleted",
+      request = DataCall(
+        tags = Map(
+          X_REQUEST_ID -> request.headers.get(X_REQUEST_ID).getOrElse(""),
+          "path" -> request.path.stripPrefix("/api-gateway"),
+          "transactionName" -> "Request has been completed via the API Gateway",
+          "clientIP" -> request.remoteAddress,
+          "clientPort" -> "443",
+          "type" -> "Audit"),
+        detail = buildEventDetails(request, apiRequest),
+        generatedAt = getRequestTime(apiRequest)),
+      response = DataCall(
+        tags = Map(),
+        detail = Map(
+          "statusCode" -> response.header.status.toString,
+          "responseMessage" -> truncate(responseBody)),
+        generatedAt = responseTimestamp)
+    )
 
     for {
       responseBody <- bodyOfResponse(response)
       auditResult <- auditConnector.sendMergedEvent(successfulRequestEvent(responseBody))
     } yield auditResult
+  }
+
+  def auditFailingRequest(request: Request[AnyContent], apiRequest: ApiRequest, responseTimestamp: DateTime = DateTime.now()) = {
+
+    def failingRequestEvent() = DataEvent(
+      auditSource = "api-gateway",
+      auditType = "APIGatewayRequestFailedDueToInvalidAuthorisation",
+      tags = Map(
+        X_REQUEST_ID -> request.headers.get(X_REQUEST_ID).getOrElse(""),
+        "path" -> request.path.stripPrefix("/api-gateway"),
+        "transactionName" -> "A third-party application has made an request rejected by the API Gateway as unauthorised",
+        "clientIP" -> request.remoteAddress,
+        "clientPort" -> "443",
+        "type" -> "Error",
+        "generatedAt" -> responseTimestamp.toString),
+      detail = buildEventDetails(request, apiRequest),
+      generatedAt = getRequestTime(apiRequest)
+    )
+
+    auditConnector.sendEvent(failingRequestEvent())
   }
 
   private def bodyOfResponse(result: Result)(implicit mat: Materializer): Future[String] = {

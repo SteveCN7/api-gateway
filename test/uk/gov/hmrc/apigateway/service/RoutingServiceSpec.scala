@@ -61,54 +61,54 @@ class RoutingServiceSpec extends UnitSpec with MockitoSugar {
       when(endpointService.apiRequest(any[ProxyRequest])).thenReturn(failed(MatchingResourceNotFound()))
 
       intercept[MatchingResourceNotFound] {
-        await(routingService.routeRequest(ProxyRequest(openRequest)))
+        await(routingService.routeRequest(openRequest))
       }
     }
 
     "route an open-endpoint request" in new Setup {
       when(endpointService.apiRequest(any[ProxyRequest])).thenReturn(successful(openApiRequest))
 
-      val apiRequest = await(routingService.routeRequest(ProxyRequest(openRequest)))
+      val apiRequest = await(routingService.routeRequest(openRequest))
 
       apiRequest shouldBe openApiRequest
     }
 
     "decline a user-endpoint request which fails to route" in new Setup {
       when(endpointService.apiRequest(any[ProxyRequest])).thenReturn(successful(userApiRequest))
-      when(userRestrictedEndpointService.routeRequest(ProxyRequest(userRequest), userApiRequest))
+      when(userRestrictedEndpointService.routeRequest(userRequest, ProxyRequest(userRequest), userApiRequest))
         .thenReturn(failed(ServerError()))
 
       intercept[ServerError] {
-        await(routingService.routeRequest(ProxyRequest(userRequest)))
+        await(routingService.routeRequest(userRequest))
       }
     }
 
     "route a user-endpoint request" in new Setup {
       when(endpointService.apiRequest(any[ProxyRequest])).thenReturn(successful(userApiRequest))
-      when(userRestrictedEndpointService.routeRequest(ProxyRequest(userRequest), userApiRequest))
+      when(userRestrictedEndpointService.routeRequest(userRequest, ProxyRequest(userRequest), userApiRequest))
         .thenReturn(successful(userApiRequest))
 
-      val apiRequest = await(routingService.routeRequest(ProxyRequest(userRequest)))
+      val apiRequest = await(routingService.routeRequest(userRequest))
 
       apiRequest shouldBe userApiRequest
     }
 
     "decline an application-endpoint request which fails to route" in new Setup {
       when(endpointService.apiRequest(any[ProxyRequest])).thenReturn(successful(applicationApiRequest))
-      when(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequest), applicationApiRequest))
+      when(applicationRestrictedEndpointService.routeRequest(applicationRequest, ProxyRequest(applicationRequest), applicationApiRequest))
         .thenReturn(failed(ServerError()))
 
       intercept[ServerError] {
-        await(routingService.routeRequest(ProxyRequest(applicationRequest)))
+        await(routingService.routeRequest(applicationRequest))
       }
     }
 
     "route an application-endpoint request" in new Setup {
       when(endpointService.apiRequest(any[ProxyRequest])).thenReturn(successful(applicationApiRequest))
-      when(applicationRestrictedEndpointService.routeRequest(ProxyRequest(applicationRequest), applicationApiRequest))
+      when(applicationRestrictedEndpointService.routeRequest(applicationRequest, ProxyRequest(applicationRequest), applicationApiRequest))
         .thenReturn(successful(applicationApiRequest))
 
-      val apiRequest = await(routingService.routeRequest(ProxyRequest(applicationRequest)))
+      val apiRequest = await(routingService.routeRequest(applicationRequest))
 
       apiRequest shouldBe applicationApiRequest
     }

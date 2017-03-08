@@ -18,10 +18,14 @@ package uk.gov.hmrc.apigateway.service
 
 import javax.inject.{Inject, Singleton}
 
+import com.google.common.net.HttpHeaders._
+import play.api.http.HttpVerbs._
 import play.api.mvc.{AnyContent, Request, Result}
 import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
+import uk.gov.hmrc.apigateway.exception.GatewayError.ServiceNotAvailable
 import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.model.AuthType.NONE
+import uk.gov.hmrc.apigateway.util.PlayRequestUtils._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -29,12 +33,24 @@ import scala.concurrent.Future
 @Singleton
 class ProxyService @Inject()(proxyConnector: ProxyConnector, auditService: AuditService) {
 
-  def proxy(request: Request[AnyContent], apiRequest: ApiRequest): Future[Result] = {
-    proxyConnector.proxy(request, apiRequest) map { response =>
+  def proxy(request: Request[AnyContent], apiRequest: ApiRequest)(implicit requestId: String): Future[Result] = {
+    val httpMethodsToValidate = Seq(POST, PUT, PATCH)
+
+    def proxyF: Future[Result] = proxyConnector.proxy(request, apiRequest) map { response =>
       if (apiRequest.authType != NONE) {
         auditService.auditSuccessfulRequest(request, apiRequest, response)
       }
       response
+    }
+
+    val requiresValidation = httpMethodsToValidate.contains(request.method)
+    val contentType = request.headers.get(CONTENT_TYPE).getOrElse("")
+    val body = bodyOf(request).getOrElse("")
+
+    (requiresValidation, contentType, body) match {
+      case (true, `contentType`, _) if contentType.isEmpty => throw ServiceNotAvailable()
+      case (true, _, `body`) if body.isEmpty => throw ServiceNotAvailable()
+      case (_, _, _) => proxyF
     }
   }
 

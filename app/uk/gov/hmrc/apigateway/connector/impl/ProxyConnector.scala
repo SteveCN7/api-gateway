@@ -18,15 +18,17 @@ package uk.gov.hmrc.apigateway.connector.impl
 
 import javax.inject.{Inject, Singleton}
 
+import akka.stream.scaladsl.Source
+import com.google.common.net.{HttpHeaders => http}
 import play.Logger
-import play.api.http.HttpEntity
+import play.api.http.{HttpChunk, HttpEntity}
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.mvc._
 import uk.gov.hmrc.apigateway.config.AppContext
 import uk.gov.hmrc.apigateway.connector.AbstractConnector
 import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
-import uk.gov.hmrc.apigateway.util.PlayRequestUtils.bodyOf
+import uk.gov.hmrc.apigateway.util.PlayRequestUtils._
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -35,14 +37,15 @@ import scala.concurrent.Future
 @Singleton
 class ProxyConnector @Inject()(wsClient: WSClient, appContext: AppContext) extends AbstractConnector(wsClient: WSClient) {
 
-  def proxy(request: Request[AnyContent], apiRequest: ApiRequest): Future[Result] = {
+  def proxy(request: Request[AnyContent], apiRequest: ApiRequest)(implicit requestId: String): Future[Result] = {
 
     val headers = replaceHeaders(request.headers)(
       (HOST, None),
       (AUTHORIZATION, apiRequest.bearerToken),
       (X_CLIENT_AUTHORIZATION_TOKEN, apiRequest.bearerToken.map(_.stripPrefix("Bearer "))),
       (X_CLIENT_ID, apiRequest.clientId),
-      (X_REQUEST_TIMESTAMP, apiRequest.timeInNanos.map(_.toString)))
+      (X_REQUEST_TIMESTAMP, apiRequest.timeInNanos.map(_.toString)),
+      (X_REQUEST_ID, Some(requestId)))
 
     wsClient.url(apiRequest.apiEndpoint)
       .withMethod(request.method)
@@ -51,7 +54,7 @@ class ProxyConnector @Inject()(wsClient: WSClient, appContext: AppContext) exten
       .withRequestTimeout(appContext.requestTimeoutInMilliseconds.milliseconds)
       .execute.map { wsResponse =>
 
-      val result = toResult(wsResponse)
+      val result = buildResult(wsResponse)
 
       Logger.info(s"request [$request] response [$wsResponse] result [$result]")
 
@@ -59,21 +62,29 @@ class ProxyConnector @Inject()(wsClient: WSClient, appContext: AppContext) exten
     }
   }
 
-  private def replaceHeaders(headers: Headers)(updatedHeaders: (String, Option[String])*): Headers = {
-    updatedHeaders.headOption match {
-      case Some((headerName, Some(headerValue))) => replaceHeaders(headers.replace(headerName -> headerValue))(updatedHeaders.tail:_*)
-      case Some((headerName, None)) => replaceHeaders(headers.remove(headerName))(updatedHeaders.tail:_*)
-      case None => headers
-    }
-  }
+  private def buildResult(streamedResponse: WSResponse): Result = {
 
-  private def toResult(streamedResponse: WSResponse): Result =
-    Result(
-      ResponseHeader(streamedResponse.status, flattenHeaders(streamedResponse.allHeaders)),
-      HttpEntity.Strict(streamedResponse.bodyAsBytes, None)
+    def flattenHeaders(headers: Map[String, Seq[String]]) = headers.mapValues(_.mkString(","))
+
+    val body = Source.fromIterator(() =>
+      Seq[HttpChunk](
+        HttpChunk.Chunk(streamedResponse.bodyAsBytes),
+        HttpChunk.LastChunk(Headers())
+      ).iterator
     )
 
-  private def flattenHeaders(headers: Map[String, Seq[String]]) =
-    headers.mapValues(_.mkString(","))
+    val headers: Map[String, String] =
+      replaceHeaders(Headers(flattenHeaders(streamedResponse.allHeaders).toSeq: _*))(
+        (CONTENT_LENGTH, None),
+        (http.STRICT_TRANSPORT_SECURITY, None),
+        (http.X_FRAME_OPTIONS, None),
+        (http.X_CONTENT_TYPE_OPTIONS, None),
+        (VARY, Some("Accept"))
+      ).toSimpleMap
 
+    Result(
+      ResponseHeader(streamedResponse.status, headers),
+      HttpEntity.Chunked(body, None)
+    )
+  }
 }

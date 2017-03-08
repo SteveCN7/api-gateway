@@ -41,10 +41,10 @@ trait RoutingServicesMocks {
   }
 
   protected def mockAuthority(authorityService: AuthorityService, gatewayError: GatewayError) =
-    when(authorityService.findAuthority(any[ProxyRequest])).thenReturn(failed(gatewayError))
+    when(authorityService.findAuthority(any(), any(), any())).thenReturn(failed(gatewayError))
 
   protected def mockAuthority(authorityService: AuthorityService, authority: Authority) =
-    when(authorityService.findAuthority(any[ProxyRequest])).thenReturn(successful(authority))
+    when(authorityService.findAuthority(any(), any(), any())).thenReturn(successful(authority))
 
   protected def mockScopeValidation(scopeValidationFilter: ScopeValidator, gatewayError: GatewayError) =
     when(scopeValidationFilter.validate(any(classOf[ThirdPartyDelegatedAuthority]), any(classOf[Option[String]])))

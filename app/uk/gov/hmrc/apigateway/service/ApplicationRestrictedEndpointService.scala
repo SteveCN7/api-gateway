@@ -19,8 +19,8 @@ package uk.gov.hmrc.apigateway.service
 import javax.inject.{Inject, Singleton}
 
 import play.api.Logger
+import play.api.mvc.{AnyContent, Request}
 import uk.gov.hmrc.apigateway.exception.GatewayError._
-import uk.gov.hmrc.apigateway.model.AuthType._
 import uk.gov.hmrc.apigateway.model._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -29,32 +29,33 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class ApplicationRestrictedEndpointService @Inject()(authorityService: AuthorityService,
                                                      applicationService: ApplicationService) {
 
-  private def getAuthority(proxyRequest: ProxyRequest, authType: AuthType) = {
-    authorityService.findAuthority(proxyRequest) recover {
-      case e: NotFound =>
-        Logger.debug("No authority found for the access token")
-        throw InvalidCredentials()
+  def routeRequest(request: Request[AnyContent], proxyRequest: ProxyRequest, apiRequest: ApiRequest) = {
+
+    def getAuthority = {
+      authorityService.findAuthority(request, proxyRequest, apiRequest) recover {
+        case e: NotFound =>
+          Logger.debug("No authority found for the access token")
+          throw InvalidCredentials(request, apiRequest)
+      }
     }
-  }
 
-  private def getApplication(proxyRequest: ProxyRequest, authType: AuthType, accessToken: String) = {
-
-    def getApplicationByAuthority(proxyRequest: ProxyRequest, authType: AuthType) = {
+    def getApplicationByAuthority = {
       for {
-        authority <- getAuthority(proxyRequest, authType)
+        authority <- getAuthority
         app <- applicationService.getByClientId(authority.delegatedAuthority.clientId)
       } yield app
     }
 
-    applicationService.getByServerToken(accessToken) recoverWith {
-      case e: NotFound => getApplicationByAuthority(proxyRequest, authType)
+    def getApplication = {
+      proxyRequest.accessToken(request, apiRequest) flatMap { accessToken =>
+        applicationService.getByServerToken(accessToken) recoverWith {
+          case e: NotFound => getApplicationByAuthority
+        }
+      }
     }
-  }
 
-  def routeRequest(proxyRequest: ProxyRequest, apiRequest: ApiRequest) = {
     for {
-      accessToken <- proxyRequest.accessToken
-      app <- getApplication(proxyRequest, apiRequest.authType, accessToken)
+      app <- getApplication
       _ <- applicationService.validateSubscriptionAndRateLimit(app, apiRequest.apiIdentifier)
     } yield apiRequest.copy(clientId = Some(app.clientId))
   }

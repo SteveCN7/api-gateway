@@ -16,13 +16,19 @@
 
 package uk.gov.hmrc.apigateway.service
 
+import java.util.UUID
+
+import com.google.common.net.HttpHeaders._
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.{timeout, verify, verifyZeroInteractions}
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mockito.MockitoSugar
+import play.api.libs.json.Json
 import play.api.mvc.Results.Ok
 import play.api.test.FakeRequest
+import play.mvc.Http.MimeTypes.JSON
 import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
+import uk.gov.hmrc.apigateway.exception.GatewayError.ServiceNotAvailable
 import uk.gov.hmrc.apigateway.model.AuthType._
 import uk.gov.hmrc.apigateway.model.{ApiIdentifier, ApiRequest}
 import uk.gov.hmrc.play.test.UnitSpec
@@ -40,6 +46,7 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
     val proxyConnector = mock[ProxyConnector]
     val auditService = mock[AuditService]
     val underTest = new ProxyService(proxyConnector, auditService)
+    val requestId = UUID.randomUUID().toString
   }
 
   "proxy" should {
@@ -47,9 +54,9 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
     "call and return the response from the microservice" in new Setup {
       val response = Ok("hello")
 
-      given(proxyConnector.proxy(request, apiRequest)).willReturn(response)
+      given(proxyConnector.proxy(request, apiRequest)(requestId)).willReturn(response)
 
-      val result = await(underTest.proxy(request, apiRequest))
+      val result = await(underTest.proxy(request, apiRequest)(requestId))
 
       result shouldBe response
     }
@@ -58,9 +65,9 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
 
       val response = Ok("hello")
 
-      given(proxyConnector.proxy(request, apiRequest)).willReturn(response)
+      given(proxyConnector.proxy(request, apiRequest)(requestId)).willReturn(response)
 
-      await(underTest.proxy(request, apiRequest))
+      await(underTest.proxy(request, apiRequest)(requestId))
 
       verify(auditService, timeout(2000)).auditSuccessfulRequest(request, apiRequest, response)
     }
@@ -68,11 +75,65 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
     "not audit the request for open endpoint" in new Setup {
       val openApiRequest = apiRequest.copy(authType = NONE)
 
-      given(proxyConnector.proxy(request, openApiRequest)).willReturn(Ok("hello"))
+      given(proxyConnector.proxy(request, openApiRequest)(requestId)).willReturn(Ok("hello"))
 
-      await(underTest.proxy(request, openApiRequest))
+      await(underTest.proxy(request, openApiRequest)(requestId))
 
       verifyZeroInteractions(auditService)
+    }
+
+    "fail a POST request without a Content-Type header" in new Setup {
+      val postRequest = FakeRequest("POST", "/hello/world").withJsonBody(Json.toJson("""{"foo":"bar"}"""))
+      val openApiRequest = apiRequest.copy(authType = NONE)
+
+      intercept[ServiceNotAvailable] {
+        await(underTest.proxy(postRequest, openApiRequest)(requestId))
+      }
+    }
+
+    "fail a POST request without a body" in new Setup {
+      val postRequest = FakeRequest("POST", "/hello/world").withHeaders((CONTENT_TYPE, JSON))
+      val openApiRequest = apiRequest.copy(authType = NONE)
+
+      intercept[ServiceNotAvailable] {
+        await(underTest.proxy(postRequest, openApiRequest)(requestId))
+      }
+    }
+
+    "fail a PUT request without a Content-Type header" in new Setup {
+      val postRequest = FakeRequest("PUT", "/hello/world").withJsonBody(Json.toJson("""{"foo":"bar"}"""))
+      val openApiRequest = apiRequest.copy(authType = NONE)
+
+      intercept[ServiceNotAvailable] {
+        await(underTest.proxy(postRequest, openApiRequest)(requestId))
+      }
+    }
+
+    "fail a PUT request without a body" in new Setup {
+      val postRequest = FakeRequest("PUT", "/hello/world").withHeaders((CONTENT_TYPE, JSON))
+      val openApiRequest = apiRequest.copy(authType = NONE)
+
+      intercept[ServiceNotAvailable] {
+        await(underTest.proxy(postRequest, openApiRequest)(requestId))
+      }
+    }
+
+    "fail a PATCH request without a Content-Type header" in new Setup {
+      val postRequest = FakeRequest("PATCH", "/hello/world").withJsonBody(Json.toJson("""{"foo":"bar"}"""))
+      val openApiRequest = apiRequest.copy(authType = NONE)
+
+      intercept[ServiceNotAvailable] {
+        await(underTest.proxy(postRequest, openApiRequest)(requestId))
+      }
+    }
+
+    "fail a PATCH request without a body" in new Setup {
+      val postRequest = FakeRequest("PATCH", "/hello/world").withHeaders((CONTENT_TYPE, JSON))
+      val openApiRequest = apiRequest.copy(authType = NONE)
+
+      intercept[ServiceNotAvailable] {
+        await(underTest.proxy(postRequest, openApiRequest)(requestId))
+      }
     }
   }
 }

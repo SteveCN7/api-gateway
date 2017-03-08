@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.apigateway.play.handler
 
+import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
 import play.api.http.{DefaultHttpRequestHandler, HttpConfiguration, HttpErrorHandler, HttpFilters}
@@ -39,5 +40,8 @@ class ProxyRequestHandler @Inject()
     }
   }
 
-  override def routeRequest(requestHeader: RequestHeader): Option[Handler] = Some(proxyController.proxy)
+  override def routeRequest(requestHeader: RequestHeader): Option[Handler] = {
+    implicit val requestId = UUID.randomUUID().toString // we set it somewhere else :-)
+    Some(proxyController.proxy)
+  }
 }

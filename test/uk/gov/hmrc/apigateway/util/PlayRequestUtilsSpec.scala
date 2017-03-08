@@ -19,6 +19,7 @@ package uk.gov.hmrc.apigateway.util
 import play.api.libs.json.Json
 import play.api.mvc._
 import play.api.test.FakeRequest
+import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.xml.XML
@@ -66,7 +67,7 @@ class PlayRequestUtilsSpec extends UnitSpec {
   "asMapOfSeq" should {
     "convert a simple seq into a map" in {
       val res = PlayRequestUtils.asMapOfSets(Seq("A" -> "aaa", "B" -> "bbb"))
-      res shouldBe(Map("A" -> Set("aaa"), "B" -> Set("bbb")))
+      res shouldBe Map("A" -> Set("aaa"), "B" -> Set("bbb"))
     }
 
     "convert a complex seq into a map"  in {
@@ -76,8 +77,31 @@ class PlayRequestUtilsSpec extends UnitSpec {
         "B" -> "yyy,qqq",
         "A" -> "xxx, zzz"
       ))
-      res shouldBe(Map("A" -> Set("aaa", "xxx, zzz"), "B" -> Set("bbb", "yyy,qqq")))
+      res shouldBe Map("A" -> Set("aaa", "xxx, zzz"), "B" -> Set("bbb", "yyy,qqq"))
     }
   }
 
+  "replaceHeaders" should {
+    val headers = Headers(X_REQUEST_ID -> "requestId")
+
+    "add new headers" in {
+      val res = PlayRequestUtils.replaceHeaders(headers)((X_CLIENT_ID, Some("clientId")))
+      res.headers shouldBe Seq((X_REQUEST_ID, "requestId"), (X_CLIENT_ID, "clientId"))
+    }
+
+    "replace existing headers" in {
+      val res = PlayRequestUtils.replaceHeaders(headers)((X_REQUEST_ID, Some("newRequestId")))
+      res.headers shouldBe Seq((X_REQUEST_ID, "newRequestId"))
+    }
+
+    "remove headers" in {
+      val res = PlayRequestUtils.replaceHeaders(headers)((X_REQUEST_ID, None))
+      res.headers shouldBe Seq()
+    }
+
+    "leave headers intact" in {
+      val res = PlayRequestUtils.replaceHeaders(headers)()
+      res.headers shouldBe Seq((X_REQUEST_ID, "requestId"))
+    }
+  }
 }

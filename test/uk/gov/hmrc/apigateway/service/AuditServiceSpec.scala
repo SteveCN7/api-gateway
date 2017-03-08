@@ -26,6 +26,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{verify, when}
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mockito.MockitoSugar
+import play.api.Configuration
 import play.api.http.Status
 import play.api.libs.json.Json
 import play.api.mvc.{AnyContentAsJson, AnyContentAsText}
@@ -34,8 +35,9 @@ import uk.gov.hmrc.apigateway.config.AppContext
 import uk.gov.hmrc.apigateway.connector.impl.MicroserviceAuditConnector
 import uk.gov.hmrc.apigateway.model.{ApiIdentifier, ApiRequest, AuthType}
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
-import uk.gov.hmrc.play.audit.model.{DataCall, MergedDataEvent}
+import uk.gov.hmrc.play.audit.model.{DataCall, DataEvent, MergedDataEvent}
 import uk.gov.hmrc.play.http.HeaderCarrier
+import uk.gov.hmrc.apigateway.util.HttpHeaders.X_REQUEST_ID
 import uk.gov.hmrc.play.test.UnitSpec
 
 class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach {
@@ -50,6 +52,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
 
     when(appContext.auditBodySizeLimit).thenReturn(100)
     when(auditConnector.sendMergedEvent(any())(any(), any())).thenReturn(AuditResult.Success)
+    when(auditConnector.sendEvent(any())(any(), any())).thenReturn(AuditResult.Failure("errorMsg", None))
 
     val auditService = new AuditService(appContext, auditConnector, materializer)
   }
@@ -71,7 +74,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
       val request = FakeRequest("POST", "/api-gateway/hello/user")
         .withBody(AnyContentAsJson(Json.parse("""{"body":"test"}""")))
         .copyFakeRequest(remoteAddress = "10.10.10.10")
-        .withHeaders("X-Request-ID" -> "requestId")
+        .withHeaders(X_REQUEST_ID -> "requestId")
 
       val apiRequest = ApiRequest(
         timeInMillis = Some(requestMillis),
@@ -93,13 +96,12 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
         eventId = auditedEvent.eventId,
         request = DataCall(
           tags = Map(
-            "X-Request-ID" -> "requestId",
+            X_REQUEST_ID -> "requestId",
             "path" -> "/hello/user",
             "transactionName" -> "Request has been completed via the API Gateway",
             "clientIP" -> "10.10.10.10",
             "clientPort" -> "443",
-            "type" -> "Audit"
-          ),
+            "type" -> "Audit"),
           detail = Map(
             "method" -> "POST",
             "authorisationType" -> "user-restricted",
@@ -108,8 +110,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
             "apiVersion" -> "1.0",
             "Authorization" -> "Bearer accessToken",
             "applicationProductionClientId" -> "applicationClientId",
-            "userOID" -> "userOid"
-          ),
+            "userOID" -> "userOid"),
           generatedAt = new DateTime(requestMillis)
         ),
         response = DataCall(
@@ -118,8 +119,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
             "statusCode" -> Status.OK.toString,
             "responseMessage" -> "responseBody"
           ),
-          generatedAt = DateTime.now()
-        )
+          generatedAt = DateTime.now())
       )
     }
 
@@ -143,5 +143,62 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
       auditedEvent.request.detail.get("requestBody") shouldBe Some("reque")
       auditedEvent.response.detail.get("responseMessage") shouldBe Some("respo")
     }
+
   }
+
+  "auditFailingRequest" should {
+
+    val captor = ArgumentCaptor.forClass(classOf[DataEvent])
+    val requestMillis = System.currentTimeMillis()
+
+    val request = FakeRequest("POST", "/api-gateway/hello/user")
+      .withBody(AnyContentAsJson(Json.parse("""{"body":"test"}""")))
+      .copyFakeRequest(remoteAddress = "10.10.10.10")
+      .withHeaders(X_REQUEST_ID -> "requestId")
+
+    val apiRequest = ApiRequest(
+      timeInMillis = Some(requestMillis),
+      apiIdentifier = ApiIdentifier("hello", "1.0"),
+      authType = AuthType.USER,
+      apiEndpoint = "/hello/user",
+      userOid = Some("userOid"),
+      clientId = Some("applicationClientId"),
+      bearerToken = Some("Bearer accessToken"))
+
+    "send an audit event" in new Setup {
+
+      val result = await(auditService.auditFailingRequest(request, apiRequest, DateTime.parse("2017-02-02")))
+
+      verify(auditConnector).sendEvent(captor.capture())(any(), any())
+      val auditedEvent = captor.getValue.asInstanceOf[DataEvent]
+
+      auditedEvent shouldBe DataEvent(
+        auditSource = "api-gateway",
+        auditType = "APIGatewayRequestFailedDueToInvalidAuthorisation",
+        eventId = auditedEvent.eventId,
+        tags = Map(
+          X_REQUEST_ID -> "requestId",
+          "path" -> "/hello/user",
+          "transactionName" -> "A third-party application has made an request rejected by the API Gateway as unauthorised",
+          "clientIP" -> "10.10.10.10",
+          "clientPort" -> "443",
+          "type" -> "Error",
+          "generatedAt" -> DateTime.parse("2017-02-02").toString
+        ),
+        detail = Map(
+          "method" -> "POST",
+          "authorisationType" -> "user-restricted",
+          "requestBody" -> """{"body":"test"}""",
+          "apiContext" -> "hello",
+          "apiVersion" -> "1.0",
+          "Authorization" -> "Bearer accessToken",
+          "applicationProductionClientId" -> "applicationClientId",
+          "userOID" -> "userOid"
+        ),
+        generatedAt = new DateTime(requestMillis)
+      )
+    }
+
+  }
+
 }

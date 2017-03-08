@@ -20,13 +20,12 @@ import javax.inject.{Inject, Singleton}
 
 import play.api.Logger
 import play.api.cache.CacheApi
-import uk.gov.hmrc.apigateway.model.{CacheControl, CacheControlException, PrimaryCacheKey, VaryCacheKey}
+import uk.gov.hmrc.apigateway.model.{CacheControl, PrimaryCacheKey, VaryCacheKey}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
-import scala.util.{Failure, Success, Try}
 
 @Singleton
 class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics, varyHeaderCache: VaryHeaderCacheManager) {
@@ -51,26 +50,24 @@ class CacheManager @Inject()(cache: CacheApi, metrics: CacheMetrics, varyHeaderC
     }
   }
 
-  private def fetchFromService[T: ClassTag](
-                                             key: String,
-                                             reqHeaders: Map[String, Set[String]],
-                                             serviceName: String,
-                                             fallbackFunction: => Future[EntityWithResponseHeaders[T]]
-                                           ): Future[T] = {
-    fallbackFunction map { case (result, respHeaders) => {
+  private def fetchFromService[T: ClassTag](key: String,
+                                            reqHeaders: Map[String, Set[String]],
+                                            serviceName: String,
+                                            fallbackFunction: => Future[EntityWithResponseHeaders[T]]): Future[T] = {
+    fallbackFunction map { case (result, respHeaders) =>
       CacheControl.fromHeaders(respHeaders, serviceName) match {
           case CacheControl(false, Some(max), varyHeaders) if varyHeaders.isEmpty =>
-            Logger.debug(s"Caching ${serviceName}")
-            cache.set(key, result, max seconds)
+            Logger.debug(s"Caching $serviceName")
+            cache.set(key, result, max.seconds)
           case CacheControl(false, Some(max), varyHeaders) if varyHeaders.size == 1 =>
-            Logger.debug(s"Caching with Vary ${serviceName}")
-            cache.set(VaryCacheKey(key), varyHeaders.head, max seconds)
-            cache.set(PrimaryCacheKey(key, varyHeaders.headOption, reqHeaders), result, max seconds)
+            Logger.debug(s"Caching with Vary $serviceName")
+            cache.set(VaryCacheKey(key), varyHeaders.head, max.seconds)
+            cache.set(PrimaryCacheKey(key, varyHeaders.headOption, reqHeaders), result, max.seconds)
           case CacheControl(_, _, varyHeaders) if varyHeaders.size > 1 =>
               Logger.warn(s"($serviceName) Multiple Vary headers are not supported for caching. (Headers: ${varyHeaders.mkString(", ")})")
           case _ => // Anything else we do not cache.
       }
       result
-    }}
+    }
   }
 }

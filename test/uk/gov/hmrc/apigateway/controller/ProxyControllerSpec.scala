@@ -167,8 +167,9 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
       val result = await(proxyController.proxy()(requestId)(request))
 
       status(result) shouldBe UNAUTHORIZED
+
       jsonBodyOf(result) shouldBe Json.obj("code" -> "INVALID_CREDENTIALS", "message" -> "Invalid Authentication information provided")
-      result.header.headers("WWW-Authenticate") shouldBe """Bearer realm="HMRC API Platform""""
+      result.header.headers(WWW_AUTHENTICATE) shouldBe """Bearer realm="HMRC API Platform""""
     }
   }
 }

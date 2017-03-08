@@ -21,14 +21,17 @@ import java.util.UUID
 import akka.stream.Materializer
 import com.google.common.net.{HttpHeaders => http}
 import it.uk.gov.hmrc.apigateway.testutils.RequestUtils
+import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import play.api.http.Status._
+import play.api.libs.json.Json
 import play.api.libs.json.Json._
 import play.api.mvc.Result
 import play.api.mvc.Results._
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.exception.GatewayError
+import uk.gov.hmrc.apigateway.exception.GatewayError.InvalidCredentials
 import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.service.{AuditService, ProxyService, RoutingService}
@@ -156,6 +159,16 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
         (CONTENT_TYPE, Some("application/json; charset=UTF-8")),
         (http.X_FRAME_OPTIONS, None),
         (http.X_CONTENT_TYPE_OPTIONS, None))
+    }
+
+    "return 401 with 'WWW-Authenticate' header when InvalidCredentials is thrown" in new Setup {
+      when(routingService.routeRequest(any())).thenReturn(failed(InvalidCredentials(request, apiRequest)))
+
+      val result = await(proxyController.proxy()(requestId)(request))
+
+      status(result) shouldBe UNAUTHORIZED
+      jsonBodyOf(result) shouldBe Json.obj("code" -> "INVALID_CREDENTIALS", "message" -> "Invalid Authentication information provided")
+      result.header.headers("WWW-Authenticate") shouldBe """Bearer realm="HMRC API Platform""""
     }
   }
 }

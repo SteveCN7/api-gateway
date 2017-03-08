@@ -92,7 +92,7 @@ object EndpointService {
     endpointQueryParameters match {
       case Some(configuredParams) if configuredParams.exists(_.required) =>
         configuredParams.flatMap(cp => queryParameters.get(cp.name)).flatten.nonEmpty
-      case None => true
+      case _ => true
     }
   }
 

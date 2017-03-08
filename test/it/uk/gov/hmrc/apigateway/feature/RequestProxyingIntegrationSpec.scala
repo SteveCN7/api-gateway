@@ -244,7 +244,7 @@ class RequestProxyingIntegrationSpec extends BaseFeatureSpec with RequestUtils {
         }
       }
 
-      verbs foreach (performTest)
+      verbs foreach performTest
     }
 
     scenario(s"$verbNames requests with an invalid body fail with a WSO2 matching response") {
@@ -260,7 +260,7 @@ class RequestProxyingIntegrationSpec extends BaseFeatureSpec with RequestUtils {
         }
       }
 
-      verbs foreach (performTest)
+      verbs foreach performTest
     }
 
     scenario(s"$verbNames requests without Content-Type fail with a WSO2 matching response") {
@@ -276,7 +276,7 @@ class RequestProxyingIntegrationSpec extends BaseFeatureSpec with RequestUtils {
         }
       }
 
-      verbs foreach (performTest)
+      verbs foreach performTest
     }
   }
 }

@@ -25,7 +25,7 @@ object GatewayError {
 
   case class NotImplemented() extends GatewayError("NOT_IMPLEMENTED", "API has not been implemented")
 
-  case class ServiceUnavailable() extends GatewayError("SERVER_ERROR", "Service unavailable")
+  case class ServiceNotAvailable() extends GatewayError("SERVER_ERROR", "Service unavailable")
 
   case class ServerError() extends GatewayError("SERVER_ERROR", "Internal server error")
 

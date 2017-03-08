@@ -21,21 +21,21 @@ import java.util.UUID
 import akka.stream.Materializer
 import com.google.common.net.{HttpHeaders => http}
 import it.uk.gov.hmrc.apigateway.testutils.RequestUtils
-import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.when
+import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import play.api.http.Status._
 import play.api.libs.json.Json._
+import play.api.mvc.Result
 import play.api.mvc.Results._
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.exception.GatewayError
-import uk.gov.hmrc.apigateway.exception.GatewayError.MatchingResourceNotFound
 import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
-import uk.gov.hmrc.apigateway.service.{ProxyService, RoutingService}
+import uk.gov.hmrc.apigateway.service.{AuditService, ProxyService, RoutingService}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.UnitSpec
 
+import scala.concurrent.Future
 import scala.concurrent.Future.{failed, successful}
 
 class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
@@ -44,17 +44,18 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
 
   private trait Setup {
     val request = FakeRequest("POST", "/hello/world")
-//    val mockProxyService = mock[ProxyService]
-//    val mockRoutingService = mock[RoutingService]
-//    val underTest = new ProxyController(mockProxyService, mockRoutingService)
-    val requestId = UUID.randomUUID().toString
     val apiRequest = mock[ApiRequest]
+    val requestId = UUID.randomUUID().toString
 
-//    when(mockRoutingService.routeRequest(any())).thenReturn(mock[ApiRequest])
     val proxyService = mock[ProxyService]
-    val auditService = mock[AuditService]
+    def mockProxyService(result: Future[Result]) = {
+      when(proxyService.proxy(request, apiRequest)(requestId)).thenReturn(result)
+    }
+
     val routingService = mock[RoutingService]
-    when(routingService.routeRequest(any())).thenReturn(apiRequest)
+    when(routingService.routeRequest(request)).thenReturn(apiRequest)
+
+    val auditService = mock[AuditService]
 
     val proxyController = new ProxyController(proxyService, routingService, auditService)
   }
@@ -62,9 +63,9 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
   "proxy" should {
 
     "propagate a downstream successful response" in new Setup {
-      when(mockProxyService.proxy(any(), any())(any())).thenReturn(successful(Ok(toJson("""{"foo":"bar"}"""))))
+      mockProxyService(successful(Ok(toJson("""{"foo":"bar"}"""))))
 
-      val result = await(underTest.proxy()(requestId)(request))
+      val result = await(proxyController.proxy()(requestId)(request))
 
       status(result) shouldBe OK
       jsonBodyOf(result) shouldBe toJson("""{"foo":"bar"}""")
@@ -74,9 +75,9 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
     }
 
     "propagate a downstream error response" in new Setup {
-      when(mockProxyService.proxy(any(), any())(any())).thenReturn(successful(NotFound(toJson("Item Not Found"))))
+      mockProxyService(successful(NotFound(toJson("Item Not Found"))))
 
-      val result = await(underTest.proxy()(any())(request))
+      val result = await(proxyController.proxy()(requestId)(request))
 
       status(result) shouldBe NOT_FOUND
       jsonBodyOf(result) shouldBe toJson("Item Not Found")
@@ -86,9 +87,9 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
     }
 
     "convert exceptions to `InternalServerError` " in new Setup {
-      when(mockProxyService.proxy(any(), any())(any())).thenReturn(failed(new RuntimeException))
+      mockProxyService(failed(new RuntimeException))
 
-      val result = await(underTest.proxy()(requestId)(request))
+      val result = await(proxyController.proxy()(requestId)(request))
 
       status(result) shouldBe INTERNAL_SERVER_ERROR
       jsonBodyOf(result) shouldBe toJson(GatewayError.ServerError())
@@ -98,21 +99,21 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
 
     "convert [502|503|504] responses" in new Setup {
       for (s <- List(BadGateway, ServiceUnavailable, GatewayTimeout)) {
-        when(mockProxyService.proxy(any(), any())(any())).thenReturn(successful(s))
+        mockProxyService(successful(s))
 
-        val result = await(underTest.proxy()(requestId)(request))
+        val result = await(proxyController.proxy()(requestId)(request))
 
         status(result) shouldBe SERVICE_UNAVAILABLE
-        jsonBodyOf(result) shouldBe toJson(GatewayError.ServiceUnavailable())
+        jsonBodyOf(result) shouldBe toJson(GatewayError.ServiceNotAvailable())
 
         verifyZeroInteractions(auditService)
       }
     }
 
     "convert 501 responses" in new Setup {
-      when(mockProxyService.proxy(any(), any())(any())).thenReturn(successful(NotImplemented))
+      mockProxyService(successful(NotImplemented))
 
-      val result = await(underTest.proxy()(requestId)(request))
+      val result = await(proxyController.proxy()(requestId)(request))
 
       status(result) shouldBe NOT_IMPLEMENTED
       jsonBodyOf(result) shouldBe toJson(GatewayError.NotImplemented())
@@ -121,9 +122,9 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
     }
 
     "audit `MissingCredentials` failures" in new Setup {
-      when(proxyService.proxy(any(), any())).thenReturn(failed(GatewayError.MissingCredentials(request, apiRequest)))
+      mockProxyService(failed(GatewayError.MissingCredentials(request, apiRequest)))
 
-      val result = await(proxyController.proxy(request))
+      val result = await(proxyController.proxy()(requestId)(request))
 
       status(result) shouldBe UNAUTHORIZED
       jsonBodyOf(result) shouldBe toJson(GatewayError.MissingCredentials(request, apiRequest))
@@ -132,9 +133,9 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
     }
 
     "audit `InvalidCredentials` failures" in new Setup {
-      when(proxyService.proxy(any(), any())).thenReturn(failed(GatewayError.InvalidCredentials(request, apiRequest)))
+      mockProxyService(failed(GatewayError.InvalidCredentials(request, apiRequest)))
 
-      val result = await(proxyController.proxy(request))
+      val result = await(proxyController.proxy()(requestId)(request))
 
       status(result) shouldBe UNAUTHORIZED
       jsonBodyOf(result) shouldBe toJson(GatewayError.InvalidCredentials(request, apiRequest))
@@ -143,12 +144,12 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
     }
 
     "Align with WSO2 response headers when request fails before it gets proxied" in new Setup {
-      when(mockRoutingService.routeRequest(any())).thenReturn(failed(MatchingResourceNotFound()))
+      mockProxyService(failed(GatewayError.MatchingResourceNotFound()))
 
-      val result = await(underTest.proxy()(requestId)(request))
+      val result = await(proxyController.proxy()(requestId)(request))
 
       status(result) shouldBe NOT_FOUND
-      jsonBodyOf(result) shouldBe toJson(MatchingResourceNotFound())
+      jsonBodyOf(result) shouldBe toJson(GatewayError.MatchingResourceNotFound())
       validateHeaders(result.header.headers,
         (X_REQUEST_ID, Some(requestId)),
         (CACHE_CONTROL, Some("no-cache")),

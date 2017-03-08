@@ -67,7 +67,7 @@ class PlayRequestUtilsSpec extends UnitSpec {
   "asMapOfSeq" should {
     "convert a simple seq into a map" in {
       val res = PlayRequestUtils.asMapOfSets(Seq("A" -> "aaa", "B" -> "bbb"))
-      res shouldBe(Map("A" -> Set("aaa"), "B" -> Set("bbb")))
+      res shouldBe Map("A" -> Set("aaa"), "B" -> Set("bbb"))
     }
 
     "convert a complex seq into a map"  in {
@@ -77,7 +77,7 @@ class PlayRequestUtilsSpec extends UnitSpec {
         "B" -> "yyy,qqq",
         "A" -> "xxx, zzz"
       ))
-      res shouldBe(Map("A" -> Set("aaa", "xxx, zzz"), "B" -> Set("bbb", "yyy,qqq")))
+      res shouldBe Map("A" -> Set("aaa", "xxx, zzz"), "B" -> Set("bbb", "yyy,qqq"))
     }
   }
 

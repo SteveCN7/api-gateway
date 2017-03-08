@@ -18,7 +18,6 @@ package uk.gov.hmrc.apigateway.service
 
 import java.util.UUID
 
-import com.google.common.net.HttpHeaders
 import com.google.common.net.HttpHeaders._
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.{timeout, verify, verifyZeroInteractions}
@@ -29,7 +28,7 @@ import play.api.mvc.Results.Ok
 import play.api.test.FakeRequest
 import play.mvc.Http.MimeTypes.JSON
 import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
-import uk.gov.hmrc.apigateway.exception.GatewayError.ServiceUnavailable
+import uk.gov.hmrc.apigateway.exception.GatewayError.ServiceNotAvailable
 import uk.gov.hmrc.apigateway.model.AuthType._
 import uk.gov.hmrc.apigateway.model.{ApiIdentifier, ApiRequest}
 import uk.gov.hmrc.play.test.UnitSpec
@@ -87,7 +86,7 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
       val postRequest = FakeRequest("POST", "/hello/world").withJsonBody(Json.toJson("""{"foo":"bar"}"""))
       val openApiRequest = apiRequest.copy(authType = NONE)
 
-      intercept[ServiceUnavailable] {
+      intercept[ServiceNotAvailable] {
         await(underTest.proxy(postRequest, openApiRequest)(requestId))
       }
     }
@@ -96,7 +95,7 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
       val postRequest = FakeRequest("POST", "/hello/world").withHeaders((CONTENT_TYPE, JSON))
       val openApiRequest = apiRequest.copy(authType = NONE)
 
-      intercept[ServiceUnavailable] {
+      intercept[ServiceNotAvailable] {
         await(underTest.proxy(postRequest, openApiRequest)(requestId))
       }
     }
@@ -105,7 +104,7 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
       val postRequest = FakeRequest("PUT", "/hello/world").withJsonBody(Json.toJson("""{"foo":"bar"}"""))
       val openApiRequest = apiRequest.copy(authType = NONE)
 
-      intercept[ServiceUnavailable] {
+      intercept[ServiceNotAvailable] {
         await(underTest.proxy(postRequest, openApiRequest)(requestId))
       }
     }
@@ -114,7 +113,7 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
       val postRequest = FakeRequest("PUT", "/hello/world").withHeaders((CONTENT_TYPE, JSON))
       val openApiRequest = apiRequest.copy(authType = NONE)
 
-      intercept[ServiceUnavailable] {
+      intercept[ServiceNotAvailable] {
         await(underTest.proxy(postRequest, openApiRequest)(requestId))
       }
     }
@@ -123,7 +122,7 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
       val postRequest = FakeRequest("PATCH", "/hello/world").withJsonBody(Json.toJson("""{"foo":"bar"}"""))
       val openApiRequest = apiRequest.copy(authType = NONE)
 
-      intercept[ServiceUnavailable] {
+      intercept[ServiceNotAvailable] {
         await(underTest.proxy(postRequest, openApiRequest)(requestId))
       }
     }
@@ -132,7 +131,7 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
       val postRequest = FakeRequest("PATCH", "/hello/world").withHeaders((CONTENT_TYPE, JSON))
       val openApiRequest = apiRequest.copy(authType = NONE)
 
-      intercept[ServiceUnavailable] {
+      intercept[ServiceNotAvailable] {
         await(underTest.proxy(postRequest, openApiRequest)(requestId))
       }
     }

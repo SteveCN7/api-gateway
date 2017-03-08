@@ -22,19 +22,20 @@ import play.api.http.HttpErrorHandler
 import play.api.libs.json.Json._
 import play.api.mvc.Results.{ServiceUnavailable => PlayServiceUnavailable}
 import play.api.mvc.{RequestHeader, Result}
-import uk.gov.hmrc.apigateway.exception.GatewayError.ServiceUnavailable
+import uk.gov.hmrc.apigateway.exception.GatewayError.ServiceNotAvailable
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 
 import scala.concurrent.Future
 
-//TODO Remove ServiceUnavailable errors when WSO2 has been decommissioned
+//TODO: remove `ServiceNotAvailable()` errors when WSO2 has been decommissioned
+
 @Singleton
 class ErrorHandler extends HttpErrorHandler{
   override def onClientError(request: RequestHeader, statusCode: Int, message: String): Future[Result] = {
-    Future.successful(PlayServiceUnavailable(toJson(ServiceUnavailable())))
+    Future.successful(PlayServiceUnavailable(toJson(ServiceNotAvailable())))
   }
 
   override def onServerError(request: RequestHeader, exception: Throwable): Future[Result] = {
-    Future.successful(PlayServiceUnavailable(toJson(ServiceUnavailable())))
+    Future.successful(PlayServiceUnavailable(toJson(ServiceNotAvailable())))
   }
 }

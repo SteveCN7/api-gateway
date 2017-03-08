@@ -22,10 +22,9 @@ import com.google.common.net.{HttpHeaders => http}
 import play.api.Logger
 import play.api.http.Status.{BAD_GATEWAY, GATEWAY_TIMEOUT, NOT_IMPLEMENTED, SERVICE_UNAVAILABLE}
 import play.api.libs.json.Json.toJson
-import play.api.mvc.{Action, BodyParsers, Result}
+import play.api.mvc.{Action, BodyParsers, Headers, Result}
 import play.api.mvc.Results.{NotFound => PlayNotFound, _}
 import uk.gov.hmrc.apigateway.exception.GatewayError
-import uk.gov.hmrc.apigateway.exception.GatewayError.ServerError
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.service.{AuditService, ProxyService, RoutingService}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
@@ -44,7 +43,7 @@ class ProxyController @Inject()(proxyService: ProxyService, routingService: Rout
   private def transformError: Result => Result = {
     result => result.header.status match {
       case NOT_IMPLEMENTED => newResult(result, NotImplemented(toJson(GatewayError.NotImplemented())))
-      case BAD_GATEWAY | SERVICE_UNAVAILABLE | GATEWAY_TIMEOUT => newResult(result, ServiceUnavailable(toJson(GatewayError.ServiceUnavailable())))
+      case BAD_GATEWAY | SERVICE_UNAVAILABLE | GATEWAY_TIMEOUT => newResult(result, ServiceUnavailable(toJson(GatewayError.ServiceNotAvailable())))
       case _ => result
     }
   }
@@ -65,7 +64,7 @@ class ProxyController @Inject()(proxyService: ProxyService, routingService: Rout
     case e: GatewayError.NotFound => PlayNotFound(toJson(e))
 
     case e: GatewayError.ThrottledOut => TooManyRequests(toJson(e))
-    case e: ServiceUnavailable => PlayServiceUnavailable(toJson(e))
+    case e: GatewayError.ServiceNotAvailable => ServiceUnavailable(toJson(e))
 
     case e =>
       Logger.error("unexpected error", e)

@@ -64,6 +64,7 @@ class ProxyController @Inject()(proxyService: ProxyService, routingService: Rout
     case e: GatewayError.NotFound => PlayNotFound(toJson(e))
 
     case e: GatewayError.ThrottledOut => TooManyRequests(toJson(e))
+
     case e: GatewayError.ServiceNotAvailable => ServiceUnavailable(toJson(e))
 
     case e =>

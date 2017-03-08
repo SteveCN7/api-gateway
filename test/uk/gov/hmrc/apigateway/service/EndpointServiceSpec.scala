@@ -116,6 +116,21 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfter
       assertApiRequest(apiRequest, actualApiRequest, beforeTimeNanos, afterTimeNanos)
     }
 
+    "succeed when all request parameters in the URL are not required" in {
+      val request = proxyRequest.copy(queryParameters = Map("requiredParam" -> Seq("test")))
+
+      val anApiDefinition = ApiDefinition("api-context", "http://host.example", Seq(ApiVersion("1.0",
+        Seq(ApiEndpoint("/api-endpoint", "GET", NONE, queryParameters = Some(Seq(Parameter("requiredParam", required = false))))))))
+
+      mockApiServiceConnectorToReturn("api-context", successful(anApiDefinition))
+
+      val beforeTimeNanos = System.nanoTime()
+      val actualApiRequest = await(endpointService.apiRequest(request))
+      val afterTimeNanos = System.nanoTime()
+
+      assertApiRequest(apiRequest, actualApiRequest, beforeTimeNanos, afterTimeNanos)
+    }
+
     "succeed when at least one required request parameter is in the URL" in {
       val request = proxyRequest.copy(queryParameters = Map("requiredParam" -> Seq("test")))
 

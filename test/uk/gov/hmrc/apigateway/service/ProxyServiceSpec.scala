@@ -27,6 +27,7 @@ import org.scalatest.mockito.MockitoSugar
 import play.api.libs.json.Json
 import play.api.mvc.Results.Ok
 import play.api.test.FakeRequest
+import play.mvc.Http.MimeTypes.JSON
 import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.ServiceUnavailable
 import uk.gov.hmrc.apigateway.model.AuthType._
@@ -92,7 +93,7 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
     }
 
     "fail a POST request without a body" in new Setup {
-      val postRequest = FakeRequest("POST", "/hello/world").withHeaders((CONTENT_TYPE, "application/json"))
+      val postRequest = FakeRequest("POST", "/hello/world").withHeaders((CONTENT_TYPE, JSON))
       val openApiRequest = apiRequest.copy(authType = NONE)
 
       intercept[ServiceUnavailable] {
@@ -110,7 +111,7 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
     }
 
     "fail a PUT request without a body" in new Setup {
-      val postRequest = FakeRequest("PUT", "/hello/world").withHeaders((CONTENT_TYPE, "application/json"))
+      val postRequest = FakeRequest("PUT", "/hello/world").withHeaders((CONTENT_TYPE, JSON))
       val openApiRequest = apiRequest.copy(authType = NONE)
 
       intercept[ServiceUnavailable] {
@@ -128,7 +129,7 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
     }
 
     "fail a PATCH request without a body" in new Setup {
-      val postRequest = FakeRequest("PATCH", "/hello/world").withHeaders((CONTENT_TYPE, "application/json"))
+      val postRequest = FakeRequest("PATCH", "/hello/world").withHeaders((CONTENT_TYPE, JSON))
       val openApiRequest = apiRequest.copy(authType = NONE)
 
       intercept[ServiceUnavailable] {

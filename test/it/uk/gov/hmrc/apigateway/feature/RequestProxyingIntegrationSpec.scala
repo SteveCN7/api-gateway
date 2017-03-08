@@ -23,6 +23,7 @@ import play.api.http.Status._
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import play.api.http.HttpVerbs._
+import play.mvc.Http.MimeTypes.JSON
 
 import scalaj.http.{HttpRequest, Http}
 
@@ -69,7 +70,7 @@ class RequestProxyingIntegrationSpec extends BaseFeatureSpec with RequestUtils {
 
     scenario("A request with a malformed 'accept' http header is proxied to the version 1.0") {
       Given("A request with a malformed 'accept' http header")
-      val httpRequest = Http(s"$serviceUrl/api-simulator/version1").header(ACCEPT, "application/json")
+      val httpRequest = Http(s"$serviceUrl/api-simulator/version1").header(ACCEPT, JSON)
 
       When("The request is sent to the gateway")
       val httpResponse = invoke(httpRequest)
@@ -235,7 +236,7 @@ class RequestProxyingIntegrationSpec extends BaseFeatureSpec with RequestUtils {
       def performTest(verb: String) = {
         Given(s"A $verb request with an empty body")
         val aRequest = request(verb, "")
-          .header(CONTENT_TYPE, "application/json")
+          .header(CONTENT_TYPE, JSON)
           .header(ACCEPT, "application/vnd.hmrc.1.0+json")
 
         withClue(s"A $verb request with an empty body was incorrectly proxied") {
@@ -251,7 +252,7 @@ class RequestProxyingIntegrationSpec extends BaseFeatureSpec with RequestUtils {
       def performTest(verb: String) = {
         Given(s"A $verb request with an empty body")
         val aRequest = request(verb, "</html>")
-          .header(CONTENT_TYPE, "application/json")
+          .header(CONTENT_TYPE, JSON)
           .header(ACCEPT, "application/vnd.hmrc.1.0+json")
 
         withClue(s"A $verb request with an invalid body was incorrectly proxied") {

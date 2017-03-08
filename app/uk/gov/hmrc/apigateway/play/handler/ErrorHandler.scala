@@ -14,22 +14,27 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.config
+package uk.gov.hmrc.apigateway.play.handler
 
-import play.api.GlobalSettings
+import javax.inject.Singleton
+
+import play.api.http.HttpErrorHandler
 import play.api.libs.json.Json._
+import play.api.mvc.Results.{ServiceUnavailable => PlayServiceUnavailable}
 import play.api.mvc.{RequestHeader, Result}
 import uk.gov.hmrc.apigateway.exception.GatewayError.ServiceUnavailable
-import play.api.mvc.Results.{ServiceUnavailable => PlayServiceUnavailable, _}
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 
 import scala.concurrent.Future
 
-trait ApplicationGlobal extends GlobalSettings {
-  override def onBadRequest(request: RequestHeader, error: String): Future[Result] = {
-    super.onBadRequest(request, error)
+//TODO Remove ServiceUnavailable errors when WSO2 has been decommissioned
+@Singleton
+class ErrorHandler extends HttpErrorHandler{
+  override def onClientError(request: RequestHeader, statusCode: Int, message: String): Future[Result] = {
+    Future.successful(PlayServiceUnavailable(toJson(ServiceUnavailable())))
+  }
+
+  override def onServerError(request: RequestHeader, exception: Throwable): Future[Result] = {
     Future.successful(PlayServiceUnavailable(toJson(ServiceUnavailable())))
   }
 }
-
-object ApplicationGlobal extends ApplicationGlobal

@@ -19,7 +19,7 @@ package uk.gov.hmrc.apigateway.exception
 import play.api.Logger
 import play.api.libs.json.Json._
 import play.api.mvc.Result
-import play.api.mvc.Results.{NotFound => PlayNotFound, _}
+import play.api.mvc.Results.{NotFound => PlayNotFound, ServiceUnavailable => PlayServiceUnavailable, _}
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 
 class GatewayError(val code: String, val message: String) extends RuntimeException(message)
@@ -60,6 +60,7 @@ object GatewayError {
     case e: NotFound => PlayNotFound(toJson(e))
 
     case e: ThrottledOut => TooManyRequests(toJson(e))
+    case e: ServiceUnavailable => PlayServiceUnavailable(toJson(e))
 
     case e =>
       Logger.error("unexpected error", e)

@@ -34,4 +34,12 @@ object PlayRequestUtils {
     seqOfPairs
       .groupBy(_._1)
       .mapValues(_.map(_._2).toSet)
+
+  def replaceHeaders(headers: Headers)(updatedHeaders: (String, Option[String])*): Headers = {
+    updatedHeaders.headOption match {
+      case Some((headerName, Some(headerValue))) => replaceHeaders(headers.replace(headerName -> headerValue))(updatedHeaders.tail:_*)
+      case Some((headerName, None)) => replaceHeaders(headers.remove(headerName))(updatedHeaders.tail:_*)
+      case None => headers
+    }
+  }
 }

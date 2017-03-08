@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.apigateway.util
+package it.uk.gov.hmrc.apigateway.testutils
 
-import play.api.http.HeaderNames
+import org.scalatest.Matchers
 
-object HttpHeaders extends HeaderNames {
-  val X_CLIENT_AUTHORIZATION_TOKEN = "X-Client-Authorization-Token"
-  val X_CLIENT_ID = "X-Client-ID"
-  val X_REQUEST_ID = "X-Request-ID"
-  val X_REQUEST_TIMESTAMP = "X-Request-Timestamp"
-  val X_SERVER_TOKEN = "X-server-token"
-  val X_REQUEST_ID = "X-Request-ID"
+trait RequestUtils extends Matchers {
+
+  def flattenHeaders(headers: Map[String, Seq[String]]) = headers.mapValues(_.distinct.head)
+
+  def validateHeaders(headers: Map[String, String], expectedHeaders: (String, Option[String])*) =
+    expectedHeaders.foreach(x => headers.get(x._1) shouldBe x._2)
+
 }

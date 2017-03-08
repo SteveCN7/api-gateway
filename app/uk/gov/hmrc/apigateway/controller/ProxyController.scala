@@ -18,14 +18,18 @@ package uk.gov.hmrc.apigateway.controller
 
 import javax.inject.{Inject, Singleton}
 
+import com.google.common.net.{HttpHeaders => http}
 import play.api.Logger
 import play.api.http.Status.{BAD_GATEWAY, GATEWAY_TIMEOUT, NOT_IMPLEMENTED, SERVICE_UNAVAILABLE}
 import play.api.libs.json.Json.toJson
 import play.api.mvc.{Action, BodyParsers, Result}
 import play.api.mvc.Results.{NotFound => PlayNotFound, _}
 import uk.gov.hmrc.apigateway.exception.GatewayError
+import uk.gov.hmrc.apigateway.exception.GatewayError.ServerError
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.service.{AuditService, ProxyService, RoutingService}
+import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.apigateway.util.PlayRequestUtils
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -61,16 +65,30 @@ class ProxyController @Inject()(proxyService: ProxyService, routingService: Rout
     case e: GatewayError.NotFound => PlayNotFound(toJson(e))
 
     case e: GatewayError.ThrottledOut => TooManyRequests(toJson(e))
+    case e: ServiceUnavailable => PlayServiceUnavailable(toJson(e))
 
     case e =>
       Logger.error("unexpected error", e)
       InternalServerError(toJson(GatewayError.ServerError()))
   }
 
-  def proxy = Action.async(BodyParsers.parse.anyContent) { implicit request =>
+  private def addHeaders(implicit requestId: String): Result => Result = {
+    result =>
+      val headers = PlayRequestUtils.replaceHeaders(Headers(result.header.headers.toSeq: _*))(
+        (X_REQUEST_ID, Some(requestId)),
+        (CACHE_CONTROL, Some("no-cache")),
+        (CONTENT_TYPE, Some("application/json; charset=UTF-8")),
+        (http.X_FRAME_OPTIONS, None),
+        (http.X_CONTENT_TYPE_OPTIONS, None)
+      ).toSimpleMap
+
+      result.withHeaders(headers.toSeq: _*)
+  }
+
+  def proxy()(implicit requestId: String) = Action.async(BodyParsers.parse.anyContent) { implicit request =>
     routingService.routeRequest(request) flatMap { apiRequest =>
       proxyService.proxy(request, apiRequest)
-    } recover recoverError map transformError
+    } recover recoverError.andThen(addHeaders) map transformError
   }
 
 }

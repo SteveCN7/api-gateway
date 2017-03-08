@@ -24,7 +24,9 @@ import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration._
 import it.uk.gov.hmrc.apigateway.testutils.RequestUtils
+import org.mockito.Mockito.when
 import org.scalatest.BeforeAndAfterEach
+import org.scalatest.mockito.MockitoSugar
 import play.api.http.Status._
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
@@ -37,7 +39,7 @@ import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 import com.google.common.net.{HttpHeaders => http}
 
-class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAndAfterEach with RequestUtils {
+class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoSugar with BeforeAndAfterEach with RequestUtils {
 
   private val stubPort = sys.env.getOrElse("WIREMOCK", "22220").toInt
   private val stubHost = "localhost"
@@ -77,7 +79,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
       givenGetReturns("/world", OK, delay = 50)
 
       intercept[TimeoutException] {
-        await(underTest.proxy(request, apiRequest))
+        await(underTest.proxy(request, apiRequest)(requestId))
       }
     }
 
@@ -98,7 +100,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
       givenPostReturns("/world", OK)
 
-      val result = await(underTest.proxy(requestWithBody, apiRequest)(requestId))
+      await(underTest.proxy(requestWithBody, apiRequest)(requestId))
 
       verify(postRequestedFor(urlEqualTo("/world")).withRequestBody(equalTo(body)))
     }

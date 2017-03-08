@@ -128,18 +128,18 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
     }
 
     "convert request timeout errors" in new Setup {
-      when(mockProxyService.proxy(any(), any())).thenReturn(failed(new TimeoutException()))
+      mockProxyService(failed(new TimeoutException()))
 
-      val result = await(underTest.proxy(request))
+      val result = await(proxyController.proxy()(requestId)(request))
 
       status(result) shouldBe SERVICE_UNAVAILABLE
       jsonBodyOf(result) shouldBe toJson(GatewayError.ServiceNotAvailable())
     }
 
     "convert connect timeout errors" in new Setup {
-      when(mockProxyService.proxy(any(), any())).thenReturn(failed(new ConnectException()))
+      mockProxyService(failed(new ConnectException()))
 
-      val result = await(underTest.proxy(request))
+      val result = await(proxyController.proxy()(requestId)(request))
 
       status(result) shouldBe SERVICE_UNAVAILABLE
       jsonBodyOf(result) shouldBe toJson(GatewayError.ServiceNotAvailable())

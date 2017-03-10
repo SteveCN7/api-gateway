@@ -45,7 +45,8 @@ class EndpointService @Inject()(apiDefinitionConnector: ApiDefinitionConnector) 
 
 object EndpointService {
 
-  private def createAndLogApiRequest(proxyRequest: ProxyRequest, context: String, version: String, apiDefinition: ApiDefinition, apiEndpoint: ApiEndpoint) = {
+  private def createAndLogApiRequest(proxyRequest: ProxyRequest, context: String, version: String,
+                                     apiDefinition: ApiDefinition, apiEndpoint: ApiEndpoint) = {
     val apiReq = ApiRequest(
       timeInNanos = Some(System.nanoTime()),
       timeInMillis = Some(DateTimeUtils.currentTimeMillis()),

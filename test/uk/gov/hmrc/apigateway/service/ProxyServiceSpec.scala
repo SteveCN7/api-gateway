@@ -69,7 +69,7 @@ class ProxyServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
 
       await(underTest.proxy(request, apiRequest)(requestId))
 
-      verify(auditService, timeout(2000)).auditSuccessfulRequest(request, apiRequest, response)
+      verify(auditService, timeout(2000)).auditSuccessfulRequest(request, apiRequest, response)(requestId)
     }
 
     "not audit the request for open endpoint" in new Setup {

@@ -33,7 +33,7 @@ This API, but in Dev mode::
 ## WSO2
 
 This needs setting up and runnng locally since the api-definition service publishes to it. Information on configuring this is here:
-    https://github.tools.tax.service.gov.uk/HMRC/wso2-api-manage
+    https://github.tools.tax.service.gov.uk/HMRC/wso2-api-manager
 
 Alternatively, start API_DEFINITION in Stub mode (`sbt run -Dhttp.port=9604 -Drun.mode=Stub`), and run the mocked-external-services-stub which will stub out the WSO2 endpoints. 
 Details to follow once mocked-external-services-stub has been added to service manager.

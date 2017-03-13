@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.apigateway.service
 
+import org.mockito.Mockito
 import org.scalatest.mockito.MockitoSugar
 import play.api.libs.json.Json
 import play.api.mvc.{AnyContent, AnyContentAsJson, Headers, Request}
@@ -56,19 +57,25 @@ class UserRestrictedEndpointServiceSpec extends UnitSpec with MockitoSugar with 
   "routeRequest" should {
 
     "fail without a valid access token" in new Setup {
-      mockAuthority(authorityService, MissingCredentials(mock[Request[AnyContent]], mock[ApiRequest]))
+      val mockApiRequest = mock[ApiRequest]
+      Mockito.when(mockApiRequest.bearerToken).thenReturn(None)
+      mockAuthority(authorityService, MissingCredentials(mock[Request[AnyContent]], mockApiRequest))
 
-      intercept[MissingCredentials] {
+      val caught = intercept[MissingCredentials] {
         await(userRestrictedEndpointService.routeRequest(fakeRequest, ProxyRequest(fakeRequest), apiRequest))
       }
+      caught.apiRequest.bearerToken shouldBe None
     }
 
     "decline a request not matching a delegated authority" in new Setup {
-      mockAuthority(authorityService, InvalidCredentials(mock[Request[AnyContent]], mock[ApiRequest]))
+      val mockApiRequest = mock[ApiRequest]
+      Mockito.when(mockApiRequest.bearerToken).thenReturn(Some("Bearer accessToken"))
+      mockAuthority(authorityService, InvalidCredentials(mock[Request[AnyContent]], mockApiRequest))
 
-      intercept[InvalidCredentials] {
+      val caught = intercept[InvalidCredentials] {
         await(userRestrictedEndpointService.routeRequest(fakeRequest, ProxyRequest(fakeRequest), apiRequest))
       }
+      caught.apiRequest.bearerToken shouldBe Some("Bearer accessToken")
     }
 
     "decline a request with a valid server token" in new Setup {

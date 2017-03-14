@@ -72,7 +72,12 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoS
 
     val request = FakeRequest("GET", "/hello/world")
 
-    "Fail with a `TimeoutException` when the response is too slow" in new Setup {
+    "Have a connect timeout configuration of 5 seconds" in new Setup {
+
+      fakeApplication.configuration.getInt("play.ws.timeout.connection") shouldBe Some(5000)
+    }
+
+    "Fail with a `TimeoutException` when the downstream service response is too slow" in new Setup {
 
       when(appContext.requestTimeoutInMilliseconds).thenReturn(10)
 
@@ -83,7 +88,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoS
       }
     }
 
-    "Proxy the request when the response is processed on time" in new Setup {
+    "Proxy the request when the downstream service response is processed on time" in new Setup {
 
       when(appContext.requestTimeoutInMilliseconds).thenReturn(50)
 

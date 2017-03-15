@@ -50,8 +50,7 @@ class ProxyController @Inject()(proxyService: ProxyService, routingService: Rout
     }
   }
 
-  private def recoverError(request: Request[AnyContent]): PartialFunction[Throwable, Result] = {
-  def recoverError(implicit requestId: String): PartialFunction[Throwable, Result] = {
+  private def recoverError(request: Request[AnyContent])(implicit requestId: String): PartialFunction[Throwable, Result] = {
     case e: GatewayError.MissingCredentials =>
       auditService.auditFailingRequest(e.request, e.apiRequest)
       Unauthorized(toJson(e))

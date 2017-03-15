@@ -58,14 +58,15 @@ class AuditService @Inject()(val appContext: AppContext, val auditConnector: Mic
     addTag("userOID", apiRequest.userOid) ++
     addTag("applicationProductionClientId", apiRequest.clientId)
 
-  def auditSuccessfulRequest(request: Request[AnyContent], apiRequest: ApiRequest, response: Result, responseTimestamp: DateTime = DateTime.now()) = {
+  def auditSuccessfulRequest(request: Request[AnyContent], apiRequest: ApiRequest, response: Result,
+                             responseTimestamp: DateTime = DateTime.now())(implicit requestId: String) = {
 
     def successfulRequestEvent(responseBody: String) = MergedDataEvent(
       auditSource = "api-gateway",
       auditType = "APIGatewayRequestCompleted",
       request = DataCall(
         tags = Map(
-          X_REQUEST_ID -> request.headers.get(X_REQUEST_ID).getOrElse(""),
+          X_REQUEST_ID -> requestId,
           "path" -> request.path.stripPrefix("/api-gateway"),
           "transactionName" -> "Request has been completed via the API Gateway",
           "clientIP" -> request.remoteAddress,
@@ -87,13 +88,14 @@ class AuditService @Inject()(val appContext: AppContext, val auditConnector: Mic
     } yield auditResult
   }
 
-  def auditFailingRequest(request: Request[AnyContent], apiRequest: ApiRequest, responseTimestamp: DateTime = DateTime.now()) = {
+  def auditFailingRequest(request: Request[AnyContent], apiRequest: ApiRequest,
+                          responseTimestamp: DateTime = DateTime.now())(implicit requestId: String) = {
 
     def failingRequestEvent() = DataEvent(
       auditSource = "api-gateway",
       auditType = "APIGatewayRequestFailedDueToInvalidAuthorisation",
       tags = Map(
-        X_REQUEST_ID -> request.headers.get(X_REQUEST_ID).getOrElse(""),
+        X_REQUEST_ID -> requestId,
         "path" -> request.path.stripPrefix("/api-gateway"),
         "transactionName" -> "A third-party application has made an request rejected by the API Gateway as unauthorised",
         "clientIP" -> request.remoteAddress,

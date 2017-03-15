@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.apigateway.service
 
+import java.util.UUID
+
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import controllers.Default
@@ -46,6 +48,11 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
     implicit val system = ActorSystem("Sys")
     implicit val materializer = ActorMaterializer()
 
+    val requestId = UUID.randomUUID().toString
+
+    val configuration = mock[Configuration]
+    when(configuration.getInt("auditBodySizeLimit")).thenReturn(Some(100))
+
     val appContext = mock[AppContext]
     val auditConnector = mock[MicroserviceAuditConnector]
 
@@ -73,7 +80,6 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
       val request = FakeRequest("POST", "/api-gateway/hello/user")
         .withBody(AnyContentAsJson(Json.parse("""{"body":"test"}""")))
         .copyFakeRequest(remoteAddress = "10.10.10.10")
-        .withHeaders(X_REQUEST_ID -> "requestId")
 
       val apiRequest = ApiRequest(
         timeInMillis = Some(requestMillis),
@@ -84,7 +90,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
         clientId  = Some("applicationClientId"),
         bearerToken = Some("Bearer accessToken"))
 
-      val result = await(auditService.auditSuccessfulRequest(request, apiRequest, Default.Ok("responseBody")))
+      val result = await(auditService.auditSuccessfulRequest(request, apiRequest, Default.Ok("responseBody"))(requestId))
 
       verify(auditConnector).sendMergedEvent(captor.capture())(any(), any())
       val auditedEvent = captor.getValue.asInstanceOf[MergedDataEvent]
@@ -95,7 +101,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
         eventId = auditedEvent.eventId,
         request = DataCall(
           tags = Map(
-            X_REQUEST_ID -> "requestId",
+            X_REQUEST_ID -> requestId,
             "path" -> "/hello/user",
             "transactionName" -> "Request has been completed via the API Gateway",
             "clientIP" -> "10.10.10.10",
@@ -134,7 +140,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
         authType = AuthType.USER,
         apiEndpoint = "/hello/user")
 
-      val result = await(service.auditSuccessfulRequest(request, apiRequest, Default.Ok("responseBody")))
+      val result = await(service.auditSuccessfulRequest(request, apiRequest, Default.Ok("responseBody"))(requestId))
 
       verify(auditConnector).sendMergedEvent(captor.capture())(any(), any())
       val auditedEvent = captor.getValue.asInstanceOf[MergedDataEvent]
@@ -153,7 +159,6 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
     val request = FakeRequest("POST", "/api-gateway/hello/user")
       .withBody(AnyContentAsJson(Json.parse("""{"body":"test"}""")))
       .copyFakeRequest(remoteAddress = "10.10.10.10")
-      .withHeaders(X_REQUEST_ID -> "requestId")
 
     val apiRequest = ApiRequest(
       timeInMillis = Some(requestMillis),
@@ -166,7 +171,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
 
     "send an audit event" in new Setup {
 
-      val result = await(auditService.auditFailingRequest(request, apiRequest, DateTime.parse("2017-02-02")))
+      val result = await(auditService.auditFailingRequest(request, apiRequest, DateTime.parse("2017-02-02"))(requestId))
 
       verify(auditConnector).sendEvent(captor.capture())(any(), any())
       val auditedEvent = captor.getValue.asInstanceOf[DataEvent]
@@ -176,7 +181,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
         auditType = "APIGatewayRequestFailedDueToInvalidAuthorisation",
         eventId = auditedEvent.eventId,
         tags = Map(
-          X_REQUEST_ID -> "requestId",
+          X_REQUEST_ID -> requestId,
           "path" -> "/hello/user",
           "transactionName" -> "A third-party application has made an request rejected by the API Gateway as unauthorised",
           "clientIP" -> "10.10.10.10",

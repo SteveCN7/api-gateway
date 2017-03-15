@@ -153,7 +153,7 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
       status(result) shouldBe UNAUTHORIZED
       jsonBodyOf(result) shouldBe toJson(GatewayError.MissingCredentials(request, apiRequest))
 
-      verify(auditService).auditFailingRequest(request, apiRequest)
+      verify(auditService).auditFailingRequest(request, apiRequest)(requestId)
     }
 
     "audit `InvalidCredentials` failures" in new Setup {
@@ -164,7 +164,7 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
       status(result) shouldBe UNAUTHORIZED
       jsonBodyOf(result) shouldBe toJson(GatewayError.InvalidCredentials(request, apiRequest))
 
-      verify(auditService).auditFailingRequest(request, apiRequest)
+      verify(auditService).auditFailingRequest(request, apiRequest)(requestId)
     }
 
     "Align with WSO2 response headers when request fails before it gets proxied" in new Setup {

@@ -79,7 +79,7 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       val caught = intercept[InvalidCredentials] {
         await(applicationRestrictedEndpointService.routeRequest(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken), apiRequest))
       }
-      caught.apiRequest.bearerToken shouldBe Some(s"Bearer $serverToken")
+      caught.apiRequest.bearerToken shouldBe None
     }
 
     "propagate the error, when there is a failure in fetching the application by client id" in new Setup {

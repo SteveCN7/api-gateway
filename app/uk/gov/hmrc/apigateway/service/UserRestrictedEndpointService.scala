@@ -21,7 +21,6 @@ import javax.inject.{Inject, Singleton}
 import play.api.mvc.{AnyContent, Request}
 import uk.gov.hmrc.apigateway.exception.GatewayError._
 import uk.gov.hmrc.apigateway.model._
-import uk.gov.hmrc.apigateway.util.HttpHeaders.AUTHORIZATION
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -60,7 +59,6 @@ class UserRestrictedEndpointService @Inject()(authorityService: AuthorityService
       } yield apiRequest.copy(
         userOid = authority.delegatedAuthority.user.map(_.userId),
         clientId = Some(authority.delegatedAuthority.clientId),
-        bearerToken = request.headers.get(AUTHORIZATION),
         authBearerToken = Some(s"Bearer ${authority.delegatedAuthority.authBearerToken}"))
     }
   }

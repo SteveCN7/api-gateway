@@ -36,7 +36,7 @@ class ApplicationRestrictedEndpointService @Inject()(authorityService: Authority
       authorityService.findAuthority(request, proxyRequest, apiRequest) recover {
         case e: NotFound =>
           Logger.debug("No authority found for the access token")
-          throw InvalidCredentials(request, apiRequest.copy(bearerToken = Some(s"Bearer $accessToken")))
+          throw InvalidCredentials(request, apiRequest)
       }
     }
 

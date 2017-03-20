@@ -142,7 +142,8 @@ class UserRestrictedEndpointServiceSpec extends UnitSpec with MockitoSugar with 
       val expectedResult = apiRequest.copy(
         userOid = Some("userOID"),
         clientId = Some("clientId"),
-        bearerToken = Some("Bearer authBearerToken"))
+        bearerToken = Some("Bearer accessToken"),
+        authBearerToken = Some("Bearer authBearerToken"))
 
       val result = await(userRestrictedEndpointService.routeRequest(fakeRequest, ProxyRequest(fakeRequest), apiRequest))
 

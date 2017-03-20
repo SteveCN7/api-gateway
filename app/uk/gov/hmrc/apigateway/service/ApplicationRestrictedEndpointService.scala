@@ -24,12 +24,13 @@ import uk.gov.hmrc.apigateway.exception.GatewayError._
 import uk.gov.hmrc.apigateway.model._
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 @Singleton
 class ApplicationRestrictedEndpointService @Inject()(authorityService: AuthorityService,
                                                      applicationService: ApplicationService) {
 
-  def routeRequest(request: Request[AnyContent], proxyRequest: ProxyRequest, apiRequest: ApiRequest) = {
+  def routeRequest(request: Request[AnyContent], proxyRequest: ProxyRequest, apiRequest: ApiRequest): Future[ApiRequest] = {
 
     def getAuthority(accessToken: String) = {
       authorityService.findAuthority(request, proxyRequest, apiRequest) recover {

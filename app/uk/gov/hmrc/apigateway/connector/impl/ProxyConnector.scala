@@ -39,8 +39,8 @@ class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsC
 
     val headers = replaceHeaders(request.headers)(
       (HOST, None),
-      (AUTHORIZATION, apiRequest.bearerToken),
-      (X_CLIENT_AUTHORIZATION_TOKEN, apiRequest.bearerToken.map(_.stripPrefix("Bearer "))),
+      (AUTHORIZATION, apiRequest.authBearerToken),
+      (X_CLIENT_AUTHORIZATION_TOKEN, apiRequest.authBearerToken.map(_.stripPrefix("Bearer "))),
       (X_CLIENT_ID, apiRequest.clientId),
       (X_REQUEST_TIMESTAMP, apiRequest.timeInNanos.map(_.toString)),
       (X_REQUEST_ID, Some(requestId)))

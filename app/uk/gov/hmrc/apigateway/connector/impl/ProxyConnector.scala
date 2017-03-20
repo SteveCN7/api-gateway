@@ -24,16 +24,18 @@ import play.Logger
 import play.api.http.{HttpChunk, HttpEntity}
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.mvc._
+import uk.gov.hmrc.apigateway.config.AppContext
 import uk.gov.hmrc.apigateway.connector.AbstractConnector
 import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.apigateway.util.PlayRequestUtils._
 
+import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsClient: WSClient) {
+class ProxyConnector @Inject()(wsClient: WSClient, appContext: AppContext) extends AbstractConnector(wsClient: WSClient) {
 
   def proxy(request: Request[AnyContent], apiRequest: ApiRequest)(implicit requestId: String): Future[Result] = {
 
@@ -49,6 +51,7 @@ class ProxyConnector @Inject()(wsClient: WSClient) extends AbstractConnector(wsC
       .withMethod(request.method)
       .withHeaders(headers.toSimpleMap.toSeq: _*)
       .withBody(bodyOf(request).getOrElse(""))
+      .withRequestTimeout(appContext.requestTimeoutInMilliseconds.milliseconds)
       .execute.map { wsResponse =>
 
       val result = buildResult(wsResponse)

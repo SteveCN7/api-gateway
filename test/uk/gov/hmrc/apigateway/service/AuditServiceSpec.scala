@@ -33,6 +33,7 @@ import play.api.http.Status
 import play.api.libs.json.Json
 import play.api.mvc.{AnyContentAsJson, AnyContentAsText}
 import play.api.test.FakeRequest
+import uk.gov.hmrc.apigateway.config.AppContext
 import uk.gov.hmrc.apigateway.connector.impl.MicroserviceAuditConnector
 import uk.gov.hmrc.apigateway.model.{ApiIdentifier, ApiRequest, AuthType}
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
@@ -53,11 +54,14 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
     val configuration = mock[Configuration]
     when(configuration.getInt("auditBodySizeLimit")).thenReturn(Some(100))
 
+    val appContext = mock[AppContext]
     val auditConnector = mock[MicroserviceAuditConnector]
+
+    when(appContext.auditBodySizeLimit).thenReturn(100)
     when(auditConnector.sendMergedEvent(any())(any(), any())).thenReturn(AuditResult.Success)
     when(auditConnector.sendEvent(any())(any(), any())).thenReturn(AuditResult.Failure("errorMsg", None))
 
-    val auditService = new AuditService(configuration, auditConnector, materializer)
+    val auditService = new AuditService(appContext, auditConnector, materializer)
   }
 
   override def beforeEach() = {
@@ -126,8 +130,8 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
     }
 
     "truncate the request and response to auditBodySizeLimit" in new Setup {
-      when(configuration.getInt("auditBodySizeLimit")).thenReturn(Some(5))
-      val service = new AuditService(configuration, auditConnector, materializer)
+      when(appContext.auditBodySizeLimit).thenReturn(5)
+      val service = new AuditService(appContext, auditConnector, materializer)
 
       val request = FakeRequest("POST", "/hello/user")
         .withBody(AnyContentAsText("requestBody"))

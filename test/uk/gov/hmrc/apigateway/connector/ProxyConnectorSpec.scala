@@ -17,39 +17,46 @@
 package uk.gov.hmrc.apigateway.connector
 
 import java.util.UUID
+import java.util.concurrent.TimeoutException
+
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration._
 import it.uk.gov.hmrc.apigateway.testutils.RequestUtils
+import org.mockito.Mockito.when
 import org.scalatest.BeforeAndAfterEach
+import org.scalatest.mockito.MockitoSugar
 import play.api.http.Status._
 import play.api.libs.json.Json
+import play.api.libs.ws.WSClient
 import play.api.mvc.AnyContentAsJson
 import play.api.test.FakeRequest
+import uk.gov.hmrc.apigateway.config.AppContext
 import uk.gov.hmrc.apigateway.connector.impl.ProxyConnector
 import uk.gov.hmrc.apigateway.model.{ApiIdentifier, ApiRequest}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 import com.google.common.net.{HttpHeaders => http}
 
-class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAndAfterEach with RequestUtils {
+class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoSugar with BeforeAndAfterEach with RequestUtils {
 
-  val stubPort = sys.env.getOrElse("WIREMOCK", "22220").toInt
-  val stubHost = "localhost"
-  val wireMockUrl = s"http://$stubHost:$stubPort"
-  val wireMockServer = new WireMockServer(wireMockConfig().port(stubPort))
+  private val stubPort = sys.env.getOrElse("WIREMOCK", "22220").toInt
+  private val stubHost = "localhost"
+  private val wireMockUrl = s"http://$stubHost:$stubPort"
+  private val wireMockServer = new WireMockServer(wireMockConfig().port(stubPort))
 
   trait Setup {
-    val underTest = fakeApplication.injector.instanceOf[ProxyConnector]
+    val appContext = mock[AppContext]
     val requestId = UUID.randomUUID().toString
+    val underTest = new ProxyConnector(wsClient = fakeApplication.injector.instanceOf[WSClient], appContext)
   }
 
   val apiRequest = ApiRequest(
-    timeInNanos = Some(1232356),
+    timeInNanos = Some(33333),
     apiIdentifier = ApiIdentifier("c", "v"),
     apiEndpoint = s"$wireMockUrl/world",
-    clientId = Some("123456"),
+    clientId = Some("7777"),
     bearerToken = Some("Bearer 12345"))
 
   override def beforeEach {
@@ -65,8 +72,27 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
     val request = FakeRequest("GET", "/hello/world")
 
-    "Proxy the request" in new Setup {
-      givenGetReturns("/world", OK)
+    "Have a connect timeout configuration of 5 seconds" in new Setup {
+
+      fakeApplication.configuration.getInt("play.ws.timeout.connection") shouldBe Some(5000)
+    }
+
+    "Fail with a `TimeoutException` when the downstream service response is too slow" in new Setup {
+
+      when(appContext.requestTimeoutInMilliseconds).thenReturn(10)
+
+      givenGetReturns("/world", OK, delay = 50)
+
+      intercept[TimeoutException] {
+        await(underTest.proxy(request, apiRequest)(requestId))
+      }
+    }
+
+    "Proxy the request when the downstream service response is processed on time" in new Setup {
+
+      when(appContext.requestTimeoutInMilliseconds).thenReturn(50)
+
+      givenGetReturns("/world", OK, delay = 10)
 
       val result = await(underTest.proxy(request, apiRequest)(requestId))
 
@@ -79,7 +105,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
 
       givenPostReturns("/world", OK)
 
-      val result = await(underTest.proxy(requestWithBody, apiRequest)(requestId))
+      await(underTest.proxy(requestWithBody, apiRequest)(requestId))
 
       verify(postRequestedFor(urlEqualTo("/world")).withRequestBody(equalTo(body)))
     }
@@ -179,14 +205,26 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with BeforeAn
     }
   }
 
-  def givenGetReturns(endpoint: String, status: Int) = {
-    stubFor(get(urlEqualTo(endpoint))
-      .willReturn(aResponse().withStatus(status)))
+  def givenGetReturns(endpoint: String, status: Int, delay: Int = 0) = {
+    stubFor(
+      get(urlEqualTo(endpoint))
+        .willReturn(
+          aResponse()
+            .withStatus(status)
+            .withFixedDelay(delay)
+        )
+    )
   }
 
-  def givenPostReturns(endpoint: String, status: Int) = {
-    stubFor(get(urlEqualTo(endpoint))
-      .willReturn(aResponse().withStatus(status)))
+  def givenPostReturns(endpoint: String, status: Int, delay: Int = 0) = {
+    stubFor(
+      post(urlEqualTo(endpoint))
+      .willReturn(
+        aResponse()
+          .withStatus(status)
+          .withFixedDelay(delay)
+      )
+    )
   }
 
 }

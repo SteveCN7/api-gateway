@@ -16,6 +16,9 @@
 
 package uk.gov.hmrc.apigateway.controller
 
+import java.net.ConnectException
+import java.util.concurrent.TimeoutException
+
 import java.util.UUID
 
 import akka.stream.Materializer
@@ -124,6 +127,24 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
       verifyZeroInteractions(auditService)
     }
 
+    "convert request timeout errors" in new Setup {
+      mockProxyService(failed(new TimeoutException()))
+
+      val result = await(proxyController.proxy()(requestId)(request))
+
+      status(result) shouldBe SERVICE_UNAVAILABLE
+      jsonBodyOf(result) shouldBe toJson(GatewayError.ServiceNotAvailable())
+    }
+
+    "convert connect timeout errors" in new Setup {
+      mockProxyService(failed(new ConnectException()))
+
+      val result = await(proxyController.proxy()(requestId)(request))
+
+      status(result) shouldBe SERVICE_UNAVAILABLE
+      jsonBodyOf(result) shouldBe toJson(GatewayError.ServiceNotAvailable())
+    }
+
     "audit `MissingCredentials` failures" in new Setup {
       mockProxyService(failed(GatewayError.MissingCredentials(request, apiRequest)))
 
@@ -171,5 +192,7 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
       jsonBodyOf(result) shouldBe Json.obj("code" -> "INVALID_CREDENTIALS", "message" -> "Invalid Authentication information provided")
       result.header.headers(WWW_AUTHENTICATE) shouldBe """Bearer realm="HMRC API Platform""""
     }
+
   }
+
 }

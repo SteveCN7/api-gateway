@@ -21,7 +21,7 @@ import java.util.UUID
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
-import play.api.Configuration
+import uk.gov.hmrc.apigateway.config.AppContext
 import uk.gov.hmrc.apigateway.connector.impl.ThirdPartyApplicationConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError._
 import uk.gov.hmrc.apigateway.model.RateLimitTier.{SILVER, BRONZE}
@@ -45,11 +45,11 @@ class ApplicationServiceSpec extends UnitSpec with MockitoSugar {
 
     val applicationConnector = mock[ThirdPartyApplicationConnector]
     val rateLimitRepository = mock[RateLimitRepository]
-    val configuration = mock[Configuration]
-    val applicationService = new ApplicationService(applicationConnector, rateLimitRepository, configuration)
+    val appContext = mock[AppContext]
+    val applicationService = new ApplicationService(applicationConnector, rateLimitRepository, appContext)
 
-    given(configuration.getInt("rateLimit.bronze")).willReturn(Some(bronzeRateLimit))
-    given(configuration.getInt("rateLimit.silver")).willReturn(Some(silverRateLimit))
+    given(appContext.rateLimitBronze).willReturn(bronzeRateLimit)
+    given(appContext.rateLimitSilver).willReturn(silverRateLimit)
   }
 
   "Get application by server token" should {

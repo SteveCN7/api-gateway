@@ -20,13 +20,10 @@ import javax.inject.{Inject, Singleton}
 
 import org.joda.time.LocalDateTime
 import org.joda.time.LocalDateTime.now
-import play.api.Configuration
 import play.api.libs.json.Json
 import play.modules.reactivemongo.ReactiveMongoApi
 import play.modules.reactivemongo.json._
 import reactivemongo.api.ReadPreference
-import reactivemongo.api.commands.GetLastError
-import reactivemongo.api.commands.GetLastError.WaitForAknowledgments
 import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.bson.BSONDocument
 import reactivemongo.play.json.collection.JSONCollection
@@ -41,8 +38,7 @@ import scala.concurrent.Future.sequence
 case class RateLimitCounter(clientId: String, minutesSinceEpoch: Long, createdAt: LocalDateTime = now(), count: Int = 1)
 
 @Singleton
-class RateLimitRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi,
-                                    val configuration: Configuration) {
+class RateLimitRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) {
 
   implicit val format = Json.format[RateLimitCounter]
 

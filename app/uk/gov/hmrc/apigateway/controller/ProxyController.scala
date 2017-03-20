@@ -16,13 +16,15 @@
 
 package uk.gov.hmrc.apigateway.controller
 
+import java.net.ConnectException
+import java.util.concurrent.TimeoutException
 import javax.inject.{Inject, Singleton}
 
 import com.google.common.net.{HttpHeaders => http}
 import play.api.Logger
 import play.api.http.Status.{BAD_GATEWAY, GATEWAY_TIMEOUT, NOT_IMPLEMENTED, SERVICE_UNAVAILABLE}
 import play.api.libs.json.Json.toJson
-import play.api.mvc.{Action, BodyParsers, Headers, Result}
+import play.api.mvc._
 import play.api.mvc.Results.{NotFound => PlayNotFound, _}
 import uk.gov.hmrc.apigateway.exception.GatewayError
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
@@ -48,7 +50,7 @@ class ProxyController @Inject()(proxyService: ProxyService, routingService: Rout
     }
   }
 
-  def recoverError(implicit requestId: String): PartialFunction[Throwable, Result] = {
+  private def recoverError(request: Request[AnyContent])(implicit requestId: String): PartialFunction[Throwable, Result] = {
     case e: GatewayError.MissingCredentials =>
       auditService.auditFailingRequest(e.request, e.apiRequest)
       Unauthorized(toJson(e))
@@ -67,8 +69,16 @@ class ProxyController @Inject()(proxyService: ProxyService, routingService: Rout
 
     case e: GatewayError.ServiceNotAvailable => ServiceUnavailable(toJson(e))
 
+    case e: TimeoutException =>
+      Logger.warn(s"Request timeout error for $request", e)
+      ServiceUnavailable(toJson(GatewayError.ServiceNotAvailable()))
+
+    case e: ConnectException =>
+      Logger.warn(s"Connect timeout error for $request", e)
+      ServiceUnavailable(toJson(GatewayError.ServiceNotAvailable()))
+
     case e =>
-      Logger.error("unexpected error", e)
+      Logger.error(s"Unexpected error for $request", e)
       InternalServerError(toJson(GatewayError.ServerError()))
   }
 
@@ -88,7 +98,7 @@ class ProxyController @Inject()(proxyService: ProxyService, routingService: Rout
   def proxy()(implicit requestId: String) = Action.async(BodyParsers.parse.anyContent) { implicit request =>
     routingService.routeRequest(request) flatMap { apiRequest =>
       proxyService.proxy(request, apiRequest)
-    } recover recoverError.andThen(addHeaders) map transformError
+    } recover recoverError(request).andThen(addHeaders) map transformError
   }
 
 }

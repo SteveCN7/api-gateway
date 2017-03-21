@@ -31,7 +31,7 @@ object HmrcBuild extends Build {
   private val compileDependencies = Seq(
     ws,
     cache,
-    "uk.gov.hmrc" %% "frontend-bootstrap" % "7.10.0",
+    "uk.gov.hmrc" %% "frontend-bootstrap" % "7.16.0",
     "uk.gov.hmrc" %% "play-health" % "2.0.0",
     "uk.gov.hmrc" %% "play-url-binders" % "2.0.0",
     "uk.gov.hmrc" %% "play-config" % "3.0.0",

@@ -35,7 +35,7 @@ object HmrcBuild extends Build {
     "uk.gov.hmrc" %% "play-health" % "2.0.0",
     "uk.gov.hmrc" %% "play-url-binders" % "2.0.0",
     "uk.gov.hmrc" %% "play-config" % "3.0.0",
-    "uk.gov.hmrc" %% "play-filters" % "5.6.0",
+    "uk.gov.hmrc" %% "play-filters" % "5.11.0",
     "uk.gov.hmrc" %% "logback-json-logger" % "3.1.0",
     "com.kenshoo" %% "metrics-play" % "2.4.0_0.4.1",
     "org.reactivemongo" %% "play2-reactivemongo" % "0.12.0"

@@ -32,16 +32,16 @@ object HmrcBuild extends Build {
     ws,
     cache,
     "uk.gov.hmrc" %% "frontend-bootstrap" % "7.10.0",
-    "uk.gov.hmrc" %% "play-health" % "2.0.0",
+    "uk.gov.hmrc" %% "play-health" % "2.1.0",
     "uk.gov.hmrc" %% "play-url-binders" % "2.0.0",
-    "uk.gov.hmrc" %% "play-config" % "3.0.0",
+    "uk.gov.hmrc" %% "play-config" % "4.3.0",
     "uk.gov.hmrc" %% "play-filters" % "5.6.0",
     "uk.gov.hmrc" %% "logback-json-logger" % "3.1.0",
     "com.kenshoo" %% "metrics-play" % "2.4.0_0.4.1",
     "org.reactivemongo" %% "play2-reactivemongo" % "0.12.0"
   )
   private val testDependencies = Seq(
-    "uk.gov.hmrc" %% "hmrctest" % "2.2.0" % "test,it",
+    "uk.gov.hmrc" %% "hmrctest" % "2.3.0" % "test,it",
     "org.scalatest" %% "scalatest" % "3.0.1" % "test,it",
     "com.typesafe.play" %% "play-test" % PlayVersion.current % "test,it",
     "org.mockito" % "mockito-core" % "2.3.0" % "test,it",

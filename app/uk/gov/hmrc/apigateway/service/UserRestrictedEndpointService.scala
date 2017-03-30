@@ -35,7 +35,7 @@ class UserRestrictedEndpointService @Inject()(authorityService: AuthorityService
     def getApplication(accessToken: String) = {
       applicationService.getByServerToken(accessToken) recover {
         case e: NotFound =>
-          throw InvalidCredentials(request, apiRequest.copy(bearerToken = Some(s"Bearer $accessToken")))
+          throw InvalidCredentials(request, apiRequest)
       }
     }
 

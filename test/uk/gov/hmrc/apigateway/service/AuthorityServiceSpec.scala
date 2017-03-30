@@ -65,7 +65,7 @@ class AuthorityServiceSpec extends UnitSpec with MockitoSugar {
       val caught = intercept[InvalidCredentials] {
         await(authorityService.findAuthority(requestWithToken, ProxyRequest(requestWithToken), apiRequest))
       }
-      caught.apiRequest.bearerToken shouldBe Some("Bearer 31c99f9482de49544c6cc3374c378028")
+      caught.apiRequest.bearerToken shouldBe None
     }
 
     "return the delegated authority when credentials are valid" in {

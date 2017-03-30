@@ -42,7 +42,7 @@ class AuthorityService @Inject()(delegatedAuthorityConnector: DelegatedAuthority
 
     def validateAuthority(authority: Authority, accessToken: String) = {
       if (hasExpired(authority))
-        throw InvalidCredentials(request, apiRequest.copy(bearerToken = Some(s"Bearer $accessToken")))
+        throw InvalidCredentials(request, apiRequest)
       else
         authority
     }

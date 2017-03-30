@@ -21,6 +21,7 @@ import org.joda.time.DateTimeUtils._
 import org.mockito.Mockito.{verify, when}
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.mockito.MockitoSugar
+import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.{MatchingResourceNotFound, NotFound}
 import uk.gov.hmrc.apigateway.model.AuthType.NONE
@@ -50,12 +51,13 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfter
 
   "Endpoint service" should {
 
-    val proxyRequest = ProxyRequest("GET", "/api-context/api-endpoint", headers = Map(ACCEPT -> "application/vnd.hmrc.1.0+json"))
+    val request = FakeRequest("GET", "/api-context/api-endpoint").withHeaders(ACCEPT -> "application/vnd.hmrc.1.0+json")
+    val requestWithQueryString = FakeRequest("GET", "/api-context/api-endpoint?requiredParam=value").withHeaders(ACCEPT -> "application/vnd.hmrc.1.0+json")
 
     "invoke api definition connector with correct service name" in {
       mockApiServiceConnectorToReturnSuccess
 
-      await(endpointService.apiRequest(proxyRequest))
+      await(endpointService.apiRequest(ProxyRequest(request), request))
       verify(apiDefinitionConnector).getByContext("api-context")
     }
 
@@ -63,29 +65,29 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfter
       mockApiServiceConnectorToReturnSuccess
 
       val beforeTimeNanos = System.nanoTime()
-      val actualApiRequest = await(endpointService.apiRequest(proxyRequest))
+      val actualApiRequest = await(endpointService.apiRequest(ProxyRequest(request), request))
       val afterTimeNanos = System.nanoTime()
 
-      assertApiRequest(apiRequest, actualApiRequest, beforeTimeNanos, afterTimeNanos)
+      assertApiRequest(apiRequest(), actualApiRequest, beforeTimeNanos, afterTimeNanos)
     }
 
     "fail with NotFound when no version matches the Accept headers in the API Definition" in {
-      val request = proxyRequest.copy(headers = Map("Accept" -> "application/vnd.hmrc.55.0+json"))
+      val notFoundRequest = request.withHeaders("Accept" -> "application/vnd.hmrc.55.0+json")
 
       mockApiServiceConnectorToReturnSuccess
 
       intercept[NotFound]{
-        await(endpointService.apiRequest(request))
+        await(endpointService.apiRequest(ProxyRequest(notFoundRequest), notFoundRequest))
       }
     }
 
     "fail with MatchingResourceNotFound when no endpoint matches in the API Definition" in {
-      val request = proxyRequest.copy(path = "/api-context/invalidEndpoint")
+      val invalidRequest = FakeRequest("GET", "/api-context/invalidEndpoint").withHeaders(ACCEPT -> "application/vnd.hmrc.1.0+json")
 
       mockApiServiceConnectorToReturnSuccess
 
       intercept[MatchingResourceNotFound]{
-        await(endpointService.apiRequest(request))
+        await(endpointService.apiRequest(ProxyRequest(invalidRequest), invalidRequest))
       }
     }
 
@@ -97,12 +99,11 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfter
       mockApiServiceConnectorToReturn("api-context", successful(anApiDefinition))
 
       intercept[MatchingResourceNotFound]{
-        await(endpointService.apiRequest(proxyRequest))
+        await(endpointService.apiRequest(ProxyRequest(request), request))
       }
     }
 
     "succeed when all required request parameters are in the URL" in {
-      val request = proxyRequest.copy(queryParameters = Map("requiredParam" -> Seq("test")))
 
       val anApiDefinition = ApiDefinition("api-context", "http://host.example", Seq(ApiVersion("1.0",
         Seq(ApiEndpoint("/api-endpoint", "GET", NONE, queryParameters = Some(Seq(Parameter("requiredParam", required = true))))))))
@@ -110,14 +111,13 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfter
       mockApiServiceConnectorToReturn("api-context", successful(anApiDefinition))
 
       val beforeTimeNanos = System.nanoTime()
-      val actualApiRequest = await(endpointService.apiRequest(request))
+      val actualApiRequest = await(endpointService.apiRequest(ProxyRequest(requestWithQueryString), requestWithQueryString))
       val afterTimeNanos = System.nanoTime()
 
-      assertApiRequest(apiRequest, actualApiRequest, beforeTimeNanos, afterTimeNanos)
+      assertApiRequest(apiRequest(urlWithQueryString), actualApiRequest, beforeTimeNanos, afterTimeNanos)
     }
 
     "succeed when all request parameters in the URL are not required" in {
-      val request = proxyRequest.copy(queryParameters = Map("requiredParam" -> Seq("test")))
 
       val anApiDefinition = ApiDefinition("api-context", "http://host.example", Seq(ApiVersion("1.0",
         Seq(ApiEndpoint("/api-endpoint", "GET", NONE, queryParameters = Some(Seq(Parameter("requiredParam", required = false))))))))
@@ -125,14 +125,13 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfter
       mockApiServiceConnectorToReturn("api-context", successful(anApiDefinition))
 
       val beforeTimeNanos = System.nanoTime()
-      val actualApiRequest = await(endpointService.apiRequest(request))
+      val actualApiRequest = await(endpointService.apiRequest(ProxyRequest(requestWithQueryString), requestWithQueryString))
       val afterTimeNanos = System.nanoTime()
 
-      assertApiRequest(apiRequest, actualApiRequest, beforeTimeNanos, afterTimeNanos)
+      assertApiRequest(apiRequest(urlWithQueryString), actualApiRequest, beforeTimeNanos, afterTimeNanos)
     }
 
     "succeed when at least one required request parameter is in the URL" in {
-      val request = proxyRequest.copy(queryParameters = Map("requiredParam" -> Seq("test")))
 
       val anApiDefinition = ApiDefinition("api-context", "http://host.example", Seq(ApiVersion("1.0",
         Seq(ApiEndpoint("/api-endpoint", "GET", NONE, queryParameters = Some(Seq(Parameter("requiredParam", required = true), Parameter("anotherRequiredParam", required = true))))))))
@@ -140,10 +139,10 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfter
       mockApiServiceConnectorToReturn("api-context", successful(anApiDefinition))
 
       val beforeTimeNanos = System.nanoTime()
-      val actualApiRequest = await(endpointService.apiRequest(request))
+      val actualApiRequest = await(endpointService.apiRequest(ProxyRequest(requestWithQueryString), requestWithQueryString))
       val afterTimeNanos = System.nanoTime()
 
-      assertApiRequest(apiRequest, actualApiRequest, beforeTimeNanos, afterTimeNanos)
+      assertApiRequest(apiRequest(urlWithQueryString), actualApiRequest, beforeTimeNanos, afterTimeNanos)
     }
 
     "throw an exception when proxy request does not match api definition endpoint" in {
@@ -151,7 +150,7 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfter
       mockApiServiceConnectorToReturnFailure
 
       intercept[RuntimeException] {
-        await(endpointService.apiRequest(proxyRequest))
+        await(endpointService.apiRequest(ProxyRequest(request), request))
       }
     }
 
@@ -164,11 +163,14 @@ class EndpointServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfter
     actualApiRequest.copy(timeInNanos = None) shouldBe expectedApiRequest.copy(timeInNanos = None)
   }
 
-  private val apiRequest = ApiRequest(
+  private val basicUrl = "http://host.example//api-context/api-endpoint"
+  private val urlWithQueryString = "http://host.example//api-context/api-endpoint?requiredParam=value"
+
+  private def apiRequest(url: String = basicUrl) = ApiRequest(
     timeInMillis = Some(fixedTimeInMillis),
     timeInNanos = Some(System.nanoTime()),
     apiIdentifier = ApiIdentifier("api-context", "1.0"),
-    apiEndpoint = "http://host.example//api-context/api-endpoint"
+    apiEndpoint = url
   )
 
   private def mockApiServiceConnectorToReturnSuccess =

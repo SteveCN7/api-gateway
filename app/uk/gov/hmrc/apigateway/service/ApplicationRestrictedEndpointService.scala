@@ -24,14 +24,15 @@ import uk.gov.hmrc.apigateway.exception.GatewayError._
 import uk.gov.hmrc.apigateway.model._
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 @Singleton
 class ApplicationRestrictedEndpointService @Inject()(authorityService: AuthorityService,
                                                      applicationService: ApplicationService) {
 
-  def routeRequest(request: Request[AnyContent], proxyRequest: ProxyRequest, apiRequest: ApiRequest) = {
+  def routeRequest(request: Request[AnyContent], proxyRequest: ProxyRequest, apiRequest: ApiRequest): Future[ApiRequest] = {
 
-    def getAuthority = {
+    def getAuthority(accessToken: String) = {
       authorityService.findAuthority(request, proxyRequest, apiRequest) recover {
         case e: NotFound =>
           Logger.debug("No authority found for the access token")
@@ -39,23 +40,22 @@ class ApplicationRestrictedEndpointService @Inject()(authorityService: Authority
       }
     }
 
-    def getApplicationByAuthority = {
+    def getApplicationByAuthority(accessToken: String) = {
       for {
-        authority <- getAuthority
+        authority <- getAuthority(accessToken)
         app <- applicationService.getByClientId(authority.delegatedAuthority.clientId)
       } yield app
     }
 
-    def getApplication = {
-      proxyRequest.accessToken(request, apiRequest) flatMap { accessToken =>
-        applicationService.getByServerToken(accessToken) recoverWith {
-          case e: NotFound => getApplicationByAuthority
-        }
+    def getApplication(accessToken: String) = {
+      applicationService.getByServerToken(accessToken) recoverWith {
+        case e: NotFound => getApplicationByAuthority(accessToken)
       }
     }
 
     for {
-      app <- getApplication
+      accessToken <- proxyRequest.accessToken(request, apiRequest)
+      app <- getApplication(accessToken)
       _ <- applicationService.validateSubscriptionAndRateLimit(app, apiRequest.apiIdentifier)
     } yield apiRequest.copy(clientId = Some(app.clientId))
   }

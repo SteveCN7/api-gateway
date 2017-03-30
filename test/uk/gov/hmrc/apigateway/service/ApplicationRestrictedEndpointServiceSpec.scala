@@ -58,9 +58,10 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
   "routeRequest" should {
 
     "fail with a request not matching authority" in new Setup {
-      intercept[MissingCredentials] {
+      val caught = intercept[MissingCredentials] {
         await(applicationRestrictedEndpointService.routeRequest(basicRequest, ProxyRequest(basicRequest), apiRequest))
       }
+      caught.apiRequest.bearerToken shouldBe None
     }
 
     "propagate the error, when there is a failure in fetching the application by server token" in new Setup {
@@ -75,9 +76,10 @@ class ApplicationRestrictedEndpointServiceSpec extends UnitSpec with MockitoSuga
       mockApplicationByServerToken(applicationService, serverToken, NotFound())
       mockAuthority(authorityService, NotFound())
 
-      intercept[InvalidCredentials] {
+      val caught = intercept[InvalidCredentials] {
         await(applicationRestrictedEndpointService.routeRequest(applicationRequestWithToken, ProxyRequest(applicationRequestWithToken), apiRequest))
       }
+      caught.apiRequest.bearerToken shouldBe None
     }
 
     "propagate the error, when there is a failure in fetching the application by client id" in new Setup {

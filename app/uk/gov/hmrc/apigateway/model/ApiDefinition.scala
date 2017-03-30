@@ -45,4 +45,5 @@ case class ApiRequest(timeInNanos: Option[Long] = None,
                       scope: Option[String] = None,
                       userOid: Option[String] = None,
                       clientId: Option[String] = None,
-                      bearerToken: Option[String] = None)
+                      bearerToken: Option[String] = None,
+                      authBearerToken: Option[String] = None)

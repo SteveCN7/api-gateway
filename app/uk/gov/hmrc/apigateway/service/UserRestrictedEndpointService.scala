@@ -30,11 +30,12 @@ class UserRestrictedEndpointService @Inject()(authorityService: AuthorityService
                                               applicationService: ApplicationService,
                                               scopeValidator: ScopeValidator) {
 
-  def routeRequest(request: Request[AnyContent], proxyRequest: ProxyRequest, apiRequest: ApiRequest) = {
+  def routeRequest(request: Request[AnyContent], proxyRequest: ProxyRequest, apiRequest: ApiRequest): Future[ApiRequest] = {
 
     def getApplication(accessToken: String) = {
       applicationService.getByServerToken(accessToken) recover {
-        case e: NotFound => throw InvalidCredentials(request, apiRequest)
+        case e: NotFound =>
+          throw InvalidCredentials(request, apiRequest)
       }
     }
 
@@ -58,7 +59,7 @@ class UserRestrictedEndpointService @Inject()(authorityService: AuthorityService
       } yield apiRequest.copy(
         userOid = authority.delegatedAuthority.user.map(_.userId),
         clientId = Some(authority.delegatedAuthority.clientId),
-        bearerToken = Some(s"Bearer ${authority.delegatedAuthority.authBearerToken}"))
+        authBearerToken = Some(s"Bearer ${authority.delegatedAuthority.authBearerToken}"))
     }
   }
 

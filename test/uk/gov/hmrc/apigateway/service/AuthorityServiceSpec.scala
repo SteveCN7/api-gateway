@@ -53,17 +53,19 @@ class AuthorityServiceSpec extends UnitSpec with MockitoSugar {
     "throw an exception when credentials are missing" in {
       val requestWithoutHeader = request
 
-      intercept[MissingCredentials] {
+      val caught = intercept[MissingCredentials] {
         await(authorityService.findAuthority(requestWithoutHeader, ProxyRequest(requestWithoutHeader), apiRequest))
       }
+      caught.apiRequest.bearerToken shouldBe None
     }
 
     "throw an exception when credentials have expired" in {
       mockDelegatedAuthorityConnector("31c99f9482de49544c6cc3374c378028", authorityWithExpiration(now.minusMinutes(5)))
 
-      intercept[InvalidCredentials] {
+      val caught = intercept[InvalidCredentials] {
         await(authorityService.findAuthority(requestWithToken, ProxyRequest(requestWithToken), apiRequest))
       }
+      caught.apiRequest.bearerToken shouldBe None
     }
 
     "return the delegated authority when credentials are valid" in {

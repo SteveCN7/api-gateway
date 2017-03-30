@@ -19,6 +19,7 @@ package uk.gov.hmrc.apigateway.service
 import org.mockito.ArgumentMatchers._
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
+import play.api.mvc.{AnyContent, Request}
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.exception.GatewayError.{MatchingResourceNotFound, ServerError}
 import uk.gov.hmrc.apigateway.model.AuthType._
@@ -58,7 +59,7 @@ class RoutingServiceSpec extends UnitSpec with MockitoSugar {
   "routeRequest" should {
 
     "decline an open-endpoint request which fails endpoint match filter" in new Setup {
-      when(endpointService.apiRequest(any[ProxyRequest])).thenReturn(failed(MatchingResourceNotFound()))
+      when(endpointService.apiRequest(any[ProxyRequest], any[Request[AnyContent]])).thenReturn(failed(MatchingResourceNotFound()))
 
       intercept[MatchingResourceNotFound] {
         await(routingService.routeRequest(openRequest))
@@ -66,7 +67,7 @@ class RoutingServiceSpec extends UnitSpec with MockitoSugar {
     }
 
     "route an open-endpoint request" in new Setup {
-      when(endpointService.apiRequest(any[ProxyRequest])).thenReturn(successful(openApiRequest))
+      when(endpointService.apiRequest(any[ProxyRequest], any[Request[AnyContent]])).thenReturn(successful(openApiRequest))
 
       val apiRequest = await(routingService.routeRequest(openRequest))
 
@@ -74,7 +75,7 @@ class RoutingServiceSpec extends UnitSpec with MockitoSugar {
     }
 
     "decline a user-endpoint request which fails to route" in new Setup {
-      when(endpointService.apiRequest(any[ProxyRequest])).thenReturn(successful(userApiRequest))
+      when(endpointService.apiRequest(any[ProxyRequest], any[Request[AnyContent]])).thenReturn(successful(userApiRequest))
       when(userRestrictedEndpointService.routeRequest(userRequest, ProxyRequest(userRequest), userApiRequest))
         .thenReturn(failed(ServerError()))
 
@@ -84,7 +85,7 @@ class RoutingServiceSpec extends UnitSpec with MockitoSugar {
     }
 
     "route a user-endpoint request" in new Setup {
-      when(endpointService.apiRequest(any[ProxyRequest])).thenReturn(successful(userApiRequest))
+      when(endpointService.apiRequest(any[ProxyRequest], any[Request[AnyContent]])).thenReturn(successful(userApiRequest))
       when(userRestrictedEndpointService.routeRequest(userRequest, ProxyRequest(userRequest), userApiRequest))
         .thenReturn(successful(userApiRequest))
 
@@ -94,7 +95,7 @@ class RoutingServiceSpec extends UnitSpec with MockitoSugar {
     }
 
     "decline an application-endpoint request which fails to route" in new Setup {
-      when(endpointService.apiRequest(any[ProxyRequest])).thenReturn(successful(applicationApiRequest))
+      when(endpointService.apiRequest(any[ProxyRequest], any[Request[AnyContent]])).thenReturn(successful(applicationApiRequest))
       when(applicationRestrictedEndpointService.routeRequest(applicationRequest, ProxyRequest(applicationRequest), applicationApiRequest))
         .thenReturn(failed(ServerError()))
 
@@ -104,7 +105,7 @@ class RoutingServiceSpec extends UnitSpec with MockitoSugar {
     }
 
     "route an application-endpoint request" in new Setup {
-      when(endpointService.apiRequest(any[ProxyRequest])).thenReturn(successful(applicationApiRequest))
+      when(endpointService.apiRequest(any[ProxyRequest], any[Request[AnyContent]])).thenReturn(successful(applicationApiRequest))
       when(applicationRestrictedEndpointService.routeRequest(applicationRequest, ProxyRequest(applicationRequest), applicationApiRequest))
         .thenReturn(successful(applicationApiRequest))
 

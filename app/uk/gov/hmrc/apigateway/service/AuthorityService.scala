@@ -40,12 +40,18 @@ class AuthorityService @Inject()(delegatedAuthorityConnector: DelegatedAuthority
 
     def hasExpired(authority: Authority) = authority.delegatedAuthority.token.expiresAt.isBefore(now)
 
-    getDelegatedAuthority(proxyRequest) map { authority =>
+    def validateAuthority(authority: Authority, accessToken: String) = {
       if (hasExpired(authority))
         throw InvalidCredentials(request, apiRequest)
-
-      authority
+      else
+        authority
     }
+
+    for {
+      accessToken <- proxyRequest.accessToken(request, apiRequest)
+      authority <- getDelegatedAuthority(proxyRequest)
+    } yield validateAuthority(authority, accessToken)
+
   }
 
 }

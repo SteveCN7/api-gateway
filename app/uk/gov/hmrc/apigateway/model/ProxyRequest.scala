@@ -47,8 +47,12 @@ case class ProxyRequest
 object ProxyRequest {
 
   def apply(requestHeader: RequestHeader): ProxyRequest = {
-    ProxyRequest(requestHeader.method, requestHeader.uri.stripPrefix("/api-gateway"), requestHeader.queryString,
-      requestHeader.headers.headers.toMap, requestHeader.version)
+    ProxyRequest(
+      requestHeader.method,
+      requestHeader.uri.stripPrefix("/api-gateway"),
+      requestHeader.queryString,
+      requestHeader.headers.headers.toMap,
+      requestHeader.version)
   }
 
 }

@@ -20,11 +20,12 @@ import javax.inject.{Inject, Singleton}
 
 import org.joda.time.DateTimeUtils
 import play.api.Logger
+import play.api.mvc.{AnyContent, Request}
 import uk.gov.hmrc.apigateway.connector.impl.ApiDefinitionConnector
 import uk.gov.hmrc.apigateway.exception.GatewayError.{MatchingResourceNotFound, NotFound}
 import uk.gov.hmrc.apigateway.model._
 import uk.gov.hmrc.apigateway.service.EndpointService._
-import uk.gov.hmrc.apigateway.util.HttpHeaders.ACCEPT
+import uk.gov.hmrc.apigateway.util.HttpHeaders.{ACCEPT, AUTHORIZATION}
 import uk.gov.hmrc.apigateway.util.ProxyRequestUtils.{parseVersion, validateContext}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -33,27 +34,29 @@ import scala.concurrent.Future.{failed, successful}
 @Singleton
 class EndpointService @Inject()(apiDefinitionConnector: ApiDefinitionConnector) {
 
-  def apiRequest(proxyRequest: ProxyRequest) = {
+  def apiRequest(proxyRequest: ProxyRequest, request: Request[AnyContent]) = {
     for {
       context <- validateContext(proxyRequest)
       version <- parseVersion(proxyRequest)
       apiDefinition <- apiDefinitionConnector.getByContext(context)
       apiEndpoint <- findEndpoint(proxyRequest, context, version, apiDefinition)
-    } yield createAndLogApiRequest(proxyRequest, context, version, apiDefinition, apiEndpoint)
+    } yield createAndLogApiRequest(proxyRequest, request, context, version, apiDefinition, apiEndpoint)
   }
 }
 
 object EndpointService {
 
-  private def createAndLogApiRequest(proxyRequest: ProxyRequest, context: String, version: String,
-                                     apiDefinition: ApiDefinition, apiEndpoint: ApiEndpoint) = {
+  private def createAndLogApiRequest(proxyRequest: ProxyRequest, request: Request[AnyContent], context: String,
+                                     version: String, apiDefinition: ApiDefinition, apiEndpoint: ApiEndpoint) = {
     val apiReq = ApiRequest(
       timeInNanos = Some(System.nanoTime()),
       timeInMillis = Some(DateTimeUtils.currentTimeMillis()),
       apiIdentifier = ApiIdentifier(context, version),
       authType = apiEndpoint.authType,
       apiEndpoint = s"${apiDefinition.serviceBaseUrl}/${proxyRequest.path}",
-      scope = apiEndpoint.scope)
+      scope = apiEndpoint.scope,
+      bearerToken = request.headers.get(AUTHORIZATION)
+    )
 
     Logger.debug(s"successful api request match for [${stringify(proxyRequest)}] to [$apiReq]")
 

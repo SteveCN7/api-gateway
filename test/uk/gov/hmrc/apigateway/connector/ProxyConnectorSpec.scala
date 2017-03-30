@@ -57,7 +57,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoS
     apiIdentifier = ApiIdentifier("c", "v"),
     apiEndpoint = s"$wireMockUrl/world",
     clientId = Some("7777"),
-    bearerToken = Some("Bearer 12345"))
+    authBearerToken = Some("Bearer 666"))
 
   override def beforeEach {
     wireMockServer.start()
@@ -133,7 +133,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoS
     }
 
     val gatewayHeaders = Map(
-      "Authorization" -> apiRequest.bearerToken.get,
+      "Authorization" -> apiRequest.authBearerToken.get,
       "X-Client-ID" -> apiRequest.clientId.get,
       "X-Request-Timestamp" -> apiRequest.timeInNanos.get.toString)
 
@@ -170,7 +170,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoS
       await(underTest.proxy(request, apiRequest)(requestId))
 
       verify(getRequestedFor(urlEqualTo("/world"))
-        .withHeader(X_CLIENT_AUTHORIZATION_TOKEN, equalTo("12345")))
+        .withHeader(X_CLIENT_AUTHORIZATION_TOKEN, equalTo("666")))
     }
 
     "Not include extra headers when there is no tag in the request" in new Setup {
@@ -178,7 +178,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoS
       await(underTest.proxy(request, apiRequest.copy(
         timeInNanos = None,
         clientId = None,
-        bearerToken = None))(requestId))
+        authBearerToken = None))(requestId))
 
       verify(getRequestedFor(urlEqualTo("/world"))
         .withoutHeader("Authorization")
@@ -193,7 +193,7 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoS
       val result = await(underTest.proxy(request, apiRequest)(requestId))
 
       verify(getRequestedFor(urlEqualTo("/world"))
-        .withHeader(X_CLIENT_AUTHORIZATION_TOKEN, equalTo("12345")))
+        .withHeader(X_CLIENT_AUTHORIZATION_TOKEN, equalTo("666")))
 
       validateHeaders(result.header.headers,
         (TRANSFER_ENCODING, Some("chunked")),

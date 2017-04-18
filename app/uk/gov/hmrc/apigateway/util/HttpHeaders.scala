@@ -21,7 +21,5 @@ import play.api.http.HeaderNames
 object HttpHeaders extends HeaderNames {
   val X_CLIENT_AUTHORIZATION_TOKEN = "X-Client-Authorization-Token"
   val X_CLIENT_ID = "X-Client-ID"
-  val X_REQUEST_ID = "X-Request-ID"
-  val X_REQUEST_TIMESTAMP = "X-Request-Timestamp"
   val X_SERVER_TOKEN = "X-server-token"
 }

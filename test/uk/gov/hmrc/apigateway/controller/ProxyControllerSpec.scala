@@ -18,7 +18,6 @@ package uk.gov.hmrc.apigateway.controller
 
 import java.net.ConnectException
 import java.util.concurrent.TimeoutException
-
 import java.util.UUID
 
 import akka.stream.Materializer
@@ -39,6 +38,7 @@ import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.service.{AuditService, ProxyService, RoutingService}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.play.http.HeaderNames._
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
@@ -75,7 +75,7 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
 
       status(result) shouldBe OK
       jsonBodyOf(result) shouldBe toJson("""{"foo":"bar"}""")
-      validateHeaders(result.header.headers, (X_REQUEST_ID, None))
+      validateHeaders(result.header.headers, (xRequestId, None))
 
       verifyZeroInteractions(auditService)
     }
@@ -87,7 +87,7 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
 
       status(result) shouldBe NOT_FOUND
       jsonBodyOf(result) shouldBe toJson("Item Not Found")
-      validateHeaders(result.header.headers, (X_REQUEST_ID, None))
+      validateHeaders(result.header.headers, (xRequestId, None))
 
       verifyZeroInteractions(auditService)
     }
@@ -175,7 +175,7 @@ class ProxyControllerSpec extends UnitSpec with MockitoSugar with RequestUtils {
       status(result) shouldBe NOT_FOUND
       jsonBodyOf(result) shouldBe toJson(GatewayError.MatchingResourceNotFound())
       validateHeaders(result.header.headers,
-        (X_REQUEST_ID, Some(requestId)),
+        (xRequestId, Some(requestId)),
         (CACHE_CONTROL, Some("no-cache")),
         (CONTENT_TYPE, Some("application/json; charset=UTF-8")),
         (http.X_FRAME_OPTIONS, None),

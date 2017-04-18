@@ -28,8 +28,8 @@ import uk.gov.hmrc.apigateway.connector.impl.MicroserviceAuditConnector
 import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.model.AuthType._
 import uk.gov.hmrc.apigateway.util.PlayRequestUtils.bodyOf
-import uk.gov.hmrc.apigateway.util.HttpHeaders.X_REQUEST_ID
 import uk.gov.hmrc.play.audit.model.{DataCall, DataEvent, MergedDataEvent}
+import uk.gov.hmrc.play.http.HeaderNames.xRequestId
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -66,7 +66,7 @@ class AuditService @Inject()(val appContext: AppContext, val auditConnector: Mic
       auditType = "APIGatewayRequestCompleted",
       request = DataCall(
         tags = Map(
-          X_REQUEST_ID -> requestId,
+          xRequestId -> requestId,
           "path" -> request.path.stripPrefix("/api-gateway"),
           "transactionName" -> "Request has been completed via the API Gateway",
           "clientIP" -> request.remoteAddress,
@@ -95,7 +95,7 @@ class AuditService @Inject()(val appContext: AppContext, val auditConnector: Mic
       auditSource = "api-gateway",
       auditType = "APIGatewayRequestFailedDueToInvalidAuthorisation",
       tags = Map(
-        X_REQUEST_ID -> requestId,
+        xRequestId -> requestId,
         "path" -> request.path.stripPrefix("/api-gateway"),
         "transactionName" -> "A third-party application has made an request rejected by the API Gateway as unauthorised",
         "clientIP" -> request.remoteAddress,

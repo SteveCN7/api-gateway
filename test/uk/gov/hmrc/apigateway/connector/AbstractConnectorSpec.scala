@@ -25,7 +25,7 @@ import play.api.http.Status._
 import play.api.libs.json.Json
 import play.api.libs.json.Json.{stringify, toJson}
 import play.api.libs.ws.WSClient
-import play.mvc.Http.HeaderNames
+import play.mvc.Http.HeaderNames._
 import uk.gov.hmrc.apigateway.exception.GatewayError.NotFound
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
@@ -53,10 +53,13 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
 
     "throw a not found error when the response is '404' not found" in new Setup {
 
-      stubFor(get(urlPathEqualTo("/foo/bar"))
-        .willReturn(
-          aResponse().withStatus(NOT_FOUND)
-        ))
+      stubFor(
+        get(urlPathEqualTo("/foo/bar"))
+          .withHeader(USER_AGENT, equalTo("api-gateway"))
+          .willReturn(
+            aResponse().withStatus(NOT_FOUND)
+          )
+      )
 
       intercept[NotFound] {
         await(underTest.get[String](s"$wireMockUrl/foo/bar"))
@@ -66,12 +69,15 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
     "return response json payload when the response is '2xx'" in new Setup {
       implicit val apiDefinitionFormat = Json.format[Foo]
 
-      stubFor(get(urlPathEqualTo("/foo/bar"))
-        .willReturn(
-          aResponse()
-            .withStatus(OK)
-            .withBody(stringify(toJson(Foo("bar"))))
-        ))
+      stubFor(
+        get(urlPathEqualTo("/foo/bar"))
+          .withHeader(USER_AGENT, equalTo("api-gateway"))
+          .willReturn(
+            aResponse()
+              .withStatus(OK)
+              .withBody(stringify(toJson(Foo("bar"))))
+          )
+      )
 
       val result = await(underTest.get[Foo](s"$wireMockUrl/foo/bar"))
 
@@ -81,12 +87,16 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
     "add headers to the request when provided" in new Setup {
       implicit val apiDefinitionFormat = Json.format[Foo]
 
-      stubFor(get(urlPathEqualTo("/foo/bar")).withHeader("foo", equalTo("bar"))
-        .willReturn(
-          aResponse()
-            .withStatus(OK)
-            .withBody(stringify(toJson(Foo("bar"))))
-        ))
+      stubFor(
+        get(urlPathEqualTo("/foo/bar"))
+          .withHeader("foo", equalTo("bar"))
+          .withHeader(USER_AGENT, equalTo("api-gateway"))
+          .willReturn(
+            aResponse()
+              .withStatus(OK)
+              .withBody(stringify(toJson(Foo("bar"))))
+          )
+      )
 
       val result = await(underTest.get[Foo](s"$wireMockUrl/foo/bar", Seq(("foo", "bar"))))
 
@@ -96,23 +106,27 @@ class AbstractConnectorSpec extends UnitSpec with WithFakeApplication with Befor
     "handle comma delimited headers from the response when provided" in new Setup {
       implicit val apiDefinitionFormat = Json.format[Foo]
 
-      stubFor(get(urlPathEqualTo("/foo/bar")).withHeader("foo", equalTo("bar"))
-        .willReturn(
-          aResponse()
-            .withStatus(OK)
-            .withBody(stringify(toJson(Foo("bar"))))
-            .withHeader(HeaderNames.CACHE_CONTROL, "no-cache,max-age=0,no-store")
-            .withHeader(HeaderNames.VARY, "X-Blah")
-            .withHeader(HeaderNames.VARY, "X-Bling")
-            .withHeader(HeaderNames.VARY, "X-Blit, X-Blat")
-        ))
+      stubFor(
+        get(urlPathEqualTo("/foo/bar"))
+          .withHeader("foo", equalTo("bar"))
+          .withHeader(USER_AGENT, equalTo("api-gateway"))
+          .willReturn(
+            aResponse()
+              .withStatus(OK)
+              .withBody(stringify(toJson(Foo("bar"))))
+              .withHeader(CACHE_CONTROL, "no-cache,max-age=0,no-store")
+              .withHeader(VARY, "X-Blah")
+              .withHeader(VARY, "X-Bling")
+              .withHeader(VARY, "X-Blit, X-Blat")
+          )
+      )
 
       val result = await(underTest.get[Foo](s"$wireMockUrl/foo/bar", Seq(("foo", "bar"))))
 
       result._1 shouldBe Foo("bar")
 
-      private val cacheControl = result._2.getOrElse(HeaderNames.CACHE_CONTROL, Set.empty)
-      private val vary = result._2.getOrElse(HeaderNames.VARY, Nil)
+      private val cacheControl = result._2.getOrElse(CACHE_CONTROL, Set.empty)
+      private val vary = result._2.getOrElse(VARY, Nil)
 
       cacheControl.size shouldBe 1
       cacheControl should contain("no-cache,max-age=0,no-store")

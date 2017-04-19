@@ -20,6 +20,7 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import play.api.test.FakeRequest
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
+import uk.gov.hmrc.play.http.HeaderNames.xRequestId
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.xml.XML
@@ -82,26 +83,26 @@ class PlayRequestUtilsSpec extends UnitSpec {
   }
 
   "replaceHeaders" should {
-    val headers = Headers(X_REQUEST_ID -> "requestId")
+    val headers = Headers(xRequestId -> "requestId")
 
     "add new headers" in {
       val res = PlayRequestUtils.replaceHeaders(headers)((X_CLIENT_ID, Some("clientId")))
-      res.headers shouldBe Seq((X_REQUEST_ID, "requestId"), (X_CLIENT_ID, "clientId"))
+      res.headers shouldBe Seq((xRequestId, "requestId"), (X_CLIENT_ID, "clientId"))
     }
 
     "replace existing headers" in {
-      val res = PlayRequestUtils.replaceHeaders(headers)((X_REQUEST_ID, Some("newRequestId")))
-      res.headers shouldBe Seq((X_REQUEST_ID, "newRequestId"))
+      val res = PlayRequestUtils.replaceHeaders(headers)((xRequestId, Some("newRequestId")))
+      res.headers shouldBe Seq((xRequestId, "newRequestId"))
     }
 
     "remove headers" in {
-      val res = PlayRequestUtils.replaceHeaders(headers)((X_REQUEST_ID, None))
+      val res = PlayRequestUtils.replaceHeaders(headers)((xRequestId, None))
       res.headers shouldBe Seq()
     }
 
     "leave headers intact" in {
       val res = PlayRequestUtils.replaceHeaders(headers)()
-      res.headers shouldBe Seq((X_REQUEST_ID, "requestId"))
+      res.headers shouldBe Seq((xRequestId, "requestId"))
     }
   }
 }

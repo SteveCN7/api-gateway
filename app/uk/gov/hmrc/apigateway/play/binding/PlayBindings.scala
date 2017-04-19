@@ -48,19 +48,17 @@ object PlayBindings {
 
 }
 
-// TODO copied from https://github.tools.tax.service.gov.uk/HMRC/third-party-application/blob/master/app/uk/gov/hmrc/models/JsonFormatters.scala#L100-L126 could be in a library
 object EnumJson {
 
   def enumReads[E <: Enumeration](enum: E): Reads[E#Value] = new Reads[E#Value] {
     def reads(json: JsValue): JsResult[E#Value] = json match {
-      case JsString(s) => {
+      case JsString(s) =>
         try {
           JsSuccess(enum.withName(s))
         } catch {
           case _: NoSuchElementException =>
             throw new InvalidEnumException(enum.getClass.getSimpleName, s)
         }
-      }
       case _ => JsError("String value expected")
     }
   }

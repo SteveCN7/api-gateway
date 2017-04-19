@@ -17,11 +17,14 @@
 package uk.gov.hmrc.apigateway.connector
 
 import play.api.Logger
+import play.api.http.HeaderNames.USER_AGENT
 import play.api.http.Status.{NOT_FOUND, OK}
 import play.api.libs.json.Format
 import play.api.libs.ws.WSClient
+import play.api.mvc.Headers
 import uk.gov.hmrc.apigateway.cache.EntityWithResponseHeaders
 import uk.gov.hmrc.apigateway.exception.GatewayError.{NotFound, ServerError}
+import uk.gov.hmrc.apigateway.util.PlayRequestUtils.replaceHeaders
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -29,12 +32,17 @@ import scala.reflect.ClassTag
 
 abstract class AbstractConnector(wsClient: WSClient) {
 
+  protected val applicationName = "api-gateway"
+
   def get[T: ClassTag](url: String)(implicit format: Format[T]): Future[T] = {
     get(url, Seq.empty[(String, String)]) map (_._1)
   }
 
   def get[T: ClassTag](url: String, reqHeaders: Seq[(String, String)])(implicit format: Format[T]): Future[EntityWithResponseHeaders[T]] = {
-    wsClient.url(url).withHeaders(reqHeaders: _*).get() map {
+
+    val headers = replaceHeaders(Headers(reqHeaders: _*))(USER_AGENT -> Some(applicationName))
+
+    wsClient.url(url).withHeaders(headers.toSimpleMap.toSeq: _*).get() map {
       case wsResponse if wsResponse.status >= OK && wsResponse.status < 300 =>
         Logger.debug(s"GET $url ${wsResponse.status}")
         (wsResponse.json.as[T], wsResponse.allHeaders.mapValues(_.toSet))

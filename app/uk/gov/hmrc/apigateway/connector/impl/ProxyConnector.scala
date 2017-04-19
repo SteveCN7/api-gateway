@@ -29,6 +29,7 @@ import uk.gov.hmrc.apigateway.connector.AbstractConnector
 import uk.gov.hmrc.apigateway.model.ApiRequest
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.apigateway.util.PlayRequestUtils._
+import uk.gov.hmrc.play.http.HeaderNames.{xRequestId, xRequestTimestamp}
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -44,8 +45,9 @@ class ProxyConnector @Inject()(wsClient: WSClient, appContext: AppContext) exten
       (AUTHORIZATION, apiRequest.authBearerToken),
       (X_CLIENT_AUTHORIZATION_TOKEN, apiRequest.authBearerToken.map(_.stripPrefix("Bearer "))),
       (X_CLIENT_ID, apiRequest.clientId),
-      (X_REQUEST_TIMESTAMP, apiRequest.timeInNanos.map(_.toString)),
-      (X_REQUEST_ID, Some(requestId)))
+      (xRequestTimestamp, apiRequest.timeInNanos.map(_.toString)),
+      (xRequestId, Some(requestId)),
+      (USER_AGENT, Some(applicationName)))
 
     wsClient.url(apiRequest.apiEndpoint)
       .withMethod(request.method)

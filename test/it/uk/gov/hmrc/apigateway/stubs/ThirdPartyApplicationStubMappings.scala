@@ -29,6 +29,7 @@ trait ThirdPartyApplicationStubMappings {
   protected def returnTheApplicationForServerToken(serverToken: String, application: Application): MappingBuilder =
     get(urlPathEqualTo("/application"))
       .withHeader(X_SERVER_TOKEN, equalTo(serverToken))
+      .withHeader(USER_AGENT, equalTo("api-gateway"))
       .willReturn(
         aResponse()
           .withStatus(OK)
@@ -38,6 +39,7 @@ trait ThirdPartyApplicationStubMappings {
   protected def willNotFindAnyApplicationForServerToken(serverToken: String): MappingBuilder =
     get(urlPathEqualTo("/application"))
       .withHeader(X_SERVER_TOKEN, equalTo(serverToken))
+      .withHeader(USER_AGENT, equalTo("api-gateway"))
       .willReturn(
         aResponse().withStatus(NOT_FOUND)
       )
@@ -45,6 +47,7 @@ trait ThirdPartyApplicationStubMappings {
   protected def failFindingTheApplicationForServerToken(serverToken: String): MappingBuilder =
     get(urlPathEqualTo("/application"))
       .withHeader(X_SERVER_TOKEN, equalTo(serverToken))
+      .withHeader(USER_AGENT, equalTo("api-gateway"))
       .willReturn(
         aResponse().withStatus(BAD_GATEWAY)
       )
@@ -53,6 +56,7 @@ trait ThirdPartyApplicationStubMappings {
   protected def returnTheApplicationForClientId(clientId: String, application: Application): MappingBuilder =
     get(urlPathEqualTo("/application"))
       .withQueryParam("clientId", equalTo(clientId))
+      .withHeader(USER_AGENT, equalTo("api-gateway"))
       .willReturn(
         aResponse()
           .withStatus(OK)
@@ -62,6 +66,7 @@ trait ThirdPartyApplicationStubMappings {
   protected def willNotFindAnyApplicationForClientId(clientId: String): MappingBuilder =
     get(urlPathEqualTo("/application"))
       .withQueryParam("clientId", equalTo(clientId))
+      .withHeader(USER_AGENT, equalTo("api-gateway"))
       .willReturn(
         aResponse().withStatus(NOT_FOUND)
       )
@@ -69,6 +74,7 @@ trait ThirdPartyApplicationStubMappings {
   protected def failFindingTheApplicationForClientId(clientId: String): MappingBuilder =
     get(urlPathEqualTo("/application"))
       .withQueryParam("clientId", equalTo(clientId))
+      .withHeader(USER_AGENT, equalTo("api-gateway"))
       .willReturn(
         aResponse().withStatus(GATEWAY_TIMEOUT)
       )
@@ -76,6 +82,7 @@ trait ThirdPartyApplicationStubMappings {
 
   protected def findTheSubscriptionFor(applicationId: String, api: ApiIdentifier): MappingBuilder = {
     get(urlPathEqualTo(s"/application/$applicationId/subscription/${api.context}/${api.version}"))
+      .withHeader(USER_AGENT, equalTo("api-gateway"))
       .willReturn(
         aResponse()
           .withStatus(OK)
@@ -86,6 +93,7 @@ trait ThirdPartyApplicationStubMappings {
 
   protected def willNotFindTheSubscriptionFor(applicationId: String, api: ApiIdentifier): MappingBuilder = {
     get(urlPathEqualTo(s"/application/$applicationId/subscription/${api.context}/${api.version}"))
+      .withHeader(USER_AGENT, equalTo("api-gateway"))
       .willReturn(
         aResponse().withStatus(NOT_FOUND)
       )
@@ -93,6 +101,7 @@ trait ThirdPartyApplicationStubMappings {
 
   protected def failWhenFetchingTheSubscription(applicationId: String, api: ApiIdentifier): MappingBuilder = {
     get(urlPathEqualTo(s"/application/$applicationId/subscription/${api.context}/${api.version}"))
+      .withHeader(USER_AGENT, equalTo("api-gateway"))
       .willReturn(
         aResponse().withStatus(INTERNAL_SERVER_ERROR)
       )

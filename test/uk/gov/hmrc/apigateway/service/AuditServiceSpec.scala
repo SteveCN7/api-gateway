@@ -39,7 +39,7 @@ import uk.gov.hmrc.apigateway.model.{ApiIdentifier, ApiRequest, AuthType}
 import uk.gov.hmrc.play.audit.http.connector.AuditResult
 import uk.gov.hmrc.play.audit.model.{DataCall, DataEvent, MergedDataEvent}
 import uk.gov.hmrc.play.http.HeaderCarrier
-import uk.gov.hmrc.apigateway.util.HttpHeaders.X_REQUEST_ID
+import uk.gov.hmrc.play.http.HeaderNames.xRequestId
 import uk.gov.hmrc.play.test.UnitSpec
 
 class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEach {
@@ -102,7 +102,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
         eventId = auditedEvent.eventId,
         request = DataCall(
           tags = Map(
-            X_REQUEST_ID -> requestId,
+            xRequestId -> requestId,
             "path" -> "/hello/user",
             "transactionName" -> "Request has been completed via the API Gateway",
             "clientIP" -> "10.10.10.10",
@@ -182,7 +182,7 @@ class AuditServiceSpec extends UnitSpec with MockitoSugar with BeforeAndAfterEac
         auditType = "APIGatewayRequestFailedDueToInvalidAuthorisation",
         eventId = auditedEvent.eventId,
         tags = Map(
-          X_REQUEST_ID -> requestId,
+          xRequestId -> requestId,
           "path" -> "/hello/user",
           "transactionName" -> "A third-party application has made an request rejected by the API Gateway as unauthorised",
           "clientIP" -> "10.10.10.10",

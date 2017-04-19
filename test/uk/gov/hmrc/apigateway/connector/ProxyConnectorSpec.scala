@@ -38,6 +38,7 @@ import uk.gov.hmrc.apigateway.model.{ApiIdentifier, ApiRequest}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 import com.google.common.net.{HttpHeaders => http}
+import uk.gov.hmrc.play.http.HeaderNames._
 
 class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoSugar with BeforeAndAfterEach with RequestUtils {
 
@@ -119,7 +120,8 @@ class ProxyConnectorSpec extends UnitSpec with WithFakeApplication with MockitoS
 
       verify(getRequestedFor(urlEqualTo("/world"))
         .withHeader("aHeader", equalTo("aHeaderValue"))
-        .withHeader(X_REQUEST_ID, equalTo(requestId)))
+        .withHeader(xRequestId, equalTo(requestId))
+        .withHeader(USER_AGENT, equalTo("api-gateway")))
     }
 
     "Not forward the Host header from the original request to the microservice" in new Setup {

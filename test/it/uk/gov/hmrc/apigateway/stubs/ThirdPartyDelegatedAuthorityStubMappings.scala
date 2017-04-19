@@ -22,11 +22,13 @@ import play.api.http.Status.{NOT_FOUND, OK}
 import play.api.libs.json.Json.{stringify, toJson}
 import uk.gov.hmrc.apigateway.model.Authority
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
+import uk.gov.hmrc.apigateway.util.HttpHeaders.USER_AGENT
 
 trait ThirdPartyDelegatedAuthorityStubMappings {
 
   protected def returnTheAuthorityForAccessToken(accessToken: String, authority: Authority): MappingBuilder =
     get(urlPathEqualTo("/authority"))
+      .withHeader(USER_AGENT, equalTo("api-gateway"))
       .withQueryParam("access_token", equalTo(accessToken))
       .willReturn(
         aResponse()
@@ -36,6 +38,7 @@ trait ThirdPartyDelegatedAuthorityStubMappings {
 
   protected def doNotReturnAnAuthorityForAccessToken(accessToken: String): MappingBuilder =
     get(urlPathEqualTo("/authority"))
+      .withHeader(USER_AGENT, equalTo("api-gateway"))
       .withQueryParam("access_token", equalTo(accessToken))
       .willReturn(
         aResponse().withStatus(NOT_FOUND)

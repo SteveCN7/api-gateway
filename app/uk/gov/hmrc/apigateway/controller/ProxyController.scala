@@ -31,6 +31,7 @@ import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
 import uk.gov.hmrc.apigateway.service.{AuditService, ProxyService, RoutingService}
 import uk.gov.hmrc.apigateway.util.HttpHeaders._
 import uk.gov.hmrc.apigateway.util.PlayRequestUtils
+import uk.gov.hmrc.play.http.HeaderNames._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -85,7 +86,7 @@ class ProxyController @Inject()(proxyService: ProxyService, routingService: Rout
   private def addHeaders(implicit requestId: String): Result => Result = {
     result =>
       val headers = PlayRequestUtils.replaceHeaders(Headers(result.header.headers.toSeq: _*))(
-        (X_REQUEST_ID, Some(requestId)),
+        (xRequestId, Some(requestId)),
         (CACHE_CONTROL, Some("no-cache")),
         (CONTENT_TYPE, Some("application/json; charset=UTF-8")),
         (http.X_FRAME_OPTIONS, None),

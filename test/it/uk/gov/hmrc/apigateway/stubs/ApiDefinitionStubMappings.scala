@@ -21,17 +21,20 @@ import play.api.http.Status._
 import play.api.libs.json.Json.{stringify, toJson}
 import uk.gov.hmrc.apigateway.model.ApiDefinition
 import uk.gov.hmrc.apigateway.play.binding.PlayBindings._
+import uk.gov.hmrc.apigateway.util.HttpHeaders.USER_AGENT
 
 trait ApiDefinitionStubMappings {
 
   def returnTheApiDefinition(apiDefinition: ApiDefinition) = {
     get(urlPathEqualTo("/api-definition")).withQueryParam("context", equalTo(apiDefinition.context))
+      .withHeader(USER_AGENT, equalTo("api-gateway"))
       .willReturn(aResponse().withStatus(OK)
         .withBody(stringify(toJson(apiDefinition))))
   }
 
   def notReturnAnApiDefinitionForContext(context: String) = {
     get(urlPathEqualTo("/api-definition")).withQueryParam("context", equalTo(context))
+      .withHeader(USER_AGENT, equalTo("api-gateway"))
       .willReturn(aResponse().withStatus(NOT_FOUND))
   }
 }

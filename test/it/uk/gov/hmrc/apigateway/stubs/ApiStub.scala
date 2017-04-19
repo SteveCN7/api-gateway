@@ -19,6 +19,7 @@ package it.uk.gov.hmrc.apigateway.stubs
 import com.github.tomakehurst.wiremock.client.WireMock._
 import it.uk.gov.hmrc.apigateway.{MockHost, Stub}
 import play.api.http.Status.OK
+import play.mvc.Http.HeaderNames.USER_AGENT
 
 object ApiStub extends Stub {
 
@@ -28,7 +29,12 @@ object ApiStub extends Stub {
   override val stub = MockHost(port)
 
   def willReturnTheResponse(response: String) = {
-    stub.mock.register(get(anyUrl())
-      .willReturn(aResponse().withStatus(OK).withBody(response)))
+    stub.mock.register(
+      get(anyUrl())
+        .withHeader(USER_AGENT, equalTo("api-gateway"))
+        .willReturn(
+          aResponse()
+            .withStatus(OK)
+            .withBody(response)))
   }
 }

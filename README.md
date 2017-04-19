@@ -5,7 +5,8 @@ API Gateway proxies HTTP requests to downstream services.
 
 [![Build Status](https://travis-ci.org/hmrc/api-gateway.svg?branch=master)](https://travis-ci.org/hmrc/api-gateway) [ ![Download](https://api.bintray.com/packages/hmrc/releases/api-gateway/images/download.svg) ](https://bintray.com/hmrc/releases/api-gateway/_latestVersion)
 
-IMPORTANT: This is a bespoke implementation designed to eventually replace `WSO2`. At the moment PRODUCTION and SANDBOX credentials are not handled differently.
+IMPORTANT: This is a bespoke implementation designed to eventually replace `WSO2`. 
+At the moment only PRODUCTION credentials work. SANDBOX credentials are not handled yet.
 
 ### License
 

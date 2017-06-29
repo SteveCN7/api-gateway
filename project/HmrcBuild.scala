@@ -59,7 +59,7 @@ object HmrcBuild extends Build {
     .settings(defaultSettings(): _*)
     .enablePlugins(PlayScala)
     .settings(
-      scalaVersion := "2.11.8",
+      scalaVersion := "2.11.11",
       libraryDependencies ++= compileDependencies ++ testDependencies
     )
     .configs(IntegrationTest)
